@@ -1,10 +1,10 @@
 builddir = out
 
-cxx = clang++ -fcolor-diagnostics -Weverything -Wno-c++98-compat -Wno-poison-system-directories $
+cxx = clang++ -fcolor-diagnostics -Weverything -Wno-c++98-compat $
               -fsanitize=address,integer,undefined
 
 rule compile
-    command = $cxx -Werror -g -Os -std=c++17 -MD -MF $out.d -c $in -o $out
+    command = $cxx -Werror -g -Os -std=c++17 -nostdinc -MD -MF $out.d -c $in -o $out
     depfile = $out.d
     deps    = gcc
 
