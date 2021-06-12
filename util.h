@@ -23,15 +23,16 @@ namespace mtk {
 
     // is_pow2_or_zero(n) returns true if n is zero or a power of 2.
     template <typename T>
+    [[clang::no_sanitize("unsigned-integer-overflow")]]
     constexpr inline bool is_pow2_or_zero(T n) {
         return (n & (n-1)) == 0;
     }
-    static_assert( is_pow2_or_zero(0));
-    static_assert( is_pow2_or_zero(1));
-    static_assert( is_pow2_or_zero(2));
-    static_assert(!is_pow2_or_zero(3));
-    static_assert( is_pow2_or_zero(4));
-    static_assert(!is_pow2_or_zero(5));
+    static_assert( is_pow2_or_zero(0));  static_assert( is_pow2_or_zero(0u));
+    static_assert( is_pow2_or_zero(1));  static_assert( is_pow2_or_zero(1u));
+    static_assert( is_pow2_or_zero(2));  static_assert( is_pow2_or_zero(2u));
+    static_assert(!is_pow2_or_zero(3));  static_assert(!is_pow2_or_zero(3u));
+    static_assert( is_pow2_or_zero(4));  static_assert( is_pow2_or_zero(4u));
+    static_assert(!is_pow2_or_zero(5));  static_assert(!is_pow2_or_zero(5u));
 
 
     // push() and pop() maintain a dynamic array [ptr..ptr+len),

@@ -18,8 +18,8 @@ int main(int, char**) {
     expect(pop(ptr,len) == 2);
     expect(pop(ptr,len) == 1);
 
-    expect(len == 0);
     expect(ptr == nullptr);
+    expect(len == 0);
 
     for (int i = 0; i < 20; i++) {
         for (int j = 0; j < i; j++) {
@@ -28,9 +28,19 @@ int main(int, char**) {
         for (int j = i; j --> 0;) {
             expect(pop(ptr,len) == j);
         }
-        expect(len == 0);
         expect(ptr == nullptr);
+        expect(len == 0);
     }
+
+    float* f  = nullptr;
+    size_t fs = 0;
+
+    push(f,fs) = 1.0f;
+    expect(fs == 1);
+    expect(pop(f,fs) == 1.0f);
+
+    expect(f  == nullptr);
+    expect(fs == 0);
 
     return 0;
 }
