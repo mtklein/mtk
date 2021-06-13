@@ -1,5 +1,11 @@
 #pragma once
-#include "std.h"
+
+using size_t = decltype(sizeof(void*));
+extern "C" {
+    void* realloc(void*, size_t);
+    void  free   (void*);
+    void* memcpy (void*, const void*, size_t);
+}
 
 namespace mtk {
 
@@ -19,6 +25,17 @@ namespace mtk {
     }
     static_assert(implicit_cast<float>(2   ) == 2.0f);
     static_assert(implicit_cast<int  >(2.0f) == 2   );
+
+
+    // bit_pun puns the bits of one type to another of equal size, e.g. float <-> int.
+    // Can't be constexpr without compiler support (std::bit_cast).  :(
+    template <typename D, typename S>
+    inline D bit_pun(S src) {
+        D dst;
+        static_assert(sizeof dst == sizeof src);
+        memcpy(&dst, &src, sizeof dst);
+        return dst;
+    }
 
 
     // is_pow2_or_zero(n) returns true if n is zero or a power of 2.

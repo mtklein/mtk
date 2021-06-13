@@ -42,5 +42,8 @@ int main(int, char**) {
     expect(f  == nullptr);
     expect(fs == 0);
 
+    expect(bit_pun<float>(0x3f80'0000) == 1.0f);
+    expect(bit_pun<int  >(1.0f) == 0x3f80'0000);
+
     return 0;
 }
