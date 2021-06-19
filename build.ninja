@@ -1,19 +1,19 @@
 builddir = out
 
-cxx = clang++ -fcolor-diagnostics -Weverything -Wno-c++98-compat $
-              -fsanitize=address,integer,undefined
+cc = clang -fcolor-diagnostics -Weverything -Wno-poison-system-directories $
+           -fsanitize=address,integer,undefined -fno-sanitize-recover=all
 
 rule compile
-    command = $cxx -Werror -g -Os -std=c++17 -nostdinc -MD -MF $out.d -c $in -o $out
+    command = $cc -Werror -g -Os -MD -MF $out.d -c $in -o $out
     depfile = $out.d
     deps    = gcc
 
 rule link
-    command = $cxx $in -o $out
+    command = $cc $in -o $out
 
 rule run
     command = ./$in > $out
 
-build out/util_test.o:  compile util_test.cc
-build out/util_test:    link out/util_test.o
-build out/util_test.ok: run  out/util_test
+build out/array_test.o:  compile  array_test.c
+build out/array_test:    link out/array_test.o
+build out/array_test.ok: run  out/array_test

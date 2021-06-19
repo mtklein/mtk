@@ -1,9 +1,7 @@
 #pragma once
 
-extern "C" {
-    int dprintf(int, const char*, ...);
-    void abort(void);
-}
+#include <stdio.h>
+#include <stdlib.h>
 
 #define expect(cond) \
-    if (!(cond)) dprintf(2, "%s:%d expect(%s) failed\n", __FILE__, __LINE__, #cond), abort()
+    if (!(cond)) fprintf(stderr, "%s:%d expect(%s) failed\n", __FILE__, __LINE__, #cond), abort()
