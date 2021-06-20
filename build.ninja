@@ -1,19 +1,23 @@
 builddir = out
 
-cc = clang -fcolor-diagnostics -Weverything -Wno-poison-system-directories $
-           -fsanitize=address,integer,undefined -fno-sanitize-recover=all
+cc = clang -fcolor-diagnostics -Weverything -Wno-poison-system-directories
+san = -fsanitize=address,integer,undefined -fno-sanitize-recover=all
 
 rule compile
-    command = $cc -Werror -g -Os -MD -MF $out.d -c $in -o $out
+    command = $cc -Werror -g -O1 -MMD -MF $out.d -c $in -o $out.x -arch x86_64 $san && $
+              $cc -Werror -g -Os                 -c $in -o $out.a -arch arm64       && $
+              lipo -create $out.x $out.a -output $out
     depfile = $out.d
     deps    = gcc
 
 rule link
-    command = $cc $in -o $out
+    command = $cc -arch arm64 -arch x86_64 $san $in -o $out
 
-rule run
-    command = ./$in > $out
+rule test
+    command = (arch -x86_64 ./$in && arch -arm64 ./$in) > $out
 
 build out/array_test.o:  compile  array_test.c
 build out/array_test:    link out/array_test.o
-build out/array_test.ok: run  out/array_test
+build out/array_test.ok: test out/array_test
+
+build out/matrix.o: compile matrix.c
