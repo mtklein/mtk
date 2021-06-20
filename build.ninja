@@ -4,9 +4,9 @@ cc = clang -fcolor-diagnostics -Weverything -Wno-poison-system-directories
 san = -fsanitize=address,integer,undefined -fno-sanitize-recover=all
 
 rule compile
-    command = $cc -Werror -g -O1 -MMD -MF $out.d -c $in -o $out.x -arch x86_64 $san && $
-              $cc -Werror -g -Os                 -c $in -o $out.a -arch arm64       && $
-              lipo -create $out.x $out.a -output $out
+    command = $cc -Werror -g -O1 -MMD -MF $out.d -c $in -o $out.x86_64 -arch x86_64 $san && $
+              $cc -Werror -g -Os                 -c $in -o $out.arm64  -arch arm64       && $
+              lipo -create $out.x86_64 $out.arm64 -output $out
     depfile = $out.d
     deps    = gcc
 
