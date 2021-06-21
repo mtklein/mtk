@@ -20,4 +20,4 @@ build out/array_test.o:  compile  array_test.c
 build out/array_test:    link out/array_test.o
 build out/array_test.ok: test out/array_test
 
-build out/matrix.o: compile matrix.c
+build out/gfx.o: compile gfx.c
