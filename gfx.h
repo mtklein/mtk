@@ -1,46 +1,36 @@
 #pragma once
 
-typedef struct {
-    float x,y;
-} Point;
+#define N 8
+typedef _Float16 half;
+typedef half  __attribute__((ext_vector_type(N))) Half;
+typedef float __attribute__((ext_vector_type(N))) Float;
 
-typedef struct {
-    float sx,kx,tx,
-          ky,sy,ty;
-} Affine;
+typedef struct { float r,g,b,a; } Color;
+typedef struct { Half  r,g,b,a; } Slab;
 
-typedef struct {
-    _Float16 r,g,b,a;
-} Color;
+typedef Slab (Shade)(void *ctx, Float x, Float y);
+typedef Slab (Blend)(Slab src, Slab dst);
+typedef Slab (Load )(const void *px);
+typedef void (Store)(void *px, Slab);
 
-typedef void (Shade)(void*, Color*, Point);
-typedef void (Blend)(Color*, const Color*);
-typedef void (Pixel)(void*, const Color*, Color*);
+Shade
+    shade_color;
 
-typedef struct {
-    void* pixels;
-    int   w,h,bpp,row;
-} Bitmap;
+Blend
+    blend_src,
+    blend_dst,
+    blend_srcover;
 
-typedef struct {
-    Affine src2dst;
-    Shade* shade; void* shade_ctx;
-    Blend* blend;
-    Pixel* pixel;
-} Draw;
+Load
+    load_rgba_f16,
+    load_rgba_f32,
+    load_rgba_unorm8,
+    load_rgba_unorm16,
+    load_rgba_1010102;
 
-
-extern const Affine identity;
-
-Shade shade_color;
-
-Blend blend_src,
-      blend_dst,
-      blend_srcover;
-
-Pixel pixel_rgba_fp16,
-      pixel_rgba_fp32,
-      pixel_rgba_unorm8,
-      pixel_rgba_unorm16,
-      pixel_rgba_1010102,
-      pixel_rgba_101010x;
+Store
+    store_rgba_f16,
+    store_rgba_f32,
+    store_rgba_unorm8,
+    store_rgba_unorm16,
+    store_rgba_1010102;

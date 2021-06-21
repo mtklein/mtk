@@ -1,131 +1,125 @@
 #include "gfx.h"
 #include <stdint.h>
 
-const Affine identity = {
-    1,0,0,
-    0,1,0,
-};
+#if defined(__aarch64__)
+    // TODO: is there a Clang idiom to generate ld4.?? instructions from portable code?
+    #include <arm_neon.h>
 
-void shade_color(void* ctx, Color* c, Point p) {
-    (void)p;
-    *c = *(Color*)ctx;
+    #define cast __builtin_convertvector
+
+    // I could not coax Clang to use ucvtf.8h for this no matter how I tried,
+    // whether __builtin_convertvector() or vcvtq_f16_u16(), always u8 -> u16 -> u32 -> f32 -> f16.
+    // Maybe it's because not all u16 are representable as f16?
+    // TODO: maybe convert to u16, or a constant, fma?
+    static Half f16_from_u8(uint8x8_t u8) {
+    #if 0
+        return cast(u8, Half);
+    #else
+        uint16x8_t u16 = vmovl_u8(u8);
+        Half f16;
+        __asm__("ucvtf.8h %0,%1" : "=w"(f16) : "w"(u16));
+        return f16;
+    #endif
+    }
+#endif
+
+
+Slab shade_color(void* ctx, Float x, Float y) {
+    const Color* c = ctx;
+    (void)x;
+    (void)y;
+    return (Slab) {
+        (half)c->r,
+        (half)c->g,
+        (half)c->b,
+        (half)c->a,
+    };
 }
 
-void blend_src(Color* src, const Color* dst) {
-    (void)src;
+Slab blend_src(Slab src, Slab dst) {
     (void)dst;
+    return src;
 }
 
-void blend_dst(Color* src, const Color* dst) {
-    *src = *dst;
+Slab blend_dst(Slab src, Slab dst) {
+    (void)src;
+    return dst;
 }
 
-void blend_srcover(Color* src, const Color* dst) {
-    src->r += dst->r * (1 - src->a);
-    src->g += dst->g * (1 - src->a);
-    src->b += dst->b * (1 - src->a);
-    src->a += dst->a * (1 - src->a);
+Slab blend_srcover(Slab src, Slab dst) {
+    src.r += dst.r * (1-src.a);
+    src.g += dst.g * (1-src.a);
+    src.b += dst.b * (1-src.a);
+    src.a += dst.a * (1-src.a);
+    return src;
 }
 
-void pixel_rgba_fp16(void* px, const Color* src, Color* dst) {
-    struct { _Float16 r,g,b,a; } *p = px;
-    if (src) {
-        p->r = src->r;
-        p->g = src->g;
-        p->b = src->b;
-        p->a = src->a;
-    } else {
-        dst->r = p->r;
-        dst->g = p->g;
-        dst->b = p->b;
-        dst->a = p->a;
+#if !defined(__aarch64__)
+    #define GENERIC_LOAD              \
+        Slab s = {0};                 \
+        for (int i = 0; i < N; i++) { \
+            s.r[i] = (half)p[i].r;    \
+            s.g[i] = (half)p[i].g;    \
+            s.b[i] = (half)p[i].b;    \
+            s.a[i] = (half)p[i].a;    \
+        }
+#endif
+
+Slab load_rgba_f16(const void *px) {
+#if defined(__aarch64__)
+    float16x8x4_t v = vld4q_f16(px);
+    Slab s = {
+        v.val[0],
+        v.val[1],
+        v.val[2],
+        v.val[3],
+    };
+#else
+    const struct { half r,g,b,a; } *p = px;
+    GENERIC_LOAD
+#endif
+    return s;
+}
+
+Slab load_rgba_unorm8(const void *px) {
+#if defined(__aarch64__)
+    uint8x8x4_t v = vld4_u8(px);
+    Slab s = {
+        f16_from_u8(v.val[0]),
+        f16_from_u8(v.val[1]),
+        f16_from_u8(v.val[2]),
+        f16_from_u8(v.val[3]),
+    };
+#else
+    const struct { uint8_t r,g,b,a; } *p = px;
+    GENERIC_LOAD
+#endif
+    s.r *= (1/255.0f16);
+    s.g *= (1/255.0f16);
+    s.b *= (1/255.0f16);
+    s.a *= (1/255.0f16);
+    return s;
+}
+
+Slab load_rgba_unorm16(const void *px) {
+    // 0xffff (65535) becomes +inf when converted directly to f16, so we go via f32.
+#if defined(__aarch64__)
+    uint16x8x4_t v = vld4q_u16(px);
+    return (Slab) {
+        cast(cast(v.val[0], Float) * (1/65535.0f), Half),
+        cast(cast(v.val[1], Float) * (1/65535.0f), Half),
+        cast(cast(v.val[2], Float) * (1/65535.0f), Half),
+        cast(cast(v.val[3], Float) * (1/65535.0f), Half),
+    };
+#else
+    const struct { uint16_t r,g,b,a; } *p = px;
+    Slab s = {0};
+    for (int i = 0; i < N; i++) {
+        s.r[i] = (half)( (float)p[i].r * (1/65535.0f) );
+        s.g[i] = (half)( (float)p[i].g * (1/65535.0f) );
+        s.b[i] = (half)( (float)p[i].b * (1/65535.0f) );
+        s.a[i] = (half)( (float)p[i].a * (1/65535.0f) );
     }
-}
-
-void pixel_rgba_fp32(void* px, const Color* src, Color* dst) {
-    struct { float r,g,b,a; } *p = px;
-    if (src) {
-        p->r = (float)src->r;
-        p->g = (float)src->g;
-        p->b = (float)src->b;
-        p->a = (float)src->a;
-    } else {
-        dst->r = (_Float16)p->r;
-        dst->g = (_Float16)p->g;
-        dst->b = (_Float16)p->b;
-        dst->a = (_Float16)p->a;
-    }
-}
-
-void pixel_rgba_unorm8(void* px, const Color* src, Color* dst) {
-    // TODO: codegen here is not very good... byte aliasing perhaps?
-    struct { uint8_t r,g,b,a; } *p = px;
-    if (src) {
-        p->r = (uint8_t)( src->r * 255.0f16 + 0.5f16 );
-        p->g = (uint8_t)( src->g * 255.0f16 + 0.5f16 );
-        p->b = (uint8_t)( src->b * 255.0f16 + 0.5f16 );
-        p->a = (uint8_t)( src->a * 255.0f16 + 0.5f16 );
-    } else {
-        dst->r = p->r * (1/255.0f16);
-        dst->g = p->g * (1/255.0f16);
-        dst->b = p->b * (1/255.0f16);
-        dst->a = p->a * (1/255.0f16);
-    }
-}
-
-void pixel_rgba_unorm16(void* px, const Color* src, Color* dst) {
-    // 65535 is too big for _Float16, so load and store via float.
-    // TODO: may be a more direct conversion possible?
-    struct { uint16_t r,g,b,a; } *p = px;
-    if (src) {
-        p->r = (uint16_t)( (float)src->r * 65535.0f + 0.5f );
-        p->g = (uint16_t)( (float)src->g * 65535.0f + 0.5f );
-        p->b = (uint16_t)( (float)src->b * 65535.0f + 0.5f );
-        p->a = (uint16_t)( (float)src->a * 65535.0f + 0.5f );
-    } else {
-        dst->r = (_Float16)( p->r * (1/65535.0f) );
-        dst->g = (_Float16)( p->g * (1/65535.0f) );
-        dst->b = (_Float16)( p->b * (1/65535.0f) );
-        dst->a = (_Float16)( p->a * (1/65535.0f) );
-    }
-}
-
-void pixel_rgba_1010102(void* px, const Color* src, Color* dst) {
-    struct {
-        uint32_t r : 10;
-        uint32_t g : 10;
-        uint32_t b : 10;
-        uint32_t a :  2;
-    } *p = px;
-    if (src) {
-        p->r = (uint32_t)( src->r * 1023.0f16 + 0.5f16 );
-        p->g = (uint32_t)( src->g * 1023.0f16 + 0.5f16 );
-        p->b = (uint32_t)( src->b * 1023.0f16 + 0.5f16 );
-        p->a = (uint32_t)( src->a *    3.0f16 + 0.5f16 );
-    } else {
-        dst->r = (_Float16)( p->r * (1/1023.0f16) );
-        dst->g = (_Float16)( p->g * (1/1023.0f16) );
-        dst->b = (_Float16)( p->b * (1/1023.0f16) );
-        dst->a = (_Float16)( p->a * (1/   3.0f16) );
-    }
-}
-
-void pixel_rgba_101010x(void* px, const Color* src, Color* dst) {
-    struct {
-        uint32_t r : 10;
-        uint32_t g : 10;
-        uint32_t b : 10;
-        uint32_t x :  2;
-    } *p = px;
-    if (src) {
-        p->r = (uint32_t)( src->r * 1023.0f16 + 0.5f16 );
-        p->g = (uint32_t)( src->g * 1023.0f16 + 0.5f16 );
-        p->b = (uint32_t)( src->b * 1023.0f16 + 0.5f16 );
-        p->x = 3;
-    } else {
-        dst->r = (_Float16)( p->r * (1/1023.0f16) );
-        dst->g = (_Float16)( p->g * (1/1023.0f16) );
-        dst->b = (_Float16)( p->b * (1/1023.0f16) );
-        dst->a = 1.0f16;
-    }
+    return s;
+#endif
 }

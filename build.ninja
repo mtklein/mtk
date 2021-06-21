@@ -20,4 +20,7 @@ build out/array_test.o:  compile  array_test.c
 build out/array_test:    link out/array_test.o
 build out/array_test.ok: test out/array_test
 
-build out/gfx.o: compile gfx.c
+build out/gfx.o:       compile gfx.c
+build out/gfx_test.o:  compile gfx_test.c
+build out/gfx_test:    link out/gfx_test.o out/gfx.o
+build out/gfx_test.ok: test out/gfx_test
