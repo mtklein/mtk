@@ -4,15 +4,15 @@ cc = clang -fcolor-diagnostics -Weverything -Wno-poison-system-directories
 san = -fsanitize=address,integer,undefined -fno-sanitize-recover=all
 
 rule compile
-    command = $cc -Werror -g -O1 -MMD -MF $out.d -c $in -o $out.x86_64 -arch x86_64 $san && $
-              $cc -Werror -g -Os -flto           -c $in -o $out.arm64e -arch arm64e      && $
-              $cc -Werror -g -Os                 -c $in -o $out.arm64  -arch arm64       && $
-              lipo -create $out.x86_64 $out.arm64 $out.arm64e -output $out
+    command = $cc -Werror -g -O1 -MMD -MF $out.d -c $in -o $out.san   -arch x86_64 $san && $
+              $cc -Werror -g -Os -flto           -c $in -o $out.lto   -arch arm64       && $
+              $cc -Werror -g -Os                 -c $in -o $out.arm64 -arch arm64       && $
+              lipo -create $out.san $out.lto -output $out
     depfile = $out.d
     deps    = gcc
 
 rule link
-    command = $cc -arch arm64 -arch arm64e -arch x86_64 $san $in -o $out
+    command = $cc -arch arm64 -arch x86_64 $san $in -o $out
 
 rule test
     command = (arch -x86_64 ./$in && arch -arm64 ./$in) > $out
