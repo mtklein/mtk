@@ -5,13 +5,14 @@ san = -fsanitize=address,integer,undefined -fno-sanitize-recover=all
 
 rule compile
     command = $cc -Werror -g -O1 -MMD -MF $out.d -c $in -o $out.x86_64 -arch x86_64 $san && $
+              $cc -Werror -g -Os -flto           -c $in -o $out.arm64e -arch arm64e      && $
               $cc -Werror -g -Os                 -c $in -o $out.arm64  -arch arm64       && $
-              lipo -create $out.x86_64 $out.arm64 -output $out
+              lipo -create $out.x86_64 $out.arm64 $out.arm64e -output $out
     depfile = $out.d
     deps    = gcc
 
 rule link
-    command = $cc -arch arm64 -arch x86_64 $san $in -o $out
+    command = $cc -arch arm64 -arch arm64e -arch x86_64 $san $in -o $out
 
 rule test
     command = (arch -x86_64 ./$in && arch -arm64 ./$in) > $out
@@ -24,3 +25,8 @@ build out/gfx.o:       compile gfx.c
 build out/gfx_test.o:  compile gfx_test.c
 build out/gfx_test:    link out/gfx_test.o out/gfx.o
 build out/gfx_test.ok: test out/gfx_test
+
+build out/ns.o:       compile ns.c
+build out/ns_test.o:  compile ns_test.c
+build out/ns_test:    link out/ns_test.o out/ns.o
+build out/ns_test.ok: test out/ns_test
