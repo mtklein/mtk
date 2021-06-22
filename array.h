@@ -1,14 +1,9 @@
 #pragma once
 
-#include <stdlib.h>
+#include <stddef.h>
 
-#define push(ptr, n)                                                                \
-    (ptr = (n && (n & (n-1))) ? ptr                                                 \
-         :                      realloc(ptr, (size_t)(n ? 2*n : 1) * sizeof *ptr)), \
-    ptr[n++]
+void* grow  (void* ptr, size_t n, size_t sizeofT);
+void* shrink(void* ptr, size_t n, size_t sizeofT);
 
-#define pop(ptr, n)                                                   \
-    --n,                                                              \
-    (ptr = (n && (n & (n-1))) ? ptr                                   \
-         :                  n ? realloc(ptr, (size_t)n * sizeof *ptr) \
-         :                      (free(ptr), NULL))
+#define push(ptr, n) (ptr = grow(ptr, (size_t)n, sizeof *ptr)), ptr[n++]
+#define pop(ptr, n)  --n, (ptr = shrink(ptr, (size_t)n, sizeof *ptr))

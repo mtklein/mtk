@@ -17,16 +17,17 @@ rule link
 rule test
     command = (arch -x86_64 ./$in && arch -arm64 ./$in) > $out
 
+build out/array.o:       compile  array.c
 build out/array_test.o:  compile  array_test.c
-build out/array_test:    link out/array_test.o
+build out/array_test:    link out/array_test.o out/array.o
 build out/array_test.ok: test out/array_test
 
-build out/gfx.o:       compile gfx.c
-build out/gfx_test.o:  compile gfx_test.c
+build out/gfx.o:       compile  gfx.c
+build out/gfx_test.o:  compile  gfx_test.c
 build out/gfx_test:    link out/gfx_test.o out/gfx.o
 build out/gfx_test.ok: test out/gfx_test
 
-build out/ns.o:       compile ns.c
-build out/ns_test.o:  compile ns_test.c
+build out/ns.o:       compile  ns.c
+build out/ns_test.o:  compile  ns_test.c
 build out/ns_test:    link out/ns_test.o out/ns.o
 build out/ns_test.ok: test out/ns_test
