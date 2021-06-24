@@ -1,20 +1,18 @@
 #pragma once
 
 #define N 8
-typedef _Float16 half;
-typedef half  __attribute__((ext_vector_type(N))) Half;
-typedef float __attribute__((ext_vector_type(N))) Float;
+typedef _Float16 __attribute__((ext_vector_type(N))) F16;
+typedef float    __attribute__((ext_vector_type(N))) F32;
 
-typedef struct { float r,g,b,a; } Color;
-typedef struct { Half  r,g,b,a; } Slab;
+typedef struct { F16 r,g,b,a; } Slab;
 
-typedef Slab (Shade)(void *ctx, Float x, Float y);
+typedef Slab (Shade)(void *ctx, F32 x, F32 y);
 typedef Slab (Blend)(Slab src, Slab dst);
 typedef Slab (Load )(const void *px);
 typedef void (Store)(void *px, Slab);
 
 Shade
-    shade_color;
+    shade_rgba_f32;
 
 Blend
     blend_src,

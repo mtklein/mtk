@@ -1,38 +1,42 @@
 #include "gfx.h"
 #include <stdint.h>
 
-#if defined(__aarch64__)
-    // TODO: is there a Clang idiom to generate ld4.?? instructions from portable code?
-    #include <arm_neon.h>
+#define cast    __builtin_convertvector
+#define shuffle __builtin_shufflevector
 
-    #define cast __builtin_convertvector
+typedef uint8_t __attribute__((ext_vector_type(  N))) U8;
+typedef uint8_t __attribute__((ext_vector_type(4*N))) U8x4;
 
-    // I could not coax Clang to use ucvtf.8h for this no matter how I tried,
-    // whether __builtin_convertvector() or vcvtq_f16_u16(), always u8 -> u16 -> u32 -> f32 -> f16.
-    // Maybe it's because not all u16 are representable as f16?
-    // TODO: maybe convert to u16, or a constant, fma?
-    static Half f16_from_u8(uint8x8_t u8) {
-    #if 0
-        return cast(u8, Half);
-    #else
-        uint16x8_t u16 = vmovl_u8(u8);
-        Half f16;
-        __asm__("ucvtf.8h %0,%1" : "=w"(f16) : "w"(u16));
-        return f16;
-    #endif
-    }
+typedef uint16_t __attribute__((ext_vector_type(  N))) U16;
+typedef uint16_t __attribute__((ext_vector_type(4*N))) U16x4;
+
+typedef _Float16 __attribute__((ext_vector_type(4*N))) F16x4;
+
+
+// I could not coax Clang to use ucvtf.8h for this no matter how I tried,
+// whether __builtin_convertvector() or vcvtq_f16_u16(), always u8 -> u16 -> u32 -> f32 -> f16.
+// Maybe it's because not all u16 are representable as f16?
+// TODO: maybe convert to u16, then or in a constant, then fma?
+static F16 F16_from_U8(U8 u8) {
+#if 1 && defined(__aarch64__)
+    U16 u16 = cast(u8, U16);
+    F16 f16;
+    __asm__("ucvtf.8h %0,%1" : "=w"(f16) : "w"(u16));
+    return f16;
+#else
+    return cast(u8, F16);
 #endif
+}
 
-
-Slab shade_color(void* ctx, Float x, Float y) {
-    const Color* c = ctx;
+Slab shade_rgba_f32(void* ctx, F32 x, F32 y) {
+    struct { float r,g,b,a; } *c = ctx;
     (void)x;
     (void)y;
     return (Slab) {
-        (half)c->r,
-        (half)c->g,
-        (half)c->b,
-        (half)c->a,
+        (_Float16)c->r,
+        (_Float16)c->g,
+        (_Float16)c->b,
+        (_Float16)c->a,
     };
 }
 
@@ -54,72 +58,38 @@ Slab blend_srcover(Slab src, Slab dst) {
     return src;
 }
 
-#if !defined(__aarch64__)
-    #define GENERIC_LOAD              \
-        Slab s = {0};                 \
-        for (int i = 0; i < N; i++) { \
-            s.r[i] = (half)p[i].r;    \
-            s.g[i] = (half)p[i].g;    \
-            s.b[i] = (half)p[i].b;    \
-            s.a[i] = (half)p[i].a;    \
-        }
-#endif
+#define C0 0,4, 8,12, 16,20,24,28
+#define C1 1,5, 9,13, 17,21,25,29
+#define C2 2,6,10,14, 18,22,26,30
+#define C3 3,7,11,15, 19,23,27,31
 
 Slab load_rgba_f16(const void *px) {
-#if defined(__aarch64__)
-    float16x8x4_t v = vld4q_f16(px);
-    Slab s = {
-        v.val[0],
-        v.val[1],
-        v.val[2],
-        v.val[3],
+    F16x4 v = *(const F16x4*)px;
+    return (Slab) {
+        shuffle(v,v, C0),
+        shuffle(v,v, C1),
+        shuffle(v,v, C2),
+        shuffle(v,v, C3),
     };
-#else
-    const struct { half r,g,b,a; } *p = px;
-    GENERIC_LOAD
-#endif
-    return s;
 }
 
 Slab load_rgba_unorm8(const void *px) {
-#if defined(__aarch64__)
-    uint8x8x4_t v = vld4_u8(px);
-    Slab s = {
-        f16_from_u8(v.val[0]),
-        f16_from_u8(v.val[1]),
-        f16_from_u8(v.val[2]),
-        f16_from_u8(v.val[3]),
+    U8x4 v = *(const U8x4*)px;
+    return (Slab) {
+        F16_from_U8(shuffle(v,v, C0)) * (1/255.0f16),
+        F16_from_U8(shuffle(v,v, C1)) * (1/255.0f16),
+        F16_from_U8(shuffle(v,v, C2)) * (1/255.0f16),
+        F16_from_U8(shuffle(v,v, C3)) * (1/255.0f16),
     };
-#else
-    const struct { uint8_t r,g,b,a; } *p = px;
-    GENERIC_LOAD
-#endif
-    s.r *= (1/255.0f16);
-    s.g *= (1/255.0f16);
-    s.b *= (1/255.0f16);
-    s.a *= (1/255.0f16);
-    return s;
 }
 
+// 0xffff (65535) becomes +inf when converted directly to f16, so this goes via f32.
 Slab load_rgba_unorm16(const void *px) {
-    // 0xffff (65535) becomes +inf when converted directly to f16, so we go via f32.
-#if defined(__aarch64__)
-    uint16x8x4_t v = vld4q_u16(px);
+    U16x4 v = *(const U16x4*)px;
     return (Slab) {
-        cast(cast(v.val[0], Float) * (1/65535.0f), Half),
-        cast(cast(v.val[1], Float) * (1/65535.0f), Half),
-        cast(cast(v.val[2], Float) * (1/65535.0f), Half),
-        cast(cast(v.val[3], Float) * (1/65535.0f), Half),
+        cast( cast(shuffle(v,v, C0), F32) * (1/65535.0f), F16 ),
+        cast( cast(shuffle(v,v, C1), F32) * (1/65535.0f), F16 ),
+        cast( cast(shuffle(v,v, C2), F32) * (1/65535.0f), F16 ),
+        cast( cast(shuffle(v,v, C3), F32) * (1/65535.0f), F16 ),
     };
-#else
-    const struct { uint16_t r,g,b,a; } *p = px;
-    Slab s = {0};
-    for (int i = 0; i < N; i++) {
-        s.r[i] = (half)( (float)p[i].r * (1/65535.0f) );
-        s.g[i] = (half)( (float)p[i].g * (1/65535.0f) );
-        s.b[i] = (half)( (float)p[i].b * (1/65535.0f) );
-        s.a[i] = (half)( (float)p[i].a * (1/65535.0f) );
-    }
-    return s;
-#endif
 }

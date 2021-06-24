@@ -2,7 +2,7 @@
 #include "expect.h"
 
 static void test_load_rgba_f16() {
-    half px[32] = { 0.0f16, 0.25f16, 0.5f16, 0.75f16, 1.0f16 };
+    _Float16 px[32] = { 0.0f16, 0.25f16, 0.5f16, 0.75f16, 1.0f16 };
     Slab s = load_rgba_f16(px);
 
     expect(s.r[0] == 0.00f16);
