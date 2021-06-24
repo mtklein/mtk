@@ -21,7 +21,7 @@ builddir = out
 cc = clang -fcolor-diagnostics -Weverything -Wno-poison-system-directories
 
 rule compile
-    command = $cc -Werror -g -Os -MD -MF $out.d -c $in -o $out
+    command = $cc -Werror -g -Os -ffp-contract=fast -MD -MF $out.d -c $in -o $out
     depfile = $out.d
     deps    = gcc
 
