@@ -8,11 +8,18 @@ typedef uint8_t __attribute__((ext_vector_type(  N))) U8;
 typedef uint8_t __attribute__((ext_vector_type(3*N))) U8x3;
 typedef uint8_t __attribute__((ext_vector_type(4*N))) U8x4;
 
+typedef int16_t __attribute__((ext_vector_type(  N))) S16;
+
 typedef uint16_t __attribute__((ext_vector_type(  N))) U16;
 typedef uint16_t __attribute__((ext_vector_type(4*N))) U16x4;
 
 typedef _Float16 __attribute__((ext_vector_type(4*N))) F16x4;
 
+static F16 select(S16 cond, F16 t, F16 e) { return (F16)( ( cond & (S16)t)
+                                                        | (~cond & (S16)e) ); }
+static F16 min(F16 x, F16 y) { return select(y < x, y, x); }
+static F16 max(F16 x, F16 y) { return select(x < y, y, x); }
+static F16 clamp(F16 x, F16 lo, F16 hi) { return max(lo, min(x, hi)); }
 
 // I could not coax Clang to use ucvtf.8h for this no matter how I tried,
 // whether __builtin_convertvector() or vcvtq_f16_u16(), always u8 -> u16 -> u32 -> f32 -> f16.
@@ -73,6 +80,19 @@ Slab blend_srcover(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
     src.b += dst.b * (1-src.a);
     src.a += dst.a * (1-src.a);
     return src;
+}
+
+Slab clamp_01(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
+    (void)ctx;
+    (void)dst;
+    (void)x;
+    (void)y;
+    return (Slab) {
+        clamp(src.r, 0.0f16, 1.0f16),
+        clamp(src.g, 0.0f16, 1.0f16),
+        clamp(src.b, 0.0f16, 1.0f16),
+        clamp(src.a, 0.0f16, 1.0f16),
+    };
 }
 
 #define LD3_0  0,3,6, 9, 12,15,18,21

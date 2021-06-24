@@ -25,6 +25,7 @@ Effect
     blend_dst,
     blend_src,
     blend_srcover,
+    clamp_01,
     load_rgb_unorm8,
     load_rgba_f16,
     load_rgba_unorm16,

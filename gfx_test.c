@@ -1,8 +1,36 @@
 #include "gfx.h"
 #include "expect.h"
+#include <math.h>
 
 static const Slab empty = {0};
 static const F32  zero  = {0};
+
+static void test_clamp_01() {
+    Slab s = {
+        {+0.0f16, -0.0f16, +1.0f16, -1.0f16},
+        {+0.5f16, -0.5f16, +2.0f16, -2.0f16},
+        {+(_Float16)INFINITY, -(_Float16)INFINITY},
+        {+(_Float16)NAN,      -(_Float16)NAN},
+    };
+
+    s = clamp_01(NULL, s,empty, zero,zero);
+
+    expect(s.r[0] == 0.0f16);
+    expect(s.r[1] == 0.0f16);
+    expect(s.r[2] == 1.0f16);
+    expect(s.r[3] == 0.0f16);
+
+    expect(s.g[0] == 0.5f16);
+    expect(s.g[1] == 0.0f16);
+    expect(s.g[2] == 1.0f16);
+    expect(s.g[3] == 0.0f16);
+
+    expect(s.b[0] == 1.0f16);
+    expect(s.b[1] == 0.0f16);
+
+    expect(s.a[0] == 0.0f16);
+    expect(s.a[1] == 0.0f16);
+}
 
 static void test_load_rgba_f16() {
     _Float16 px[4*N] = { 0.0f16, 0.25f16, 0.5f16, 0.75f16, 1.0f16 };
@@ -117,6 +145,7 @@ static void test_store_rgba_unorm16() {
 }
 
 int main(void) {
+    test_clamp_01();
     test_load_rgb_unorm8();
     test_load_rgba_f16();
     test_load_rgba_unorm16();
