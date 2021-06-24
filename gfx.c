@@ -21,18 +21,19 @@ static F16 min(F16 x, F16 y) { return select(y < x, y, x); }
 static F16 max(F16 x, F16 y) { return select(x < y, y, x); }
 static F16 clamp(F16 x, F16 lo, F16 hi) { return max(lo, min(x, hi)); }
 
-// I could not coax Clang to use ucvtf.8h for this no matter how I tried,
-// whether __builtin_convertvector() or vcvtq_f16_u16(), always u8 -> u16 -> u32 -> f32 -> f16.
-// Maybe it's because not all u16 are representable as f16?
-// TODO: maybe convert to u16, then or in a constant, then fma?
-static F16 F16_from_U8(U8 u8) {
-#if 1 && defined(__aarch64__)
+// This helper would not exist if I could get Clang to use ucvtf.8h without assembly,
+// but since I was looking I settled on an IEEE-format-specific trick instead:
+//    0x6400 is 1024.0f16, the exponent where 16-bit floats step by 1.
+//    This means 0x64XX == 1024 + XX, so subtract 1024 and scale by 1/255 and you get XX/255.
+static F16 F16_from_unorm8(U8 u8) {
     U16 u16 = cast(u8, U16);
-    F16 f16;
-    __asm__("ucvtf.8h %0,%1" : "=w"(f16) : "w"(u16));
-    return f16;
+#if 0
+    // TODO: this FMA-compatible form is failing on x86_64 and lto builds.
+    return (F16)(0x6400 | u16) * (   1/255.0f16)
+                               - (1024/255.0f16);
 #else
-    return cast(u8, F16);
+    return ((F16)(0x6400 | u16) - 1024.0f16)
+         * (1/255.0f16);
 #endif
 }
 
@@ -141,9 +142,9 @@ Slab load_rgb_unorm8(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
     (void)y;
     U8x3 v = *(U8x3*)ctx;
     return (Slab) {
-        F16_from_U8(shuffle(v,v, LD3_0)) * (1/255.0f16),
-        F16_from_U8(shuffle(v,v, LD3_1)) * (1/255.0f16),
-        F16_from_U8(shuffle(v,v, LD3_2)) * (1/255.0f16),
+        F16_from_unorm8(shuffle(v,v, LD3_0)),
+        F16_from_unorm8(shuffle(v,v, LD3_1)),
+        F16_from_unorm8(shuffle(v,v, LD3_2)),
         1.0f16,
     };
 }
@@ -167,10 +168,10 @@ Slab load_rgba_unorm8(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
     (void)y;
     U8x4 v = *(U8x4*)ctx;
     return (Slab) {
-        F16_from_U8(shuffle(v,v, LD4_0)) * (1/255.0f16),
-        F16_from_U8(shuffle(v,v, LD4_1)) * (1/255.0f16),
-        F16_from_U8(shuffle(v,v, LD4_2)) * (1/255.0f16),
-        F16_from_U8(shuffle(v,v, LD4_3)) * (1/255.0f16),
+        F16_from_unorm8(shuffle(v,v, LD4_0)),
+        F16_from_unorm8(shuffle(v,v, LD4_1)),
+        F16_from_unorm8(shuffle(v,v, LD4_2)),
+        F16_from_unorm8(shuffle(v,v, LD4_3)),
     };
 }
 
