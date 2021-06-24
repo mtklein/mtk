@@ -43,6 +43,23 @@ static void test_load_rgba_unorm8() {
     expect(s.r[1] == 1.0f16);
 }
 
+static void test_store_rgba_unorm8() {
+    Slab src = {
+        {0.000f16, 1.000f16},
+        {0.333f16},
+        {0.666f16},
+        {0.996f16},
+    };
+
+    uint8_t px[4*N] = {0};
+    store_rgba_unorm8(px, src,empty,zero,zero);
+    expect(px[0] == 0x00);
+    expect(px[1] == 0x55);
+    expect(px[2] == 0xaa);
+    expect(px[3] == 0xfe);
+    expect(px[4] == 0xff);
+}
+
 static void test_load_rgba_unorm16() {
     uint16_t px[4*N] = { 0x0000, 0x5555, 0xaaaa, 0xffee, 0xffff };
     Slab s = load_rgba_unorm16(px, empty,empty, zero,zero);
@@ -58,6 +75,7 @@ int main(void) {
     test_load_rgba_f16();
     test_store_rgba_f16();
     test_load_rgba_unorm8();
+    test_store_rgba_unorm8();
     test_load_rgba_unorm16();
     return 0;
 }

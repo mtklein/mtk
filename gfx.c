@@ -101,9 +101,8 @@ Slab store_rgba_f16(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
     (void)dst;
     (void)x;
     (void)y;
-    F16x4* p = ctx;
-    *p = shuffle(shuffle(src.r, src.g, CONCAT),
-                 shuffle(src.b, src.a, CONCAT), INTERLACE4);
+    *(F16x4*)ctx = shuffle(shuffle(src.r, src.g, CONCAT),
+                           shuffle(src.b, src.a, CONCAT), INTERLACE4);
     return src;
 }
 
@@ -119,6 +118,19 @@ Slab load_rgba_unorm8(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
         F16_from_U8(shuffle(v,v, C2)) * (1/255.0f16),
         F16_from_U8(shuffle(v,v, C3)) * (1/255.0f16),
     };
+}
+
+Slab store_rgba_unorm8(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
+    (void)dst;
+    (void)x;
+    (void)y;
+    U8 r = cast(src.r * 255.0f16 + 0.5f16, U8),
+       g = cast(src.g * 255.0f16 + 0.5f16, U8),
+       b = cast(src.b * 255.0f16 + 0.5f16, U8),
+       a = cast(src.a * 255.0f16 + 0.5f16, U8);
+    *(U8x4*)ctx = shuffle(shuffle(r, g, CONCAT),
+                          shuffle(b, a, CONCAT), INTERLACE4);
+    return src;
 }
 
 // 0xffff (65535) becomes +inf when converted directly to f16, so this goes via f32.

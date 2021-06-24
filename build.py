@@ -47,5 +47,8 @@ with open('build.ninja', 'w') as f:
             p('    cc = $cc {flags}')
             p('build {full}.ok: run {full}_test')
 
-os.system(' '.join(['ninja'] + sys.argv[1:]))
+rc = os.system(' '.join(['ninja'] + sys.argv[1:]))
 os.remove('build.ninja')
+if rc == 0:
+    os.system('git add -u')
+sys.exit(rc)
