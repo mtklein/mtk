@@ -80,8 +80,6 @@ Slab blend_srcover(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
 #define C3 3,7,11,15, 19,23,27,31
 
 #define INTERLACE 0,8, 1,9, 2,10, 3,11, 4,12, 5,13, 6,14, 7,15
-#define PAIRS     0,1, 16,17,  2, 3, 18,19,  4, 5, 20,21,  6, 7, 22,23, \
-                  8,9, 24,25, 10,11, 26,27, 12,13, 28,29, 14,15, 30,31
 
 Slab load_rgba_f16(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
     (void)src;
@@ -98,13 +96,20 @@ Slab load_rgba_f16(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
 }
 
 Slab store_rgba_f16(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
-    // TODO: Clang doesn't generate st4.8h here yet.
+    // TODO: Clang doesn't quite generate st4.8h here yet, but it's next best:
+    // zip1.8h  v4, v0, v1
+    // zip1.8h  v5, v2, v3
+    // st2.4s   { v4, v5 }, [x0], #32
+    // zip2.8h  v4, v0, v1
+    // zip2.8h  v5, v2, v3
+    // st2.4s   { v4, v5 }, [x0]
+    // ret
     (void)dst;
     (void)x;
     (void)y;
     F16x4* p = ctx;
-    *p = shuffle(shuffle(src.r, src.g, INTERLACE),
-                 shuffle(src.b, src.a, INTERLACE), PAIRS);
+    *p = (F16x4)shuffle((F32)shuffle(src.r, src.g, INTERLACE),
+                        (F32)shuffle(src.b, src.a, INTERLACE), INTERLACE);
     return src;
 }
 
