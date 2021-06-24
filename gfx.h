@@ -29,4 +29,5 @@ Effect
     load_rgba_unorm8,
     load_rgba_unorm16,
     store_rgba_f16,
-    store_rgba_unorm8;
+    store_rgba_unorm8,
+    store_rgba_unorm16;

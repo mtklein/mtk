@@ -147,3 +147,16 @@ Slab load_rgba_unorm16(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
         cast( cast(shuffle(v,v, C3), F32) * (1/65535.0f), F16 ),
     };
 }
+
+Slab store_rgba_unorm16(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
+    (void)dst;
+    (void)x;
+    (void)y;
+    U16 r = cast( cast(src.r, F32) * 65535.0f + 0.5f, U16 ),
+        g = cast( cast(src.g, F32) * 65535.0f + 0.5f, U16 ),
+        b = cast( cast(src.b, F32) * 65535.0f + 0.5f, U16 ),
+        a = cast( cast(src.a, F32) * 65535.0f + 0.5f, U16 );
+    *(U16x4*)ctx = shuffle(shuffle(r, g, CONCAT),
+                           shuffle(b, a, CONCAT), INTERLACE4);
+    return src;
+}

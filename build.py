@@ -51,4 +51,5 @@ rc = os.system(' '.join(['ninja'] + sys.argv[1:]))
 os.remove('build.ninja')
 if rc == 0:
     os.system('git add -u')
-sys.exit(rc)
+    sys.exit(0)
+sys.exit(1)
