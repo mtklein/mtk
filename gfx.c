@@ -5,6 +5,7 @@
 #define shuffle __builtin_shufflevector
 
 typedef uint8_t __attribute__((ext_vector_type(  N))) U8;
+typedef uint8_t __attribute__((ext_vector_type(3*N))) U8x3;
 typedef uint8_t __attribute__((ext_vector_type(4*N))) U8x4;
 
 typedef uint16_t __attribute__((ext_vector_type(  N))) U16;
@@ -74,14 +75,21 @@ Slab blend_srcover(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
     return src;
 }
 
-#define C0 0,4, 8,12, 16,20,24,28
-#define C1 1,5, 9,13, 17,21,25,29
-#define C2 2,6,10,14, 18,22,26,30
-#define C3 3,7,11,15, 19,23,27,31
+#define LD3_0  0,3,6, 9, 12,15,18,21
+#define LD3_1  1,4,7,10, 13,16,19,22
+#define LD3_2  2,5,8,11, 14,17,20,23
 
-#define CONCAT      0,1,2,3,4,5,6,7, 8,9,10,11,12,13,14,15
-#define INTERLACE4  0, 8,16,24, 1, 9,17,25, 2,10,18,26, 3,11,19,27, \
-                    4,12,20,28, 5,13,21,29, 6,14,22,30, 7,15,23,31
+#define LD4_0  0,4, 8,12, 16,20,24,28
+#define LD4_1  1,5, 9,13, 17,21,25,29
+#define LD4_2  2,6,10,14, 18,22,26,30
+#define LD4_3  3,7,11,15, 19,23,27,31
+
+#define CONCAT  0,1,2,3,4,5,6,7, 8,9,10,11,12,13,14,15
+
+#define ST3  0, 8,16,    1, 9,17,    2,10,18,    3,11,19,    \
+             4,12,20,    5,13,21,    6,14,22,    7,15,23
+#define ST4  0, 8,16,24, 1, 9,17,25, 2,10,18,26, 3,11,19,27, \
+             4,12,20,28, 5,13,21,29, 6,14,22,30, 7,15,23,31
 
 Slab load_rgba_f16(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
     (void)src;
@@ -90,10 +98,10 @@ Slab load_rgba_f16(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
     (void)y;
     F16x4 v = *(F16x4*)ctx;
     return (Slab) {
-        shuffle(v,v, C0),
-        shuffle(v,v, C1),
-        shuffle(v,v, C2),
-        shuffle(v,v, C3),
+        shuffle(v,v, LD4_0),
+        shuffle(v,v, LD4_1),
+        shuffle(v,v, LD4_2),
+        shuffle(v,v, LD4_3),
     };
 }
 
@@ -102,7 +110,33 @@ Slab store_rgba_f16(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
     (void)x;
     (void)y;
     *(F16x4*)ctx = shuffle(shuffle(src.r, src.g, CONCAT),
-                           shuffle(src.b, src.a, CONCAT), INTERLACE4);
+                           shuffle(src.b, src.a, CONCAT), ST4);
+    return src;
+}
+
+Slab load_rgb_unorm8(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
+    (void)src;
+    (void)dst;
+    (void)x;
+    (void)y;
+    U8x3 v = *(U8x3*)ctx;
+    return (Slab) {
+        F16_from_U8(shuffle(v,v, LD3_0)) * (1/255.0f16),
+        F16_from_U8(shuffle(v,v, LD3_1)) * (1/255.0f16),
+        F16_from_U8(shuffle(v,v, LD3_2)) * (1/255.0f16),
+        1.0f16,
+    };
+}
+
+Slab store_rgb_unorm8(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
+    (void)dst;
+    (void)x;
+    (void)y;
+    U8 r = cast(src.r * 255.0f16 + 0.5f16, U8),
+       g = cast(src.g * 255.0f16 + 0.5f16, U8),
+       b = cast(src.b * 255.0f16 + 0.5f16, U8);
+    *(U8x3*)ctx = shuffle(shuffle(r, g, CONCAT),
+                          shuffle(b, b, CONCAT), ST3);
     return src;
 }
 
@@ -113,10 +147,10 @@ Slab load_rgba_unorm8(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
     (void)y;
     U8x4 v = *(U8x4*)ctx;
     return (Slab) {
-        F16_from_U8(shuffle(v,v, C0)) * (1/255.0f16),
-        F16_from_U8(shuffle(v,v, C1)) * (1/255.0f16),
-        F16_from_U8(shuffle(v,v, C2)) * (1/255.0f16),
-        F16_from_U8(shuffle(v,v, C3)) * (1/255.0f16),
+        F16_from_U8(shuffle(v,v, LD4_0)) * (1/255.0f16),
+        F16_from_U8(shuffle(v,v, LD4_1)) * (1/255.0f16),
+        F16_from_U8(shuffle(v,v, LD4_2)) * (1/255.0f16),
+        F16_from_U8(shuffle(v,v, LD4_3)) * (1/255.0f16),
     };
 }
 
@@ -129,7 +163,7 @@ Slab store_rgba_unorm8(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
        b = cast(src.b * 255.0f16 + 0.5f16, U8),
        a = cast(src.a * 255.0f16 + 0.5f16, U8);
     *(U8x4*)ctx = shuffle(shuffle(r, g, CONCAT),
-                          shuffle(b, a, CONCAT), INTERLACE4);
+                          shuffle(b, a, CONCAT), ST4);
     return src;
 }
 
@@ -141,10 +175,10 @@ Slab load_rgba_unorm16(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
     (void)y;
     U16x4 v = *(U16x4*)ctx;
     return (Slab) {
-        cast( cast(shuffle(v,v, C0), F32) * (1/65535.0f), F16 ),
-        cast( cast(shuffle(v,v, C1), F32) * (1/65535.0f), F16 ),
-        cast( cast(shuffle(v,v, C2), F32) * (1/65535.0f), F16 ),
-        cast( cast(shuffle(v,v, C3), F32) * (1/65535.0f), F16 ),
+        cast( cast(shuffle(v,v, LD4_0), F32) * (1/65535.0f), F16 ),
+        cast( cast(shuffle(v,v, LD4_1), F32) * (1/65535.0f), F16 ),
+        cast( cast(shuffle(v,v, LD4_2), F32) * (1/65535.0f), F16 ),
+        cast( cast(shuffle(v,v, LD4_3), F32) * (1/65535.0f), F16 ),
     };
 }
 
@@ -157,6 +191,6 @@ Slab store_rgba_unorm16(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
         b = cast( cast(src.b, F32) * 65535.0f + 0.5f, U16 ),
         a = cast( cast(src.a, F32) * 65535.0f + 0.5f, U16 );
     *(U16x4*)ctx = shuffle(shuffle(r, g, CONCAT),
-                           shuffle(b, a, CONCAT), INTERLACE4);
+                           shuffle(b, a, CONCAT), ST4);
     return src;
 }

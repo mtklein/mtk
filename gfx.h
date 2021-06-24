@@ -22,12 +22,14 @@ extern const struct Shade_Gradient_2pt {
 } shade_gradient_2pt_init;
 
 Effect
-    blend_src,
     blend_dst,
+    blend_src,
     blend_srcover,
+    load_rgb_unorm8,
     load_rgba_f16,
-    load_rgba_unorm8,
     load_rgba_unorm16,
+    load_rgba_unorm8,
+    store_rgb_unorm8,
     store_rgba_f16,
-    store_rgba_unorm8,
-    store_rgba_unorm16;
+    store_rgba_unorm16,
+    store_rgba_unorm8;
