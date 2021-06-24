@@ -79,7 +79,9 @@ Slab blend_srcover(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
 #define C2 2,6,10,14, 18,22,26,30
 #define C3 3,7,11,15, 19,23,27,31
 
-#define INTERLACE 0,8, 1,9, 2,10, 3,11, 4,12, 5,13, 6,14, 7,15
+#define CONCAT      0,1,2,3,4,5,6,7, 8,9,10,11,12,13,14,15
+#define INTERLACE4  0, 8,16,24, 1, 9,17,25, 2,10,18,26, 3,11,19,27, \
+                    4,12,20,28, 5,13,21,29, 6,14,22,30, 7,15,23,31
 
 Slab load_rgba_f16(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
     (void)src;
@@ -96,20 +98,12 @@ Slab load_rgba_f16(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
 }
 
 Slab store_rgba_f16(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
-    // TODO: Clang doesn't quite generate st4.8h here yet, but it's next best:
-    // zip1.8h  v4, v0, v1
-    // zip1.8h  v5, v2, v3
-    // st2.4s   { v4, v5 }, [x0], #32
-    // zip2.8h  v4, v0, v1
-    // zip2.8h  v5, v2, v3
-    // st2.4s   { v4, v5 }, [x0]
-    // ret
     (void)dst;
     (void)x;
     (void)y;
     F16x4* p = ctx;
-    *p = (F16x4)shuffle((F32)shuffle(src.r, src.g, INTERLACE),
-                        (F32)shuffle(src.b, src.a, INTERLACE), INTERLACE);
+    *p = shuffle(shuffle(src.r, src.g, CONCAT),
+                 shuffle(src.b, src.a, CONCAT), INTERLACE4);
     return src;
 }
 
