@@ -37,6 +37,9 @@ typedef uint16_t __attribute__((ext_vector_type(4*N))) U16x4;
 
 typedef _Float16 __attribute__((ext_vector_type(4*N))) F16x4;
 
+typedef _Float16 __attribute__((ext_vector_type(4))) Half4;
+typedef float    __attribute__((ext_vector_type(4))) Float4;
+
 static F16 select(S16 cond, F16 t, F16 e) { return (F16)( ( cond & (S16)t)
                                                         | (~cond & (S16)e) ); }
 static F16 min(F16 x, F16 y) { return select(y < x, y, x); }
@@ -63,10 +66,16 @@ static Slab shade_color(void* vctx, Slab src, Slab dst, F32 x, F32 y) {
     (void)x;
     (void)y;
     const struct Shade_Color* ctx = vctx;
-    src.r = (_Float16)ctx->color.r;
-    src.g = (_Float16)ctx->color.g;
-    src.b = (_Float16)ctx->color.b;
-    src.a = (_Float16)ctx->color.a;
+    Half4 rgba = cast((Float4){
+        ctx->color.r,
+        ctx->color.g,
+        ctx->color.b,
+        ctx->color.a,
+    }, Half4);
+    src.r = rgba.r;
+    src.g = rgba.g;
+    src.b = rgba.b;
+    src.a = rgba.a;
     return src;
 }
 const struct Shade_Color shade_color_init = {
