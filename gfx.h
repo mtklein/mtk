@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stddef.h>
+
 #define N 8
 typedef _Float16 __attribute__((ext_vector_type(N))) F16;
 typedef float    __attribute__((ext_vector_type(N))) F32;
@@ -41,5 +43,6 @@ Store
     store_rgba_unorm16,
     store_rgba_unorm8;
 
-void drive(void* dptr, Load*, Store*,
+void drive(void* dptr, int n, int x, int y,
+           Load*, Store*, size_t bpp,
            Effect* effect[], void* ctx[]);

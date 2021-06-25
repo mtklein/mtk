@@ -1,8 +1,30 @@
+#include "assume.h"
 #include "gfx.h"
 #include <stdint.h>
+#include <string.h>
 
 #define cast    __builtin_convertvector
 #define shuffle __builtin_shufflevector
+
+_Static_assert(N == 8, "");
+
+static const F32 iota = {0,1,2,3, 4,5,6,7};
+
+#define LD3_0  0,3,6, 9, 12,15,18,21
+#define LD3_1  1,4,7,10, 13,16,19,22
+#define LD3_2  2,5,8,11, 14,17,20,23
+
+#define LD4_0  0,4, 8,12, 16,20,24,28
+#define LD4_1  1,5, 9,13, 17,21,25,29
+#define LD4_2  2,6,10,14, 18,22,26,30
+#define LD4_3  3,7,11,15, 19,23,27,31
+
+#define CONCAT  0,1,2,3,4,5,6,7, 8,9,10,11,12,13,14,15
+
+#define ST3  0, 8,16,    1, 9,17,    2,10,18,    3,11,19,    \
+             4,12,20,    5,13,21,    6,14,22,    7,15,23
+#define ST4  0, 8,16,24, 1, 9,17,25, 2,10,18,26, 3,11,19,27, \
+             4,12,20,28, 5,13,21,29, 6,14,22,30, 7,15,23,31
 
 typedef uint8_t __attribute__((ext_vector_type(  N))) U8;
 typedef uint8_t __attribute__((ext_vector_type(3*N))) U8x3;
@@ -92,22 +114,6 @@ Slab clamp_01(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
     return src;
 }
 
-#define LD3_0  0,3,6, 9, 12,15,18,21
-#define LD3_1  1,4,7,10, 13,16,19,22
-#define LD3_2  2,5,8,11, 14,17,20,23
-
-#define LD4_0  0,4, 8,12, 16,20,24,28
-#define LD4_1  1,5, 9,13, 17,21,25,29
-#define LD4_2  2,6,10,14, 18,22,26,30
-#define LD4_3  3,7,11,15, 19,23,27,31
-
-#define CONCAT  0,1,2,3,4,5,6,7, 8,9,10,11,12,13,14,15
-
-#define ST3  0, 8,16,    1, 9,17,    2,10,18,    3,11,19,    \
-             4,12,20,    5,13,21,    6,14,22,    7,15,23
-#define ST4  0, 8,16,24, 1, 9,17,25, 2,10,18,26, 3,11,19,27, \
-             4,12,20,28, 5,13,21,29, 6,14,22,30, 7,15,23,31
-
 Slab load_rgba_f16(const void* ptr) {
     F16x4 v = *(const F16x4*)ptr;
     return (Slab) {
@@ -180,14 +186,34 @@ void store_rgba_unorm16(void* ptr, Slab src) {
                            shuffle(b, a, CONCAT), ST4);
 }
 
-void drive(void* dptr, Load* load, Store* store,
-           Effect* effect[], void* ctx[]) {
+static void drive1(void* dptr, int x, int y,
+                   Load* load, Store* store,
+                   Effect* effect[], void* ctx[]) {
     Slab src = {0},
          dst = load(dptr);
-    F32 x = {0},
-        y = {0};
+    F32 X = (F32)x + 0.5f + iota,
+        Y = (F32)y + 0.5f;
     while (*effect) {
-        src = (*effect++)(*ctx++,src,dst,x,y);
+        src = (*effect++)(*ctx++,src,dst,X,Y);
     }
     store(dptr, src);
+}
+
+void drive(void* dptr, int n, int x, int y,
+           Load* load, Store* store, size_t bpp,
+           Effect* effect[], void* ctx[]) {
+    while (n >= N) {
+        drive1(dptr,x,y, load,store, effect,ctx);
+
+        dptr = (char*)dptr + N*bpp;
+        x += N;
+        n -= N;
+    }
+    if (n > 0) {
+        assume(bpp <= 16);
+        char scratch[N*16] = {0};
+        memcpy(scratch, dptr, (size_t)n*bpp);
+        drive1(scratch,x,y, load,store, effect,ctx);
+        memcpy(dptr, scratch, (size_t)n*bpp);
+    }
 }
