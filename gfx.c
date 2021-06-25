@@ -46,10 +46,7 @@ static F16 min(F16 x, F16 y) { return select(y < x, y, x); }
 static F16 max(F16 x, F16 y) { return select(x < y, y, x); }
 static F16 clamp(F16 x, F16 lo, F16 hi) { return max(lo, min(x, hi)); }
 
-// I could not coax Clang to use ucvtf.8h for this no matter how I tried,
-// whether __builtin_convertvector() or vcvtq_f16_u16(), always u8 -> u16 -> u32 -> f32 -> f16.
-// Maybe it's because not all u16 are representable as f16?
-// TODO: maybe convert to u16, then or in a constant, then fma?
+// LLVM won't use uvcvf.8h to convert U16 to F16, otherwise we'd just cast(u8, F16).
 static F16 F16_from_U8(U8 u8) {
 #if 1 && defined(__aarch64__)
     U16 u16 = cast(u8, U16);
