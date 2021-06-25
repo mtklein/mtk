@@ -9,8 +9,8 @@ targets = [
     'ns',
 ]
 modes = {
+    '':       '-flto -DNDEBUG',
     'arm64':  '',
-    'lto':    '-flto',
     'san':    '-fsanitize=address,integer,undefined -fno-sanitize-recover=all',
     'x86_64': '-arch x86_64',
 }
