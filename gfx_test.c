@@ -144,8 +144,8 @@ static void test_store_rgba_unorm16() {
     expect(px[4] == 0xffff);
 }
 
-static void test_drive1() {
-    uint8_t dst[4] = {0xff, 0xff, 0xff, 0xff};
+static void test_drive_1() {
+    uint8_t dst[1*4] = {0};
 
     struct Shade_Color shade_color = shade_color_init;
     shade_color.color = (Color){ 0.333f, 0.5f, 0.666f, 1.0f };
@@ -159,17 +159,45 @@ static void test_drive1() {
         &shade_color,
         NULL,
     };
-    drive(dst,1, 0,0, load_rgba_unorm8,store_rgba_unorm8,4, effect,ctx);
+    drive(dst,sizeof dst/4, 0,0, load_rgba_unorm8,store_rgba_unorm8,4, effect,ctx);
 
-    expect(dst[0] == 0x55);
-    expect(dst[1] == 0x80);
-    expect(dst[2] == 0xaa);
-    expect(dst[3] == 0xff);
+    for (uint8_t i = 0; i < sizeof dst/4; i++) {
+        expect(dst[4*i+0] == 0x55);
+        expect(dst[4*i+1] == 0x80);
+        expect(dst[4*i+2] == 0xaa);
+        expect(dst[4*i+3] == 0xff);
+    }
+}
+
+static void test_drive_n() {
+    uint8_t dst[63*4] = {0};
+
+    struct Shade_Color shade_color = shade_color_init;
+    shade_color.color = (Color){ 0.333f, 0.5f, 0.666f, 1.0f };
+
+    Effect* effect[] = {
+        shade_color.effect,
+        blend_srcover,
+        NULL,
+    };
+    void* ctx[] = {
+        &shade_color,
+        NULL,
+    };
+    drive(dst,sizeof dst/4, 0,0, load_rgba_unorm8,store_rgba_unorm8,4, effect,ctx);
+
+    for (uint8_t i = 0; i < sizeof dst/4; i++) {
+        expect(dst[4*i+0] == 0x55);
+        expect(dst[4*i+1] == 0x80);
+        expect(dst[4*i+2] == 0xaa);
+        expect(dst[4*i+3] == 0xff);
+    }
 }
 
 int main(void) {
     test_clamp_01();
-    test_drive1();
+    test_drive_1();
+    test_drive_n();
     test_load_rgb_unorm8();
     test_load_rgba_f16();
     test_load_rgba_unorm16();
