@@ -186,7 +186,8 @@ void store_rgba_unorm16(void* ptr, Slab src) {
                            shuffle(b, a, CONCAT), ST4);
 }
 
-static void drive1(void* dptr, int x, int y,
+static void drive1(void* dptr,
+                   int x, int y,
                    Load* load, Store* store,
                    Effect* effect[], void* ctx[]) {
     Slab src = {0},
@@ -199,11 +200,12 @@ static void drive1(void* dptr, int x, int y,
     store(dptr, src);
 }
 
-void drive(void* dptr, int n, int x, int y,
+void drive(void* dptr, int n,
+           int x, int y,
            Load* load, Store* store, size_t bpp,
            Effect* effect[], void* ctx[]) {
     while (n >= N) {
-        drive1(dptr,x,y, load,store, effect,ctx);
+        drive1(dptr, x,y, load,store, effect,ctx);
 
         dptr = (char*)dptr + N*bpp;
         x += N;
@@ -213,7 +215,7 @@ void drive(void* dptr, int n, int x, int y,
         assume(bpp <= 16);
         char scratch[N*16] = {0};
         memcpy(scratch, dptr, (size_t)n*bpp);
-        drive1(scratch,x,y, load,store, effect,ctx);
+        drive1(scratch, x,y, load,store, effect,ctx);
         memcpy(dptr, scratch, (size_t)n*bpp);
     }
 }
