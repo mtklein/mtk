@@ -37,17 +37,15 @@ static F16 F16_from_U8(U8 u8) {
 }
 
 static Slab shade_color(void* vctx, Slab src, Slab dst, F32 x, F32 y) {
-    struct Shade_Color* ctx = vctx;
-    (void)src;
     (void)dst;
     (void)x;
     (void)y;
-    return (Slab) {
-        (_Float16)ctx->color.r,
-        (_Float16)ctx->color.g,
-        (_Float16)ctx->color.b,
-        (_Float16)ctx->color.a,
-    };
+    const struct Shade_Color* ctx = vctx;
+    src.r = (_Float16)ctx->color.r;
+    src.g = (_Float16)ctx->color.g;
+    src.b = (_Float16)ctx->color.b;
+    src.a = (_Float16)ctx->color.a;
+    return src;
 }
 const struct Shade_Color shade_color_init = {
     shade_color,
@@ -65,10 +63,10 @@ Slab blend_src(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
 
 Slab blend_dst(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
     (void)ctx;
-    (void)src;
     (void)x;
     (void)y;
-    return dst;
+    src = dst;
+    return src;
 }
 
 Slab blend_srcover(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
@@ -87,12 +85,11 @@ Slab clamp_01(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
     (void)dst;
     (void)x;
     (void)y;
-    return (Slab) {
-        clamp(src.r, 0.0f16, 1.0f16),
-        clamp(src.g, 0.0f16, 1.0f16),
-        clamp(src.b, 0.0f16, 1.0f16),
-        clamp(src.a, 0.0f16, 1.0f16),
-    };
+    src.r = clamp(src.r, 0.0f16, 1.0f16);
+    src.g = clamp(src.g, 0.0f16, 1.0f16);
+    src.b = clamp(src.b, 0.0f16, 1.0f16);
+    src.a = clamp(src.a, 0.0f16, 1.0f16);
+    return src;
 }
 
 #define LD3_0  0,3,6, 9, 12,15,18,21
@@ -111,12 +108,8 @@ Slab clamp_01(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
 #define ST4  0, 8,16,24, 1, 9,17,25, 2,10,18,26, 3,11,19,27, \
              4,12,20,28, 5,13,21,29, 6,14,22,30, 7,15,23,31
 
-Slab load_rgba_f16(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
-    (void)src;
-    (void)dst;
-    (void)x;
-    (void)y;
-    F16x4 v = *(F16x4*)ctx;
+Slab load_rgba_f16(const void* ptr) {
+    F16x4 v = *(const F16x4*)ptr;
     return (Slab) {
         shuffle(v,v, LD4_0),
         shuffle(v,v, LD4_1),
@@ -125,21 +118,13 @@ Slab load_rgba_f16(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
     };
 }
 
-Slab store_rgba_f16(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
-    (void)dst;
-    (void)x;
-    (void)y;
-    *(F16x4*)ctx = shuffle(shuffle(src.r, src.g, CONCAT),
+void store_rgba_f16(void* ptr, Slab src) {
+    *(F16x4*)ptr = shuffle(shuffle(src.r, src.g, CONCAT),
                            shuffle(src.b, src.a, CONCAT), ST4);
-    return src;
 }
 
-Slab load_rgb_unorm8(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
-    (void)src;
-    (void)dst;
-    (void)x;
-    (void)y;
-    U8x3 v = *(U8x3*)ctx;
+Slab load_rgb_unorm8(const void* ptr) {
+    U8x3 v = *(const U8x3*)ptr;
     return (Slab) {
         F16_from_U8(shuffle(v,v, LD3_0)) * (1/255.0f16),
         F16_from_U8(shuffle(v,v, LD3_1)) * (1/255.0f16),
@@ -148,24 +133,16 @@ Slab load_rgb_unorm8(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
     };
 }
 
-Slab store_rgb_unorm8(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
-    (void)dst;
-    (void)x;
-    (void)y;
+void store_rgb_unorm8(void* ptr, Slab src) {
     U8 r = cast(src.r * 255.0f16 + 0.5f16, U8),
        g = cast(src.g * 255.0f16 + 0.5f16, U8),
        b = cast(src.b * 255.0f16 + 0.5f16, U8);
-    *(U8x3*)ctx = shuffle(shuffle(r, g, CONCAT),
+    *(U8x3*)ptr = shuffle(shuffle(r, g, CONCAT),
                           shuffle(b, b, CONCAT), ST3);
-    return src;
 }
 
-Slab load_rgba_unorm8(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
-    (void)src;
-    (void)dst;
-    (void)x;
-    (void)y;
-    U8x4 v = *(U8x4*)ctx;
+Slab load_rgba_unorm8(const void* ptr) {
+    U8x4 v = *(const U8x4*)ptr;
     return (Slab) {
         F16_from_U8(shuffle(v,v, LD4_0)) * (1/255.0f16),
         F16_from_U8(shuffle(v,v, LD4_1)) * (1/255.0f16),
@@ -174,26 +151,18 @@ Slab load_rgba_unorm8(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
     };
 }
 
-Slab store_rgba_unorm8(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
-    (void)dst;
-    (void)x;
-    (void)y;
+void store_rgba_unorm8(void* ptr, Slab src) {
     U8 r = cast(src.r * 255.0f16 + 0.5f16, U8),
        g = cast(src.g * 255.0f16 + 0.5f16, U8),
        b = cast(src.b * 255.0f16 + 0.5f16, U8),
        a = cast(src.a * 255.0f16 + 0.5f16, U8);
-    *(U8x4*)ctx = shuffle(shuffle(r, g, CONCAT),
+    *(U8x4*)ptr = shuffle(shuffle(r, g, CONCAT),
                           shuffle(b, a, CONCAT), ST4);
-    return src;
 }
 
 // 0xffff (65535) becomes +inf when converted directly to f16, so this goes via f32.
-Slab load_rgba_unorm16(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
-    (void)src;
-    (void)dst;
-    (void)x;
-    (void)y;
-    U16x4 v = *(U16x4*)ctx;
+Slab load_rgba_unorm16(const void* ptr) {
+    U16x4 v = *(const U16x4*)ptr;
     return (Slab) {
         cast( cast(shuffle(v,v, LD4_0), F32) * (1/65535.0f), F16 ),
         cast( cast(shuffle(v,v, LD4_1), F32) * (1/65535.0f), F16 ),
@@ -202,15 +171,23 @@ Slab load_rgba_unorm16(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
     };
 }
 
-Slab store_rgba_unorm16(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
-    (void)dst;
-    (void)x;
-    (void)y;
+void store_rgba_unorm16(void* ptr, Slab src) {
     U16 r = cast( cast(src.r, F32) * 65535.0f + 0.5f, U16 ),
         g = cast( cast(src.g, F32) * 65535.0f + 0.5f, U16 ),
         b = cast( cast(src.b, F32) * 65535.0f + 0.5f, U16 ),
         a = cast( cast(src.a, F32) * 65535.0f + 0.5f, U16 );
-    *(U16x4*)ctx = shuffle(shuffle(r, g, CONCAT),
+    *(U16x4*)ptr = shuffle(shuffle(r, g, CONCAT),
                            shuffle(b, a, CONCAT), ST4);
-    return src;
+}
+
+void drive(void* dptr, Load* load, Store* store,
+           Effect* effect[], void* ctx[]) {
+    Slab src = {0},
+         dst = load(dptr);
+    F32 x = {0},
+        y = {0};
+    while (*effect) {
+        src = (*effect++)(*ctx++,src,dst,x,y);
+    }
+    store(dptr, src);
 }
