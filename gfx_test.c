@@ -2,6 +2,30 @@
 #include "gfx.h"
 #include <math.h>
 
+static void test_apply_affine_Matrix() {
+    Matrix m = { 1,2,3,
+                 4,5,6,
+                 7,8,9 };
+    Cold cold = { .x = 2, .y = 3 };
+
+    apply_affine_Matrix(&m, (Slab){0}, &cold);
+
+    expect(cold.x[0] == 2 +  6 + 3);
+    expect(cold.y[0] == 8 + 15 + 6);
+}
+
+static void test_apply_perspective_Matrix() {
+    Matrix m = { 1,2,3,
+                 4,5,6,
+                 7,8,9 };
+    Cold cold = { .x = 2, .y = 3 };
+
+    apply_perspective_Matrix(&m, (Slab){0}, &cold);
+
+    expect(cold.x[0] == (2 +  6 + 3) * (1.0f/(14 + 24 + 9)));
+    expect(cold.y[0] == (8 + 15 + 6) * (1.0f/(14 + 24 + 9)));
+}
+
 static void test_clamp_01() {
     Slab src = {
         {+0.0f16, -0.0f16, +1.0f16, -1.0f16},
@@ -144,16 +168,14 @@ static void test_store_rgba_unorm16() {
 static void test_drive_1() {
     uint8_t dst[1*4] = {0};
 
-    struct Shade_Color shade_color = shade_color_init;
-    shade_color.color = (Color){ 0.333f, 0.5f, 0.666f, 1.0f };
-
+    Color color = { 0.333f, 0.5f, 0.666f, 1.0f };
     Effect* effect[] = {
-        shade_color.effect,
+        shade_Color,
         blend_srcover,
         NULL,
     };
     void* ctx[] = {
-        &shade_color,
+        &color,
         NULL,
     };
     drive(dst,sizeof dst/4, 0,0, load_rgba_unorm8,store_rgba_unorm8,4, effect,ctx);
@@ -169,16 +191,15 @@ static void test_drive_1() {
 static void test_drive_n() {
     uint16_t dst[63*4] = {0};
 
-    struct Shade_Color shade_color = shade_color_init;
-    shade_color.color = (Color){ 0.333f, 0.5f, 0.666f, 1.0f };
+    Color color = { 0.333f, 0.5f, 0.666f, 1.0f };
 
     Effect* effect[] = {
-        shade_color.effect,
+        shade_Color,
         blend_srcover,
         NULL,
     };
     void* ctx[] = {
-        &shade_color,
+        &color,
         NULL,
     };
     drive(dst,sizeof dst/8, 0,0, load_rgba_unorm16,store_rgba_unorm16,8, effect,ctx);
@@ -192,6 +213,8 @@ static void test_drive_n() {
 }
 
 int main(void) {
+    test_apply_affine_Matrix();
+    test_apply_perspective_Matrix();
     test_clamp_01();
     test_drive_1();
     test_drive_n();

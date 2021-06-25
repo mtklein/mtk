@@ -18,23 +18,18 @@ typedef void (Store )(void*, Slab);
 
 typedef struct { float x,y; }     Point;
 typedef struct { float r,g,b,a; } Color;
-
-extern const struct Shade_Color {
-    Effect* effect;
-    Color   color;
-} shade_color_init;
-
-extern const struct Shade_Gradient_2pt {
-    Effect* effect;
-    Color   cA,cB;
-    Point   pA,pB;
-} shade_gradient_2pt_init;
+typedef struct { float sx,kx,tx,
+                       ky,sy,ty,
+                       p0,p1,p2; } Matrix;
 
 Effect
+    apply_affine_Matrix,
+    apply_perspective_Matrix,
     blend_dst,
     blend_src,
     blend_srcover,
-    clamp_01;
+    clamp_01,
+    shade_Color;
 
 Load
     load_rgb_unorm8,

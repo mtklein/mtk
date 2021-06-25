@@ -58,14 +58,33 @@ static F16 F16_from_U8(U8 u8) {
 #endif
 }
 
-static Slab shade_color(void* vctx, Slab src, Cold* cold) {
+Slab apply_affine_Matrix(void* ctx, Slab src, Cold* cold) {
+    const Matrix* m = ctx;
+    F32 x = cold->x * m->sx + (cold->y * m->kx + m->tx),
+        y = cold->x * m->ky + (cold->y * m->sy + m->ty);
+    cold->x = x;
+    cold->y = y;
+    return src;
+}
+
+Slab apply_perspective_Matrix(void* ctx, Slab src, Cold* cold) {
+    const Matrix* m = ctx;
+    F32 x = cold->x * m->sx + (cold->y * m->kx + m->tx),
+        y = cold->x * m->ky + (cold->y * m->sy + m->ty),
+        z = cold->x * m->p0 + (cold->y * m->p1 + m->p2);
+    cold->x = x * (1/z);
+    cold->y = y * (1/z);
+    return src;
+}
+
+Slab shade_Color(void* ctx, Slab src, Cold* cold) {
     (void)cold;
-    const struct Shade_Color* ctx = vctx;
+    const Color* color = ctx;
     Half4 rgba = cast((Float4){
-        ctx->color.r,
-        ctx->color.g,
-        ctx->color.b,
-        ctx->color.a,
+        color->r,
+        color->g,
+        color->b,
+        color->a,
     }, Half4);
     src.r = rgba.r;
     src.g = rgba.g;
@@ -73,11 +92,6 @@ static Slab shade_color(void* vctx, Slab src, Cold* cold) {
     src.a = rgba.a;
     return src;
 }
-const struct Shade_Color shade_color_init = {
-    shade_color,
-    {0.0f, 0.0f, 0.0f, 0.0f},
-};
-
 
 Slab blend_src(void* ctx, Slab src, Cold* cold) {
     (void)ctx;
