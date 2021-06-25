@@ -58,10 +58,8 @@ static F16 F16_from_U8(U8 u8) {
 #endif
 }
 
-static Slab shade_color(void* vctx, Slab src, Slab dst, F32 x, F32 y) {
-    (void)dst;
-    (void)x;
-    (void)y;
+static Slab shade_color(void* vctx, Slab src, Cold* cold) {
+    (void)cold;
     const struct Shade_Color* ctx = vctx;
     Half4 rgba = cast((Float4){
         ctx->color.r,
@@ -81,38 +79,30 @@ const struct Shade_Color shade_color_init = {
 };
 
 
-Slab blend_src(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
+Slab blend_src(void* ctx, Slab src, Cold* cold) {
     (void)ctx;
-    (void)dst;
-    (void)x;
-    (void)y;
+    (void)cold;
     return src;
 }
 
-Slab blend_dst(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
+Slab blend_dst(void* ctx, Slab src, Cold* cold) {
     (void)ctx;
-    (void)x;
-    (void)y;
-    src = dst;
+    src = cold->dst;
     return src;
 }
 
-Slab blend_srcover(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
+Slab blend_srcover(void* ctx, Slab src, Cold* cold) {
     (void)ctx;
-    (void)x;
-    (void)y;
-    src.r += dst.r * (1-src.a);
-    src.g += dst.g * (1-src.a);
-    src.b += dst.b * (1-src.a);
-    src.a += dst.a * (1-src.a);
+    src.r += cold->dst.r * (1-src.a);
+    src.g += cold->dst.g * (1-src.a);
+    src.b += cold->dst.b * (1-src.a);
+    src.a += cold->dst.a * (1-src.a);
     return src;
 }
 
-Slab clamp_01(void* ctx, Slab src, Slab dst, F32 x, F32 y) {
+Slab clamp_01(void* ctx, Slab src, Cold* cold) {
     (void)ctx;
-    (void)dst;
-    (void)x;
-    (void)y;
+    (void)cold;
     src.r = clamp(src.r, 0.0f16, 1.0f16);
     src.g = clamp(src.g, 0.0f16, 1.0f16);
     src.b = clamp(src.b, 0.0f16, 1.0f16);
@@ -196,12 +186,14 @@ static void drive1(void* dptr,
                    int x, int y,
                    Load* load, Store* store,
                    Effect* effect[], void* ctx[]) {
-    Slab src = {0},
-         dst = load(dptr);
-    F32 X = (F32)x + 0.5f + iota,
-        Y = (F32)y + 0.5f;
+    Slab src  = {0};
+    Cold cold = {
+        .dst = load(dptr),
+        .x   = (F32)x + 0.5f + iota,
+        .y   = (F32)y + 0.5f,
+    };
     while (*effect) {
-        src = (*effect++)(*ctx++,src,dst,X,Y);
+        src = (*effect++)(*ctx++,src,&cold);
     }
     store(dptr, src);
 }

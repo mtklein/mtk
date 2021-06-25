@@ -7,7 +7,12 @@ typedef _Float16 __attribute__((ext_vector_type(N))) F16;
 typedef float    __attribute__((ext_vector_type(N))) F32;
 
 typedef struct { F16 r,g,b,a; } Slab;
-typedef Slab (Effect)(void* ctx, Slab src, Slab dst, F32 x, F32 y);
+typedef struct {
+    Slab dst;
+    F32 x,y;
+} Cold;
+
+typedef Slab (Effect)(void* ctx, Slab src, Cold*);
 typedef Slab (Load  )(const void*);
 typedef void (Store )(void*, Slab);
 

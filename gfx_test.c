@@ -2,9 +2,6 @@
 #include "gfx.h"
 #include <math.h>
 
-static const Slab empty = {0};
-static const F32  zero  = {0};
-
 static void test_clamp_01() {
     Slab src = {
         {+0.0f16, -0.0f16, +1.0f16, -1.0f16},
@@ -13,7 +10,7 @@ static void test_clamp_01() {
         {+(_Float16)NAN,      -(_Float16)NAN},
     };
 
-    src = clamp_01(NULL,src,empty,zero,zero);
+    src = clamp_01(NULL,src,NULL);
 
     expect(src.r[0] == 0.0f16);
     expect(src.r[1] == 0.0f16);
