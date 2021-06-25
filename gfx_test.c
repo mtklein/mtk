@@ -158,7 +158,7 @@ static void test_drive_1() {
     };
     drive(dst,sizeof dst/4, 0,0, load_rgba_unorm8,store_rgba_unorm8,4, effect,ctx);
 
-    for (uint8_t i = 0; i < sizeof dst/4; i++) {
+    for (int i = 0; i < (int)sizeof dst/4; i++) {
         expect(dst[4*i+0] == 0x55);
         expect(dst[4*i+1] == 0x80);
         expect(dst[4*i+2] == 0xaa);
@@ -167,7 +167,7 @@ static void test_drive_1() {
 }
 
 static void test_drive_n() {
-    uint8_t dst[63*4] = {0};
+    uint16_t dst[63*4] = {0};
 
     struct Shade_Color shade_color = shade_color_init;
     shade_color.color = (Color){ 0.333f, 0.5f, 0.666f, 1.0f };
@@ -181,13 +181,13 @@ static void test_drive_n() {
         &shade_color,
         NULL,
     };
-    drive(dst,sizeof dst/4, 0,0, load_rgba_unorm8,store_rgba_unorm8,4, effect,ctx);
+    drive(dst,sizeof dst/8, 0,0, load_rgba_unorm16,store_rgba_unorm16,8, effect,ctx);
 
-    for (uint8_t i = 0; i < sizeof dst/4; i++) {
-        expect(dst[4*i+0] == 0x55);
-        expect(dst[4*i+1] == 0x80);
-        expect(dst[4*i+2] == 0xaa);
-        expect(dst[4*i+3] == 0xff);
+    for (int i = 0; i < (int)sizeof dst/8; i++) {
+        expect(dst[4*i+0] == 0x5540);
+        expect(dst[4*i+1] == 0x8000);
+        expect(dst[4*i+2] == 0xaa7f);
+        expect(dst[4*i+3] == 0xffff);
     }
 }
 
