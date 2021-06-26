@@ -12,7 +12,7 @@ modes = {
     '':       '-flto -DNDEBUG',
     'arm64':  '',
     'san':    '-fsanitize=address,integer,undefined -fno-sanitize-recover=all',
-    'x86_64': '-arch x86_64',
+    'x86_64': '-arch x86_64 -arch x86_64h -momit-leaf-frame-pointer',
 }
 
 header = '''

@@ -2,6 +2,8 @@
 #include "gfx.h"
 #include <math.h>
 
+#define expect_in(x, lo,hi) expect(lo <= x); expect(x <= hi)
+
 static void test_apply_affine_Matrix() {
     Matrix m = { 1,2,3,
                  4,5,6,
@@ -28,48 +30,48 @@ static void test_apply_perspective_Matrix() {
 
 static void test_clamp_01() {
     Slab src = {
-        {+0.0f16, -0.0f16, +1.0f16, -1.0f16},
-        {+0.5f16, -0.5f16, +2.0f16, -2.0f16},
-        {+(_Float16)INFINITY, -(_Float16)INFINITY},
-        {+(_Float16)NAN,      -(_Float16)NAN},
+        {(half)+0.0, (half)-0.0, (half)+1.0, (half)-1.0},
+        {(half)+0.5, (half)-0.5, (half)+2.0, (half)-2.0},
+        {(half)+INFINITY, (half)-INFINITY},
+        {(half)+NAN,      (half)-NAN},
     };
 
     src = clamp_01(NULL,src,NULL);
 
-    expect(src.r[0] == 0.0f16);
-    expect(src.r[1] == 0.0f16);
-    expect(src.r[2] == 1.0f16);
-    expect(src.r[3] == 0.0f16);
+    expect(src.r[0] == (half)0.0);
+    expect(src.r[1] == (half)0.0);
+    expect(src.r[2] == (half)1.0);
+    expect(src.r[3] == (half)0.0);
 
-    expect(src.g[0] == 0.5f16);
-    expect(src.g[1] == 0.0f16);
-    expect(src.g[2] == 1.0f16);
-    expect(src.g[3] == 0.0f16);
+    expect(src.g[0] == (half)0.5);
+    expect(src.g[1] == (half)0.0);
+    expect(src.g[2] == (half)1.0);
+    expect(src.g[3] == (half)0.0);
 
-    expect(src.b[0] == 1.0f16);
-    expect(src.b[1] == 0.0f16);
+    expect(src.b[0] == (half)1.0);
+    expect(src.b[1] == (half)0.0);
 
-    expect(src.a[0] == 0.0f16);
-    expect(src.a[1] == 0.0f16);
+    expect(src.a[0] == (half)0.0);
+    expect(src.a[1] == (half)0.0);
 }
 
 static void test_load_rgba_f16() {
     const _Float16 px[4*N] = { 0.0f16, 0.25f16, 0.5f16, 0.75f16, 1.0f16 };
     Slab s = load_rgba_f16(px);
 
-    expect(s.r[0] == 0.00f16);
-    expect(s.g[0] == 0.25f16);
-    expect(s.b[0] == 0.50f16);
-    expect(s.a[0] == 0.75f16);
-    expect(s.r[1] == 1.00f16);
+    expect(s.r[0] == (half)0.00);
+    expect(s.g[0] == (half)0.25);
+    expect(s.b[0] == (half)0.50);
+    expect(s.a[0] == (half)0.75);
+    expect(s.r[1] == (half)1.00);
 }
 
 static void test_store_rgba_f16() {
     Slab src = {
-        {0.00f16, 1.0f16},
-        {0.25f16},
-        {0.50f16},
-        {0.75f16},
+        {(half)0.00, (half)1.0},
+        {(half)0.25},
+        {(half)0.50},
+        {(half)0.75},
     };
 
     _Float16 px[4*N] = {0};
@@ -85,20 +87,20 @@ static void test_load_rgb_unorm8() {
     const uint8_t px[3*N] = { 0x00, 0x55, 0xaa, 0xfe, 0xff };
     Slab s = load_rgb_unorm8(px);
 
-    expect(s.r[0] == 0.0f16);
-    expect(0.333f16 < s.g[0] && s.g[0] < 0.334f16);
-    expect(0.666f16 < s.b[0] && s.b[0] < 0.667f16);
-    expect(s.a[0] == 1.0f16);
-    expect(s.r[1] <  1.0f16);
-    expect(s.g[1] == 1.0f16);
+    expect(s.r[0] == (half)0.0);
+    expect_in(s.g[0], (half)0.333, (half)0.334);
+    expect_in(s.b[0], (half)0.666, (half)0.667);
+    expect(s.a[0] == (half)1.0);
+    expect(s.r[1] <  (half)1.0);
+    expect(s.g[1] == (half)1.0);
 }
 
 static void test_store_rgb_unorm8() {
     Slab src = {
-        {0.000f16, 1.000f16},
-        {0.333f16},
-        {0.666f16},
-        {0.996f16},
+        {(half)0.000, (half)1.000},
+        {(half)0.333},
+        {(half)0.666},
+        {(half)0.996},
     };
 
     uint8_t px[3*N] = {0};
@@ -113,19 +115,19 @@ static void test_load_rgba_unorm8() {
     const uint8_t px[4*N] = { 0x00, 0x55, 0xaa, 0xfe, 0xff };
     Slab s = load_rgba_unorm8(px);
 
-    expect(s.r[0] == 0.0f16);
-    expect(0.333f16 < s.g[0] && s.g[0] < 0.334f16);
-    expect(0.666f16 < s.b[0] && s.b[0] < 0.667f16);
-    expect(s.a[0] <  1.0f16);
-    expect(s.r[1] == 1.0f16);
+    expect(s.r[0] == (half)0.0);
+    expect_in(s.g[0], (half)0.333, (half)0.334);
+    expect_in(s.b[0], (half)0.666, (half)0.667);
+    expect(s.a[0] <  (half)1.0);
+    expect(s.r[1] == (half)1.0);
 }
 
 static void test_store_rgba_unorm8() {
     Slab src = {
-        {0.000f16, 1.000f16},
-        {0.333f16},
-        {0.666f16},
-        {0.996f16},
+        {(half)0.000, (half)1.000},
+        {(half)0.333},
+        {(half)0.666},
+        {(half)0.996},
     };
 
     uint8_t px[4*N] = {0};
@@ -141,27 +143,27 @@ static void test_load_rgba_unorm16() {
     const uint16_t px[4*N] = { 0x0000, 0x5555, 0xaaaa, 0xffee, 0xffff };
     Slab s = load_rgba_unorm16(px);
 
-    expect(s.r[0] == 0.0f16);
-    expect(0.333f16 < s.g[0] && s.g[0] < 0.334f16);
-    expect(0.666f16 < s.b[0] && s.b[0] < 0.667f16);
-    expect(s.a[0] <  1.0f16);
-    expect(s.r[1] == 1.0f16);
+    expect(s.r[0] == (half)0.0);
+    expect_in(s.g[0], (half)0.333, (half)0.334);
+    expect_in(s.b[0], (half)0.666, (half)0.667);
+    expect(s.a[0] <  (half)1.0);
+    expect(s.r[1] == (half)1.0);
 }
 
 static void test_store_rgba_unorm16() {
     Slab src = {
-        {0.000f16, 1.000f16},
-        {0.333f16},
-        {0.666f16},
-        {0.999f16},
+        {(half)0.000, (half)1.000},
+        {(half)0.333},
+        {(half)0.666},
+        {(half)0.999},
     };
 
     uint16_t px[4*N] = {0};
     store_rgba_unorm16(px,src);
     expect(px[0] == 0x0000);
-    expect(px[1] == 0x5540);
-    expect(px[2] == 0xaa7f);
-    expect(px[3] == 0xffbf);
+    expect_in(px[1], 0x553f, 0x5540);
+    expect_in(px[2], 0xaa7e, 0xaa7f);
+    expect_in(px[3], 0xffbd, 0xffbf);
     expect(px[4] == 0xffff);
 }
 
@@ -205,9 +207,9 @@ static void test_drive_n() {
     drive(dst,sizeof dst/8, 0,0, load_rgba_unorm16,store_rgba_unorm16,8, effect,ctx);
 
     for (int i = 0; i < (int)sizeof dst/8; i++) {
-        expect(dst[4*i+0] == 0x5540);
+        expect_in(dst[4*i+0], 0x553f, 0x5540);
         expect(dst[4*i+1] == 0x8000);
-        expect(dst[4*i+2] == 0xaa7f);
+        expect_in(dst[4*i+2], 0xaa7e, 0xaa7f);
         expect(dst[4*i+3] == 0xffff);
     }
 }

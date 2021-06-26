@@ -1,6 +1,5 @@
 #include "assume.h"
 #include "gfx.h"
-#include <stdint.h>
 #include <string.h>
 
 #define cast    __builtin_convertvector
@@ -18,43 +17,61 @@
     #define LD4_2  2,6,10,14, 18,22,26,30
     #define LD4_3  3,7,11,15, 19,23,27,31
 
-    #define CONCAT  0,1,2,3,4,5,6,7, 8,9,10,11,12,13,14,15
+    #define CONCAT 0,1,2,3,4,5,6,7, 8,9,10,11,12,13,14,15
 
-    #define ST3  0, 8,16,    1, 9,17,    2,10,18,    3,11,19,    \
-                 4,12,20,    5,13,21,    6,14,22,    7,15,23
-    #define ST4  0, 8,16,24, 1, 9,17,25, 2,10,18,26, 3,11,19,27, \
-                 4,12,20,28, 5,13,21,29, 6,14,22,30, 7,15,23,31
+    #define ST3    0, 8,16,    1, 9,17,    2,10,18,    3,11,19,    \
+                   4,12,20,    5,13,21,    6,14,22,    7,15,23
+    #define ST4    0, 8,16,24, 1, 9,17,25, 2,10,18,26, 3,11,19,27, \
+                   4,12,20,28, 5,13,21,29, 6,14,22,30, 7,15,23,31
+#else
+    static const F32 iota = {0,1,2,3};
+
+    #define LD3_0  0,3,6, 9
+    #define LD3_1  1,4,7,10
+    #define LD3_2  2,5,8,11
+
+    #define LD4_0  0,4, 8,12
+    #define LD4_1  1,5, 9,13
+    #define LD4_2  2,6,10,14
+    #define LD4_3  3,7,11,15
+
+    #define CONCAT 0,1,2,3, 4,5,6,7
+
+    #define ST3    0,4,8,    1,5,9,    2,6,10,    3,7,11
+    #define ST4    0,4,8,12, 1,5,9,13, 2,6,10,14, 3,7,11,15
 #endif
+
+typedef mask __attribute__((ext_vector_type(N))) Mask;
 
 typedef uint8_t __attribute__((ext_vector_type(  N))) U8;
 typedef uint8_t __attribute__((ext_vector_type(3*N))) U8x3;
 typedef uint8_t __attribute__((ext_vector_type(4*N))) U8x4;
 
-typedef int16_t __attribute__((ext_vector_type(  N))) S16;
 
 typedef uint16_t __attribute__((ext_vector_type(  N))) U16;
 typedef uint16_t __attribute__((ext_vector_type(4*N))) U16x4;
 
+typedef _Float16 __attribute__((ext_vector_type(  N))) F16;
 typedef _Float16 __attribute__((ext_vector_type(4*N))) F16x4;
 
-typedef _Float16 __attribute__((ext_vector_type(4))) Half4;
-typedef float    __attribute__((ext_vector_type(4))) Float4;
+typedef half  __attribute__((ext_vector_type(4))) Half4;
+typedef float __attribute__((ext_vector_type(4))) Float4;
 
-static F16 select(S16 cond, F16 t, F16 e) { return (F16)( ( cond & (S16)t)
-                                                        | (~cond & (S16)e) ); }
-static F16 min(F16 x, F16 y) { return select(y < x, y, x); }
-static F16 max(F16 x, F16 y) { return select(x < y, y, x); }
-static F16 clamp(F16 x, F16 lo, F16 hi) { return max(lo, min(x, hi)); }
+static Half select(Mask cond, Half t, Half e) { return (Half)( ( cond & (Mask)t)
+                                                             | (~cond & (Mask)e) ); }
+static Half min(Half x, Half y) { return select(y < x, y, x); }
+static Half max(Half x, Half y) { return select(x < y, y, x); }
+static Half clamp(Half x, Half lo, Half hi) { return max(lo, min(x, hi)); }
 
-// LLVM won't use uvcvf.8h to convert U16 to F16, otherwise we'd just cast(u8, F16).
-static F16 F16_from_U8(U8 u8) {
-#if 1 && defined(__aarch64__)
-    U16 u16 = cast(u8, U16);
-    F16 f16;
-    __asm__("ucvtf.8h %0,%1" : "=w"(f16) : "w"(u16));
-    return f16;
+// LLVM won't use uvcvf.8h to convert U16 to Half, otherwise we'd just cast(u8, Half).
+static Half Half_from_U8(U8 u8) {
+#if 1 && defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
+    U16  u16 = cast(u8, U16);
+    Half half;
+    __asm__("ucvtf.8h %0,%1" : "=w"(half) : "w"(u16));
+    return half;
 #else
-    return cast(u8, F16);
+    return cast(u8, Half);
 #endif
 }
 
@@ -117,42 +134,46 @@ Slab blend_srcover(void* ctx, Slab src, Cold* cold) {
 Slab clamp_01(void* ctx, Slab src, Cold* cold) {
     (void)ctx;
     (void)cold;
-    src.r = clamp(src.r, 0.0f16, 1.0f16);
-    src.g = clamp(src.g, 0.0f16, 1.0f16);
-    src.b = clamp(src.b, 0.0f16, 1.0f16);
-    src.a = clamp(src.a, 0.0f16, 1.0f16);
+    src.r = clamp(src.r, 0, 1);
+    src.g = clamp(src.g, 0, 1);
+    src.b = clamp(src.b, 0, 1);
+    src.a = clamp(src.a, 0, 1);
     return src;
 }
 
 Slab load_rgba_f16(const void* ptr) {
     F16x4 v = *(const F16x4*)ptr;
     return (Slab) {
-        shuffle(v,v, LD4_0),
-        shuffle(v,v, LD4_1),
-        shuffle(v,v, LD4_2),
-        shuffle(v,v, LD4_3),
+        cast(shuffle(v,v, LD4_0), Half),
+        cast(shuffle(v,v, LD4_1), Half),
+        cast(shuffle(v,v, LD4_2), Half),
+        cast(shuffle(v,v, LD4_3), Half),
     };
 }
 
 void store_rgba_f16(void* ptr, Slab src) {
-    *(F16x4*)ptr = shuffle(shuffle(src.r, src.g, CONCAT),
-                           shuffle(src.b, src.a, CONCAT), ST4);
+    F16 r = cast(src.r, F16),
+        g = cast(src.g, F16),
+        b = cast(src.b, F16),
+        a = cast(src.a, F16);
+    *(F16x4*)ptr = shuffle(shuffle(r, g, CONCAT),
+                           shuffle(b, a, CONCAT), ST4);
 }
 
 Slab load_rgb_unorm8(const void* ptr) {
     U8x3 v = *(const U8x3*)ptr;
     return (Slab) {
-        F16_from_U8(shuffle(v,v, LD3_0)) * (1/255.0f16),
-        F16_from_U8(shuffle(v,v, LD3_1)) * (1/255.0f16),
-        F16_from_U8(shuffle(v,v, LD3_2)) * (1/255.0f16),
-        1.0f16,
+        Half_from_U8(shuffle(v,v, LD3_0)) * (half)(1/255.0),
+        Half_from_U8(shuffle(v,v, LD3_1)) * (half)(1/255.0),
+        Half_from_U8(shuffle(v,v, LD3_2)) * (half)(1/255.0),
+        1,
     };
 }
 
 void store_rgb_unorm8(void* ptr, Slab src) {
-    U8 r = cast(src.r * 255.0f16 + 0.5f16, U8),
-       g = cast(src.g * 255.0f16 + 0.5f16, U8),
-       b = cast(src.b * 255.0f16 + 0.5f16, U8);
+    U8 r = cast(src.r * (half)255.0 + (half)0.5, U8),
+       g = cast(src.g * (half)255.0 + (half)0.5, U8),
+       b = cast(src.b * (half)255.0 + (half)0.5, U8);
     *(U8x3*)ptr = shuffle(shuffle(r, g, CONCAT),
                           shuffle(b, b, CONCAT), ST3);
 }
@@ -160,30 +181,30 @@ void store_rgb_unorm8(void* ptr, Slab src) {
 Slab load_rgba_unorm8(const void* ptr) {
     U8x4 v = *(const U8x4*)ptr;
     return (Slab) {
-        F16_from_U8(shuffle(v,v, LD4_0)) * (1/255.0f16),
-        F16_from_U8(shuffle(v,v, LD4_1)) * (1/255.0f16),
-        F16_from_U8(shuffle(v,v, LD4_2)) * (1/255.0f16),
-        F16_from_U8(shuffle(v,v, LD4_3)) * (1/255.0f16),
+        Half_from_U8(shuffle(v,v, LD4_0)) * (half)(1/255.0),
+        Half_from_U8(shuffle(v,v, LD4_1)) * (half)(1/255.0),
+        Half_from_U8(shuffle(v,v, LD4_2)) * (half)(1/255.0),
+        Half_from_U8(shuffle(v,v, LD4_3)) * (half)(1/255.0),
     };
 }
 
 void store_rgba_unorm8(void* ptr, Slab src) {
-    U8 r = cast(src.r * 255.0f16 + 0.5f16, U8),
-       g = cast(src.g * 255.0f16 + 0.5f16, U8),
-       b = cast(src.b * 255.0f16 + 0.5f16, U8),
-       a = cast(src.a * 255.0f16 + 0.5f16, U8);
+    U8 r = cast(src.r * (half)255.0 + (half)0.5, U8),
+       g = cast(src.g * (half)255.0 + (half)0.5, U8),
+       b = cast(src.b * (half)255.0 + (half)0.5, U8),
+       a = cast(src.a * (half)255.0 + (half)0.5, U8);
     *(U8x4*)ptr = shuffle(shuffle(r, g, CONCAT),
                           shuffle(b, a, CONCAT), ST4);
 }
 
-// 0xffff (65535) becomes +inf when converted directly to f16, so this goes via f32.
+// 0xffff (65535) becomes +inf when converted directly to f16, so this always goes via f32.
 Slab load_rgba_unorm16(const void* ptr) {
     U16x4 v = *(const U16x4*)ptr;
     return (Slab) {
-        cast( cast(shuffle(v,v, LD4_0), F32) * (1/65535.0f), F16 ),
-        cast( cast(shuffle(v,v, LD4_1), F32) * (1/65535.0f), F16 ),
-        cast( cast(shuffle(v,v, LD4_2), F32) * (1/65535.0f), F16 ),
-        cast( cast(shuffle(v,v, LD4_3), F32) * (1/65535.0f), F16 ),
+        cast( cast(shuffle(v,v, LD4_0), F32) * (1/65535.0f), Half ),
+        cast( cast(shuffle(v,v, LD4_1), F32) * (1/65535.0f), Half ),
+        cast( cast(shuffle(v,v, LD4_2), F32) * (1/65535.0f), Half ),
+        cast( cast(shuffle(v,v, LD4_3), F32) * (1/65535.0f), Half ),
     };
 }
 

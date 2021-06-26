@@ -1,12 +1,29 @@
 #pragma once
 
 #include <stddef.h>
+#include <stdint.h>
 
-#define N 8
-typedef _Float16 __attribute__((ext_vector_type(N))) F16;
-typedef float    __attribute__((ext_vector_type(N))) F32;
+#if defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
+    #define N 8
+    typedef _Float16 half;
+    typedef int16_t  mask;
+#elif defined(__AVX__)
+    #define N 8
+    typedef float half;
+    typedef int   mask;
+#else
+    #define N 4
+    typedef float half;
+    typedef int   mask;
+#endif
 
-typedef struct { F16 r,g,b,a; } Slab;
+typedef half  __attribute__((ext_vector_type(N))) Half;
+typedef float __attribute__((ext_vector_type(N))) F32;
+
+typedef struct {
+    Half r,g,b,a;
+} Slab;
+
 typedef struct {
     Slab dst;
     F32 x,y;
