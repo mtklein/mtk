@@ -6,15 +6,12 @@
 #if defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
     #define N 8
     typedef _Float16 half;
-    typedef int16_t  mask;
 #elif defined(__AVX__)
     #define N 8
     typedef float half;
-    typedef int   mask;
 #else
     #define N 4
     typedef float half;
-    typedef int   mask;
 #endif
 
 typedef half  __attribute__((ext_vector_type(N))) Half;
@@ -29,9 +26,9 @@ typedef struct {
     F32 x,y;
 } Cold;
 
-typedef Slab (Effect)(void* ctx, Slab src, Cold*);
+typedef Slab (Effect)(void* ctx, Half r, Half g, Half b, Half a, Cold*);
 typedef Slab (Load  )(const void*);
-typedef void (Store )(void*, Slab);
+typedef void (Store )(void*, Half r, Half g, Half b, Half a);
 
 typedef struct { float x,y; }     Point;
 typedef struct { float r,g,b,a; } Color;
