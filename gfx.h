@@ -6,15 +6,12 @@
 #if defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
     #define N 8
     typedef _Float16 half;
-    typedef int16_t  mask;
 #elif defined(__AVX__)
     #define N 8
     typedef float half;
-    typedef int   mask;
 #else
     #define N 4
     typedef float half;
-    typedef int   mask;
 #endif
 
 #if defined(__x86_64__)

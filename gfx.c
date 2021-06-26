@@ -41,6 +41,12 @@
     #define ST4    0,4,8,12, 1,5,9,13, 2,6,10,14, 3,7,11,15
 #endif
 
+#if defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
+    typedef int16_t mask;
+#else
+    typedef int mask;
+#endif
+
 typedef mask __attribute__((ext_vector_type(N))) Mask;
 
 typedef uint8_t __attribute__((ext_vector_type(  N))) U8;
