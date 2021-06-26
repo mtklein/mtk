@@ -142,7 +142,8 @@ RGBA clamp_01(void* ctx, RGBA src, Cold* cold) {
 }
 
 RGBA load_rgba_f16(const void* ptr) {
-    F16x4 v = *(const F16x4*)ptr;
+    F16x4 v;
+    memcpy(&v, ptr, sizeof v);
     return (RGBA) {
         cast(shuffle(v,v, LD4_0), Half),
         cast(shuffle(v,v, LD4_1), Half),
@@ -161,7 +162,8 @@ void store_rgba_f16(void* ptr, RGBA src) {
 }
 
 RGBA load_rgb_unorm8(const void* ptr) {
-    U8x3 v = *(const U8x3*)ptr;
+    U8x3 v;
+    memcpy(&v, ptr, sizeof v);
     return (RGBA) {
         Half_from_U8(shuffle(v,v, LD3_0)) * (half)(1/255.0),
         Half_from_U8(shuffle(v,v, LD3_1)) * (half)(1/255.0),
@@ -179,7 +181,8 @@ void store_rgb_unorm8(void* ptr, RGBA src) {
 }
 
 RGBA load_rgba_unorm8(const void* ptr) {
-    U8x4 v = *(const U8x4*)ptr;
+    U8x4 v;
+    memcpy(&v, ptr, sizeof v);
     return (RGBA) {
         Half_from_U8(shuffle(v,v, LD4_0)) * (half)(1/255.0),
         Half_from_U8(shuffle(v,v, LD4_1)) * (half)(1/255.0),
@@ -199,7 +202,8 @@ void store_rgba_unorm8(void* ptr, RGBA src) {
 
 // 0xffff (65535) becomes +inf when converted directly to f16, so this always goes via f32.
 RGBA load_rgba_unorm16(const void* ptr) {
-    U16x4 v = *(const U16x4*)ptr;
+    U16x4 v;
+    memcpy(&v, ptr, sizeof v);
     return (RGBA) {
         cast( cast(shuffle(v,v, LD4_0), F32) * (1/65535.0f), Half ),
         cast( cast(shuffle(v,v, LD4_1), F32) * (1/65535.0f), Half ),
