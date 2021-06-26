@@ -2,6 +2,8 @@
 #include "gfx.h"
 #include <math.h>
 
+#define len(arr) (int)(sizeof(arr) / sizeof(*arr))
+
 static void test_matrix_2x3() {
     float m[] = { 1,2,3,
                   4,5,6 };
@@ -177,9 +179,9 @@ static void test_drive_1() {
         rgba,
         NULL,
     };
-    drive(dst,sizeof dst/4, 0,0, load_rgba_unorm8,store_rgba_unorm8,4, effect,ctx);
+    drive(dst,len(dst)/4, 0,0, load_rgba_unorm8,store_rgba_unorm8,4, effect,ctx);
 
-    for (int i = 0; i < (int)sizeof dst/4; i++) {
+    for (int i = 0; i < len(dst)/4; i++) {
         expect_eq(dst[4*i+0], 0x55);
         expect_eq(dst[4*i+1], 0x80);
         expect_eq(dst[4*i+2], 0xaa);
@@ -201,9 +203,9 @@ static void test_drive_n() {
         rgba,
         NULL,
     };
-    drive(dst,sizeof dst/8, 0,0, load_rgba_unorm16,store_rgba_unorm16,8, effect,ctx);
+    drive(dst,len(dst)/4, 0,0, load_rgba_unorm16,store_rgba_unorm16,8, effect,ctx);
 
-    for (int i = 0; i < (int)sizeof dst/8; i++) {
+    for (int i = 0; i < len(dst)/4; i++) {
         expect_in(dst[4*i+0], 0x553f, 0x5540);
         expect_eq(dst[4*i+1], 0x8000);
         expect_in(dst[4*i+2], 0xaa7e, 0xaa7f);
