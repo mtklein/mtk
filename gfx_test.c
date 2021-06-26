@@ -2,8 +2,6 @@
 #include "gfx.h"
 #include <math.h>
 
-#define expect_in(x, lo,hi) expect(lo <= x); expect(x <= hi)
-
 static void test_apply_affine_Matrix() {
     Matrix m = { 1,2,3,
                  4,5,6,
@@ -12,8 +10,8 @@ static void test_apply_affine_Matrix() {
 
     apply_affine_Matrix(&m, (Slab){0}, &cold);
 
-    expect(cold.x[0] == 2 +  6 + 3);
-    expect(cold.y[0] == 8 + 15 + 6);
+    expect_eq(cold.x[0], 2 +  6 + 3);
+    expect_eq(cold.y[0], 8 + 15 + 6);
 }
 
 static void test_apply_perspective_Matrix() {
@@ -24,8 +22,8 @@ static void test_apply_perspective_Matrix() {
 
     apply_perspective_Matrix(&m, (Slab){0}, &cold);
 
-    expect(cold.x[0] == (2 +  6 + 3) * (1.0f/(14 + 24 + 9)));
-    expect(cold.y[0] == (8 + 15 + 6) * (1.0f/(14 + 24 + 9)));
+    expect_eq(cold.x[0], (2 +  6 + 3) * (1.0f/(14 + 24 + 9)));
+    expect_eq(cold.y[0], (8 + 15 + 6) * (1.0f/(14 + 24 + 9)));
 }
 
 static void test_clamp_01() {
@@ -38,32 +36,32 @@ static void test_clamp_01() {
 
     src = clamp_01(NULL,src,NULL);
 
-    expect(src.r[0] == (half)0.0);
-    expect(src.r[1] == (half)0.0);
-    expect(src.r[2] == (half)1.0);
-    expect(src.r[3] == (half)0.0);
+    expect_eq(src.r[0], (half)0.0);
+    expect_eq(src.r[1], (half)0.0);
+    expect_eq(src.r[2], (half)1.0);
+    expect_eq(src.r[3], (half)0.0);
 
-    expect(src.g[0] == (half)0.5);
-    expect(src.g[1] == (half)0.0);
-    expect(src.g[2] == (half)1.0);
-    expect(src.g[3] == (half)0.0);
+    expect_eq(src.g[0], (half)0.5);
+    expect_eq(src.g[1], (half)0.0);
+    expect_eq(src.g[2], (half)1.0);
+    expect_eq(src.g[3], (half)0.0);
 
-    expect(src.b[0] == (half)1.0);
-    expect(src.b[1] == (half)0.0);
+    expect_eq(src.b[0], (half)1.0);
+    expect_eq(src.b[1], (half)0.0);
 
-    expect(src.a[0] == (half)0.0);
-    expect(src.a[1] == (half)0.0);
+    expect_eq(src.a[0], (half)0.0);
+    expect_eq(src.a[1], (half)0.0);
 }
 
 static void test_load_rgba_f16() {
     const _Float16 px[4*N] = { 0.0f16, 0.25f16, 0.5f16, 0.75f16, 1.0f16 };
     Slab s = load_rgba_f16(px);
 
-    expect(s.r[0] == (half)0.00);
-    expect(s.g[0] == (half)0.25);
-    expect(s.b[0] == (half)0.50);
-    expect(s.a[0] == (half)0.75);
-    expect(s.r[1] == (half)1.00);
+    expect_eq(s.r[0], (half)0.00);
+    expect_eq(s.g[0], (half)0.25);
+    expect_eq(s.b[0], (half)0.50);
+    expect_eq(s.a[0], (half)0.75);
+    expect_eq(s.r[1], (half)1.00);
 }
 
 static void test_store_rgba_f16() {
@@ -76,23 +74,23 @@ static void test_store_rgba_f16() {
 
     _Float16 px[4*N] = {0};
     store_rgba_f16(px,src);
-    expect(px[0] == 0.00f16);
-    expect(px[1] == 0.25f16);
-    expect(px[2] == 0.50f16);
-    expect(px[3] == 0.75f16);
-    expect(px[4] == 1.00f16);
+    expect_eq(px[0], 0.00f16);
+    expect_eq(px[1], 0.25f16);
+    expect_eq(px[2], 0.50f16);
+    expect_eq(px[3], 0.75f16);
+    expect_eq(px[4], 1.00f16);
 }
 
 static void test_load_rgb_unorm8() {
     const uint8_t px[3*N] = { 0x00, 0x55, 0xaa, 0xfe, 0xff };
     Slab s = load_rgb_unorm8(px);
 
-    expect(s.r[0] == (half)0.0);
+    expect_eq(s.r[0], (half)0.0);
     expect_in(s.g[0], (half)0.333, (half)0.334);
     expect_in(s.b[0], (half)0.666, (half)0.667);
-    expect(s.a[0] == (half)1.0);
-    expect(s.r[1] <  (half)1.0);
-    expect(s.g[1] == (half)1.0);
+    expect_eq(s.a[0], (half)1.0);
+    expect_lt(s.r[1], (half)1.0);
+    expect_eq(s.g[1], (half)1.0);
 }
 
 static void test_store_rgb_unorm8() {
@@ -105,21 +103,21 @@ static void test_store_rgb_unorm8() {
 
     uint8_t px[3*N] = {0};
     store_rgb_unorm8(px,src);
-    expect(px[0] == 0x00);
-    expect(px[1] == 0x55);
-    expect(px[2] == 0xaa);
-    expect(px[3] == 0xff);
+    expect_eq(px[0], 0x00);
+    expect_eq(px[1], 0x55);
+    expect_eq(px[2], 0xaa);
+    expect_eq(px[3], 0xff);
 }
 
 static void test_load_rgba_unorm8() {
     const uint8_t px[4*N] = { 0x00, 0x55, 0xaa, 0xfe, 0xff };
     Slab s = load_rgba_unorm8(px);
 
-    expect(s.r[0] == (half)0.0);
+    expect_eq(s.r[0], (half)0.0);
     expect_in(s.g[0], (half)0.333, (half)0.334);
     expect_in(s.b[0], (half)0.666, (half)0.667);
-    expect(s.a[0] <  (half)1.0);
-    expect(s.r[1] == (half)1.0);
+    expect_lt(s.a[0], (half)1.0);
+    expect_eq(s.r[1], (half)1.0);
 }
 
 static void test_store_rgba_unorm8() {
@@ -132,22 +130,22 @@ static void test_store_rgba_unorm8() {
 
     uint8_t px[4*N] = {0};
     store_rgba_unorm8(px,src);
-    expect(px[0] == 0x00);
-    expect(px[1] == 0x55);
-    expect(px[2] == 0xaa);
-    expect(px[3] == 0xfe);
-    expect(px[4] == 0xff);
+    expect_eq(px[0], 0x00);
+    expect_eq(px[1], 0x55);
+    expect_eq(px[2], 0xaa);
+    expect_eq(px[3], 0xfe);
+    expect_eq(px[4], 0xff);
 }
 
 static void test_load_rgba_unorm16() {
     const uint16_t px[4*N] = { 0x0000, 0x5555, 0xaaaa, 0xffee, 0xffff };
     Slab s = load_rgba_unorm16(px);
 
-    expect(s.r[0] == (half)0.0);
+    expect_eq(s.r[0], (half)0.0);
     expect_in(s.g[0], (half)0.333, (half)0.334);
     expect_in(s.b[0], (half)0.666, (half)0.667);
-    expect(s.a[0] <  (half)1.0);
-    expect(s.r[1] == (half)1.0);
+    expect_lt(s.a[0], (half)1.0);
+    expect_eq(s.r[1], (half)1.0);
 }
 
 static void test_store_rgba_unorm16() {
@@ -160,11 +158,11 @@ static void test_store_rgba_unorm16() {
 
     uint16_t px[4*N] = {0};
     store_rgba_unorm16(px,src);
-    expect(px[0] == 0x0000);
+    expect_eq(px[0], 0x0000);
     expect_in(px[1], 0x553f, 0x5540);
     expect_in(px[2], 0xaa7e, 0xaa7f);
     expect_in(px[3], 0xffbd, 0xffbf);
-    expect(px[4] == 0xffff);
+    expect_eq(px[4], 0xffff);
 }
 
 static void test_drive_1() {
@@ -183,10 +181,10 @@ static void test_drive_1() {
     drive(dst,sizeof dst/4, 0,0, load_rgba_unorm8,store_rgba_unorm8,4, effect,ctx);
 
     for (int i = 0; i < (int)sizeof dst/4; i++) {
-        expect(dst[4*i+0] == 0x55);
-        expect(dst[4*i+1] == 0x80);
-        expect(dst[4*i+2] == 0xaa);
-        expect(dst[4*i+3] == 0xff);
+        expect_eq(dst[4*i+0], 0x55);
+        expect_eq(dst[4*i+1], 0x80);
+        expect_eq(dst[4*i+2], 0xaa);
+        expect_eq(dst[4*i+3], 0xff);
     }
 }
 
@@ -208,9 +206,9 @@ static void test_drive_n() {
 
     for (int i = 0; i < (int)sizeof dst/8; i++) {
         expect_in(dst[4*i+0], 0x553f, 0x5540);
-        expect(dst[4*i+1] == 0x8000);
+        expect_eq(dst[4*i+1], 0x8000);
         expect_in(dst[4*i+2], 0xaa7e, 0xaa7f);
-        expect(dst[4*i+3] == 0xffff);
+        expect_eq(dst[4*i+3], 0xffff);
     }
 }
 
