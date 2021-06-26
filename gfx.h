@@ -35,20 +35,14 @@ typedef Slab (ABI Effect)(void* ctx, Slab src, Cold*);
 typedef Slab (ABI Load  )(const void*);
 typedef void (ABI Store )(void*, Slab);
 
-typedef struct { float x,y; }     Point;
-typedef struct { float r,g,b,a; } Color;
-typedef struct { float sx,kx,tx,
-                       ky,sy,ty,
-                       p0,p1,p2; } Matrix;
-
 Effect
-    apply_affine_Matrix,
-    apply_perspective_Matrix,
     blend_dst,
     blend_src,
     blend_srcover,
     clamp_01,
-    shade_Color;
+    matrix_2x3,
+    matrix_3x3,
+    shade_rgba_f32;
 
 Load
     load_rgb_unorm8,

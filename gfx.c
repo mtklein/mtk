@@ -82,34 +82,30 @@ static Half Half_from_U8(U8 u8) {
 #endif
 }
 
-Slab apply_affine_Matrix(void* ctx, Slab src, Cold* cold) {
-    const Matrix* m = ctx;
-    F32 x = cold->x * m->sx + (cold->y * m->kx + m->tx),
-        y = cold->x * m->ky + (cold->y * m->sy + m->ty);
+Slab matrix_2x3(void* ctx, Slab src, Cold* cold) {
+    const float* m = ctx;
+    F32 x = cold->x * m[0] + (cold->y * m[1] + m[2]),
+        y = cold->x * m[3] + (cold->y * m[4] + m[5]);
     cold->x = x;
     cold->y = y;
     return src;
 }
 
-Slab apply_perspective_Matrix(void* ctx, Slab src, Cold* cold) {
-    const Matrix* m = ctx;
-    F32 x = cold->x * m->sx + (cold->y * m->kx + m->tx),
-        y = cold->x * m->ky + (cold->y * m->sy + m->ty),
-        z = cold->x * m->p0 + (cold->y * m->p1 + m->p2);
+Slab matrix_3x3(void* ctx, Slab src, Cold* cold) {
+    const float* m = ctx;
+    F32 x = cold->x * m[0] + (cold->y * m[1] + m[2]),
+        y = cold->x * m[3] + (cold->y * m[4] + m[5]),
+        z = cold->x * m[6] + (cold->y * m[7] + m[8]);
     cold->x = x * (1/z);
     cold->y = y * (1/z);
     return src;
 }
 
-Slab shade_Color(void* ctx, Slab src, Cold* cold) {
+Slab shade_rgba_f32(void* ctx, Slab src, Cold* cold) {
     (void)cold;
-    const Color* color = ctx;
-    Half4 rgba = cast((Float4){
-        color->r,
-        color->g,
-        color->b,
-        color->a,
-    }, Half4);
+    Float4 rgba_f32;
+    memcpy(&rgba_f32, ctx, sizeof rgba_f32);
+    Half4 rgba = cast(rgba_f32, Half4);
     src.r = rgba.r;
     src.g = rgba.g;
     src.b = rgba.b;
