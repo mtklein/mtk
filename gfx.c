@@ -217,38 +217,39 @@ void store_rgba_unorm16(void* ptr, RGBA src) {
                            shuffle(b, a, CONCAT), ST4);
 }
 
-static void drive1(void* dptr,
+static void driveN(const void* lptr, Load*  load,
+                   void*       sptr, Store* store,
                    int x, int y,
-                   Load* load, Store* store,
                    Effect* effect[], void* ctx[]) {
     RGBA src  = {0};
     Cold cold = {
-        .dst = load(dptr),
+        .dst = load(lptr),
         .x   = x + 0.5f + iota,
         .y   = y + 0.5f,
     };
     while (*effect) {
         src = (*effect++)(*ctx++,src,&cold);
     }
-    store(dptr, src);
+    store(sptr, src);
 }
 
-void drive(void* dptr, int n,
-           int x, int y,
-           Load* load, Store* store, size_t bpp,
+void drive(const void* lptr, size_t lbpp, Load*  load,
+           void*       sptr, size_t sbpp, Store* store,
+           int x, int y, int n,
            Effect* effect[], void* ctx[]) {
     while (n >= N) {
-        drive1(dptr, x,y, load,store, effect,ctx);
+        driveN(lptr,load, sptr,store, x,y, effect,ctx);
 
-        dptr = (char*)dptr + N*bpp;
+        lptr = (const char*)lptr + N*lbpp;
+        sptr = (      char*)sptr + N*sbpp;
         x += N;
         n -= N;
     }
     if (n > 0) {
-        assume(bpp <= 16);
-        char scratch[N*16] = {0};
-        memcpy(scratch, dptr, (size_t)n*bpp);
-        drive1(scratch, x,y, load,store, effect,ctx);
-        memcpy(dptr, scratch, (size_t)n*bpp);
+        assume(lbpp <= 16 && sbpp <= 16);
+        char tmp[N*16] = {0};
+        memcpy(tmp, lptr, (size_t)n*lbpp);
+        driveN(tmp,load, tmp,store, x,y, effect,ctx);
+        memcpy(sptr, tmp, (size_t)n*sbpp);
     }
 }

@@ -56,7 +56,7 @@ Store
     store_rgba_unorm16,
     store_rgba_unorm8;
 
-void drive(void* dptr, int n,
-           int x, int y,
-           Load*, Store*, size_t bpp,
+void drive(const void*, size_t lbpp, Load*,
+           void*,       size_t sbpp, Store*,
+           int x, int y, int n,
            Effect* effect[], void* ctx[]);

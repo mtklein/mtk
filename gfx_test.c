@@ -179,7 +179,10 @@ static void test_drive_1() {
         rgba,
         NULL,
     };
-    drive(dst,len(dst)/4, 0,0, load_rgba_unorm8,store_rgba_unorm8,4, effect,ctx);
+    drive(dst,4, load_rgba_unorm8,
+          dst,4,store_rgba_unorm8,
+          0,0, len(dst)/4,
+          effect, ctx);
 
     for (int i = 0; i < len(dst)/4; i++) {
         expect_eq(dst[4*i+0], 0x55);
@@ -203,7 +206,10 @@ static void test_drive_n() {
         rgba,
         NULL,
     };
-    drive(dst,len(dst)/4, 0,0, load_rgba_unorm16,store_rgba_unorm16,8, effect,ctx);
+    drive(dst,8, load_rgba_unorm16,
+          dst,8,store_rgba_unorm16,
+          0,0, len(dst)/4,
+          effect,ctx);
 
     for (int i = 0; i < len(dst)/4; i++) {
         expect_in(dst[4*i+0], 0x553f, 0x5540);
