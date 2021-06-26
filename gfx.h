@@ -24,16 +24,16 @@ typedef float __attribute__((ext_vector_type(N))) F32;
 
 typedef struct {
     Half r,g,b,a;
-} Slab;
+} RGBA;
 
 typedef struct {
-    Slab dst;
-    F32 x,y;
+    RGBA dst;
+    F32  x,y;
 } Cold;
 
-typedef Slab (ABI Effect)(void* ctx, Slab src, Cold*);
-typedef Slab (ABI Load  )(const void*);
-typedef void (ABI Store )(void*, Slab);
+typedef RGBA (ABI Effect)(void* ctx, RGBA src, Cold*);
+typedef RGBA (ABI Load  )(const void*);
+typedef void (ABI Store )(void*, RGBA);
 
 Effect
     blend_dst,

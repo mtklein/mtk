@@ -9,7 +9,7 @@ static void test_matrix_2x3() {
                   4,5,6 };
     Cold cold = { .x = 2, .y = 3 };
 
-    matrix_2x3(m, (Slab){0}, &cold);
+    matrix_2x3(m, (RGBA){0}, &cold);
 
     expect_eq(cold.x[0], 2 +  6 + 3);
     expect_eq(cold.y[0], 8 + 15 + 6);
@@ -21,14 +21,14 @@ static void test_matrix_3x3() {
                   7,8,9 };
     Cold cold = { .x = 2, .y = 3 };
 
-    matrix_3x3(m, (Slab){0}, &cold);
+    matrix_3x3(m, (RGBA){0}, &cold);
 
     expect_eq(cold.x[0], (2 +  6 + 3) * (1.0f/(14 + 24 + 9)));
     expect_eq(cold.y[0], (8 + 15 + 6) * (1.0f/(14 + 24 + 9)));
 }
 
 static void test_clamp_01() {
-    Slab src = {
+    RGBA src = {
         {(half)+0.0, (half)-0.0, (half)+1.0, (half)-1.0},
         {(half)+0.5, (half)-0.5, (half)+2.0, (half)-2.0},
         {(half)+INFINITY, (half)-INFINITY},
@@ -56,7 +56,7 @@ static void test_clamp_01() {
 
 static void test_load_rgba_f16() {
     const _Float16 px[4*N] = { 0.0f16, 0.25f16, 0.5f16, 0.75f16, 1.0f16 };
-    Slab s = load_rgba_f16(px);
+    RGBA s = load_rgba_f16(px);
 
     expect_eq(s.r[0], (half)0.00);
     expect_eq(s.g[0], (half)0.25);
@@ -66,7 +66,7 @@ static void test_load_rgba_f16() {
 }
 
 static void test_store_rgba_f16() {
-    Slab src = {
+    RGBA src = {
         {(half)0.00, (half)1.0},
         {(half)0.25},
         {(half)0.50},
@@ -84,7 +84,7 @@ static void test_store_rgba_f16() {
 
 static void test_load_rgb_unorm8() {
     const uint8_t px[3*N] = { 0x00, 0x55, 0xaa, 0xfe, 0xff };
-    Slab s = load_rgb_unorm8(px);
+    RGBA s = load_rgb_unorm8(px);
 
     expect_eq(s.r[0], (half)0.0);
     expect_in(s.g[0], (half)0.333, (half)0.334);
@@ -95,7 +95,7 @@ static void test_load_rgb_unorm8() {
 }
 
 static void test_store_rgb_unorm8() {
-    Slab src = {
+    RGBA src = {
         {(half)0.000, (half)1.000},
         {(half)0.333},
         {(half)0.666},
@@ -112,7 +112,7 @@ static void test_store_rgb_unorm8() {
 
 static void test_load_rgba_unorm8() {
     const uint8_t px[4*N] = { 0x00, 0x55, 0xaa, 0xfe, 0xff };
-    Slab s = load_rgba_unorm8(px);
+    RGBA s = load_rgba_unorm8(px);
 
     expect_eq(s.r[0], (half)0.0);
     expect_in(s.g[0], (half)0.333, (half)0.334);
@@ -122,7 +122,7 @@ static void test_load_rgba_unorm8() {
 }
 
 static void test_store_rgba_unorm8() {
-    Slab src = {
+    RGBA src = {
         {(half)0.000, (half)1.000},
         {(half)0.333},
         {(half)0.666},
@@ -140,7 +140,7 @@ static void test_store_rgba_unorm8() {
 
 static void test_load_rgba_unorm16() {
     const uint16_t px[4*N] = { 0x0000, 0x5555, 0xaaaa, 0xffee, 0xffff };
-    Slab s = load_rgba_unorm16(px);
+    RGBA s = load_rgba_unorm16(px);
 
     expect_eq(s.r[0], (half)0.0);
     expect_in(s.g[0], (half)0.333, (half)0.334);
@@ -150,7 +150,7 @@ static void test_load_rgba_unorm16() {
 }
 
 static void test_store_rgba_unorm16() {
-    Slab src = {
+    RGBA src = {
         {(half)0.000, (half)1.000},
         {(half)0.333},
         {(half)0.666},
