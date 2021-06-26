@@ -2,14 +2,6 @@
 #include "gfx.h"
 #include <string.h>
 
-#if defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
-    typedef int16_t mask;
-#else
-    typedef int mask;
-#endif
-
-#define NEXT return (Slab){r,g,b,a}
-
 #define cast    __builtin_convertvector
 #define shuffle __builtin_shufflevector
 
@@ -83,26 +75,26 @@ static Half Half_from_U8(U8 u8) {
 #endif
 }
 
-Slab apply_affine_Matrix(void* ctx, Half r, Half g, Half b, Half a, Cold* cold) {
+Slab apply_affine_Matrix(void* ctx, Slab src, Cold* cold) {
     const Matrix* m = ctx;
     F32 x = cold->x * m->sx + (cold->y * m->kx + m->tx),
         y = cold->x * m->ky + (cold->y * m->sy + m->ty);
     cold->x = x;
     cold->y = y;
-    NEXT;
+    return src;
 }
 
-Slab apply_perspective_Matrix(void* ctx, Half r, Half g, Half b, Half a, Cold* cold) {
+Slab apply_perspective_Matrix(void* ctx, Slab src, Cold* cold) {
     const Matrix* m = ctx;
     F32 x = cold->x * m->sx + (cold->y * m->kx + m->tx),
         y = cold->x * m->ky + (cold->y * m->sy + m->ty),
         z = cold->x * m->p0 + (cold->y * m->p1 + m->p2);
     cold->x = x * (1/z);
     cold->y = y * (1/z);
-    NEXT;
+    return src;
 }
 
-Slab shade_Color(void* ctx, Half r, Half g, Half b, Half a, Cold* cold) {
+Slab shade_Color(void* ctx, Slab src, Cold* cold) {
     (void)cold;
     const Color* color = ctx;
     Half4 rgba = cast((Float4){
@@ -111,45 +103,42 @@ Slab shade_Color(void* ctx, Half r, Half g, Half b, Half a, Cold* cold) {
         color->b,
         color->a,
     }, Half4);
-    r = rgba.r;
-    g = rgba.g;
-    b = rgba.b;
-    a = rgba.a;
-    NEXT;
+    src.r = rgba.r;
+    src.g = rgba.g;
+    src.b = rgba.b;
+    src.a = rgba.a;
+    return src;
 }
 
-Slab blend_src(void* ctx, Half r, Half g, Half b, Half a, Cold* cold) {
+Slab blend_src(void* ctx, Slab src, Cold* cold) {
     (void)ctx;
     (void)cold;
-    NEXT;
+    return src;
 }
 
-Slab blend_dst(void* ctx, Half r, Half g, Half b, Half a, Cold* cold) {
+Slab blend_dst(void* ctx, Slab src, Cold* cold) {
     (void)ctx;
-    r = cold->dst.r;
-    g = cold->dst.g;
-    b = cold->dst.b;
-    a = cold->dst.a;
-    NEXT;
+    src = cold->dst;
+    return src;
 }
 
-Slab blend_srcover(void* ctx, Half r, Half g, Half b, Half a, Cold* cold) {
+Slab blend_srcover(void* ctx, Slab src, Cold* cold) {
     (void)ctx;
-    r += cold->dst.r * (1-a);
-    g += cold->dst.g * (1-a);
-    b += cold->dst.b * (1-a);
-    a += cold->dst.a * (1-a);
-    NEXT;
+    src.r += cold->dst.r * (1-src.a);
+    src.g += cold->dst.g * (1-src.a);
+    src.b += cold->dst.b * (1-src.a);
+    src.a += cold->dst.a * (1-src.a);
+    return src;
 }
 
-Slab clamp_01(void* ctx, Half r, Half g, Half b, Half a, Cold* cold) {
+Slab clamp_01(void* ctx, Slab src, Cold* cold) {
     (void)ctx;
     (void)cold;
-    r = clamp(r, 0, 1);
-    g = clamp(g, 0, 1);
-    b = clamp(b, 0, 1);
-    a = clamp(a, 0, 1);
-    NEXT;
+    src.r = clamp(src.r, 0, 1);
+    src.g = clamp(src.g, 0, 1);
+    src.b = clamp(src.b, 0, 1);
+    src.a = clamp(src.a, 0, 1);
+    return src;
 }
 
 Slab load_rgba_f16(const void* ptr) {
@@ -162,13 +151,13 @@ Slab load_rgba_f16(const void* ptr) {
     };
 }
 
-void store_rgba_f16(void* ptr, Half r, Half g, Half b, Half a) {
-    F16 R = cast(r, F16),
-        G = cast(g, F16),
-        B = cast(b, F16),
-        A = cast(a, F16);
-    *(F16x4*)ptr = shuffle(shuffle(R, G, CONCAT),
-                           shuffle(B, A, CONCAT), ST4);
+void store_rgba_f16(void* ptr, Slab src) {
+    F16 r = cast(src.r, F16),
+        g = cast(src.g, F16),
+        b = cast(src.b, F16),
+        a = cast(src.a, F16);
+    *(F16x4*)ptr = shuffle(shuffle(r, g, CONCAT),
+                           shuffle(b, a, CONCAT), ST4);
 }
 
 Slab load_rgb_unorm8(const void* ptr) {
@@ -181,13 +170,12 @@ Slab load_rgb_unorm8(const void* ptr) {
     };
 }
 
-void store_rgb_unorm8(void* ptr, Half r, Half g, Half b, Half a) {
-    (void)a;
-    U8 R = cast(r * (half)255.0 + (half)0.5, U8),
-       G = cast(g * (half)255.0 + (half)0.5, U8),
-       B = cast(b * (half)255.0 + (half)0.5, U8);
-    *(U8x3*)ptr = shuffle(shuffle(R, G, CONCAT),
-                          shuffle(B, B, CONCAT), ST3);
+void store_rgb_unorm8(void* ptr, Slab src) {
+    U8 r = cast(src.r * (half)255.0 + (half)0.5, U8),
+       g = cast(src.g * (half)255.0 + (half)0.5, U8),
+       b = cast(src.b * (half)255.0 + (half)0.5, U8);
+    *(U8x3*)ptr = shuffle(shuffle(r, g, CONCAT),
+                          shuffle(b, b, CONCAT), ST3);
 }
 
 Slab load_rgba_unorm8(const void* ptr) {
@@ -200,13 +188,13 @@ Slab load_rgba_unorm8(const void* ptr) {
     };
 }
 
-void store_rgba_unorm8(void* ptr, Half r, Half g, Half b, Half a) {
-    U8 R = cast(r * (half)255.0 + (half)0.5, U8),
-       G = cast(g * (half)255.0 + (half)0.5, U8),
-       B = cast(b * (half)255.0 + (half)0.5, U8),
-       A = cast(a * (half)255.0 + (half)0.5, U8);
-    *(U8x4*)ptr = shuffle(shuffle(R, G, CONCAT),
-                          shuffle(B, A, CONCAT), ST4);
+void store_rgba_unorm8(void* ptr, Slab src) {
+    U8 r = cast(src.r * (half)255.0 + (half)0.5, U8),
+       g = cast(src.g * (half)255.0 + (half)0.5, U8),
+       b = cast(src.b * (half)255.0 + (half)0.5, U8),
+       a = cast(src.a * (half)255.0 + (half)0.5, U8);
+    *(U8x4*)ptr = shuffle(shuffle(r, g, CONCAT),
+                          shuffle(b, a, CONCAT), ST4);
 }
 
 // 0xffff (65535) becomes +inf when converted directly to f16, so this always goes via f32.
@@ -220,36 +208,29 @@ Slab load_rgba_unorm16(const void* ptr) {
     };
 }
 
-void store_rgba_unorm16(void* ptr, Half r, Half g, Half b, Half a) {
-    U16 R = cast( cast(r, F32) * 65535.0f + 0.5f, U16 ),
-        G = cast( cast(g, F32) * 65535.0f + 0.5f, U16 ),
-        B = cast( cast(b, F32) * 65535.0f + 0.5f, U16 ),
-        A = cast( cast(a, F32) * 65535.0f + 0.5f, U16 );
-    *(U16x4*)ptr = shuffle(shuffle(R, G, CONCAT),
-                           shuffle(B, A, CONCAT), ST4);
+void store_rgba_unorm16(void* ptr, Slab src) {
+    U16 r = cast( cast(src.r, F32) * 65535.0f + 0.5f, U16 ),
+        g = cast( cast(src.g, F32) * 65535.0f + 0.5f, U16 ),
+        b = cast( cast(src.b, F32) * 65535.0f + 0.5f, U16 ),
+        a = cast( cast(src.a, F32) * 65535.0f + 0.5f, U16 );
+    *(U16x4*)ptr = shuffle(shuffle(r, g, CONCAT),
+                           shuffle(b, a, CONCAT), ST4);
 }
 
 static void drive1(void* dptr,
                    int x, int y,
                    Load* load, Store* store,
                    Effect* effect[], void* ctx[]) {
-    Half r = {0},
-         g = {0},
-         b = {0},
-         a = {0};
+    Slab src  = {0};
     Cold cold = {
         .dst = load(dptr),
         .x   = (F32)x + 0.5f + iota,
         .y   = (F32)y + 0.5f,
     };
     while (*effect) {
-        Slab s = (*effect++)(*ctx++, r,g,b,a, &cold);
-        r = s.r;
-        g = s.g;
-        b = s.b;
-        a = s.a;
+        src = (*effect++)(*ctx++,src,&cold);
     }
-    store(dptr, r,g,b,a);
+    store(dptr, src);
 }
 
 void drive(void* dptr, int n,
