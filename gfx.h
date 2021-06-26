@@ -1,7 +1,6 @@
 #pragma once
 
 #include <stddef.h>
-#include <stdint.h>
 
 #if defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
     #define N 8

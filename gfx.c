@@ -1,5 +1,6 @@
 #include "assume.h"
 #include "gfx.h"
+#include <stdint.h>
 #include <string.h>
 
 #define cast    __builtin_convertvector
