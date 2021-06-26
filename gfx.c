@@ -43,17 +43,14 @@
 #endif
 
 #if defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
-    typedef int16_t mask;
+    typedef int16_t __attribute__((ext_vector_type(N))) Mask;
 #else
-    typedef int mask;
+    typedef int     __attribute__((ext_vector_type(N))) Mask;
 #endif
-
-typedef mask __attribute__((ext_vector_type(N))) Mask;
 
 typedef uint8_t __attribute__((ext_vector_type(  N))) U8;
 typedef uint8_t __attribute__((ext_vector_type(3*N))) U8x3;
 typedef uint8_t __attribute__((ext_vector_type(4*N))) U8x4;
-
 
 typedef uint16_t __attribute__((ext_vector_type(  N))) U16;
 typedef uint16_t __attribute__((ext_vector_type(4*N))) U16x4;
