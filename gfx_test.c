@@ -7,7 +7,10 @@
 static void test_matrix_2x3() {
     float m[] = { 1,2,3,
                   4,5,6 };
-    Cold cold = { .x = 2, .y = 3 };
+    Cold cold = {
+        .x = splat(2, F32),
+        .y = splat(3, F32),
+    };
 
     matrix_2x3(m, (RGBA){0}, &cold);
 
@@ -19,7 +22,10 @@ static void test_matrix_3x3() {
     float m[] = { 1,2,3,
                   4,5,6,
                   7,8,9 };
-    Cold cold = { .x = 2, .y = 3 };
+    Cold cold = {
+        .x = splat(2, F32),
+        .y = splat(3, F32),
+    };
 
     matrix_3x3(m, (RGBA){0}, &cold);
 

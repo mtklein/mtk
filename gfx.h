@@ -19,8 +19,11 @@
     #define ABI
 #endif
 
-typedef half  __attribute__((ext_vector_type(N))) Half;
-typedef float __attribute__((ext_vector_type(N))) F32;
+#define vec(T,K)   T __attribute__((vector_size(K*sizeof(T))))
+#define splat(v,T) (v)-(T){0}
+
+typedef vec(half, N) Half;
+typedef vec(float,N) F32;
 
 typedef struct {
     Half r,g,b,a;
