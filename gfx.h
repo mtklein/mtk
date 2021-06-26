@@ -17,6 +17,12 @@
     typedef int   mask;
 #endif
 
+#if defined(__x86_64__)
+    #define ABI __regcall
+#else
+    #define ABI
+#endif
+
 typedef half  __attribute__((ext_vector_type(N))) Half;
 typedef float __attribute__((ext_vector_type(N))) F32;
 
@@ -29,9 +35,9 @@ typedef struct {
     F32 x,y;
 } Cold;
 
-typedef Slab (Effect)(void* ctx, Slab src, Cold*);
-typedef Slab (Load  )(const void*);
-typedef void (Store )(void*, Slab);
+typedef Slab (ABI Effect)(void* ctx, Slab src, Cold*);
+typedef Slab (ABI Load  )(const void*);
+typedef void (ABI Store )(void*, Slab);
 
 typedef struct { float x,y; }     Point;
 typedef struct { float r,g,b,a; } Color;
