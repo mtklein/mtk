@@ -29,10 +29,10 @@ static void test_matrix_3x3() {
 
 static void test_clamp_01() {
     RGBA src = {
-        {(half)+0.0, (half)-0.0, (half)+1.0, (half)-1.0},
-        {(half)+0.5, (half)-0.5, (half)+2.0, (half)-2.0},
-        {(half)+INFINITY, (half)-INFINITY},
-        {(half)+NAN,      (half)-NAN},
+        {+0.0, -0.0, +1.0, -1.0},
+        {+0.5, -0.5, +2.0, -2.0},
+        {+INFINITY, -INFINITY},
+        {+NAN,      -NAN},
     };
 
     src = clamp_01(NULL,src,NULL);
@@ -55,7 +55,7 @@ static void test_clamp_01() {
 }
 
 static void test_load_rgba_f16() {
-    const _Float16 px[4*N] = { 0.0f16, 0.25f16, 0.5f16, 0.75f16, 1.0f16 };
+    const _Float16 px[4*N] = { 0.0, 0.25, 0.5, 0.75, 1.0 };
     RGBA s = load_rgba_f16(px);
 
     expect_eq(s.r[0], (half)0.00);
@@ -67,10 +67,10 @@ static void test_load_rgba_f16() {
 
 static void test_store_rgba_f16() {
     RGBA src = {
-        {(half)0.00, (half)1.0},
-        {(half)0.25},
-        {(half)0.50},
-        {(half)0.75},
+        {0.00, 1.0},
+        {0.25},
+        {0.50},
+        {0.75},
     };
 
     _Float16 px[4*N] = {0};

@@ -74,9 +74,9 @@ static Half clamp(Half x, Half lo, Half hi) { return max(lo, min(x, hi)); }
 static Half Half_from_U8(U8 u8) {
 #if 1 && defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
     U16  u16 = cast(u8, U16);
-    Half half;
-    __asm__("ucvtf.8h %0,%1" : "=w"(half) : "w"(u16));
-    return half;
+    Half h;
+    __asm__("ucvtf.8h %0,%1" : "=w"(h) : "w"(u16));
+    return h;
 #else
     return cast(u8, Half);
 #endif
@@ -174,9 +174,9 @@ RGBA load_rgb_unorm8(const void* ptr) {
 }
 
 void store_rgb_unorm8(void* ptr, RGBA src) {
-    U8 r = cast(src.r * (half)255.0 + (half)0.5, U8),
-       g = cast(src.g * (half)255.0 + (half)0.5, U8),
-       b = cast(src.b * (half)255.0 + (half)0.5, U8);
+    U8 r = cast(src.r * 255 + 0.5, U8),
+       g = cast(src.g * 255 + 0.5, U8),
+       b = cast(src.b * 255 + 0.5, U8);
     *(U8x3*)ptr = shuffle(shuffle(r, g, CONCAT),
                           shuffle(b, b, CONCAT), ST3);
 }
@@ -192,10 +192,10 @@ RGBA load_rgba_unorm8(const void* ptr) {
 }
 
 void store_rgba_unorm8(void* ptr, RGBA src) {
-    U8 r = cast(src.r * (half)255.0 + (half)0.5, U8),
-       g = cast(src.g * (half)255.0 + (half)0.5, U8),
-       b = cast(src.b * (half)255.0 + (half)0.5, U8),
-       a = cast(src.a * (half)255.0 + (half)0.5, U8);
+    U8 r = cast(src.r * 255 + 0.5, U8),
+       g = cast(src.g * 255 + 0.5, U8),
+       b = cast(src.b * 255 + 0.5, U8),
+       a = cast(src.a * 255 + 0.5, U8);
     *(U8x4*)ptr = shuffle(shuffle(r, g, CONCAT),
                           shuffle(b, a, CONCAT), ST4);
 }
@@ -212,10 +212,10 @@ RGBA load_rgba_unorm16(const void* ptr) {
 }
 
 void store_rgba_unorm16(void* ptr, RGBA src) {
-    U16 r = cast( cast(src.r, F32) * 65535.0f + 0.5f, U16 ),
-        g = cast( cast(src.g, F32) * 65535.0f + 0.5f, U16 ),
-        b = cast( cast(src.b, F32) * 65535.0f + 0.5f, U16 ),
-        a = cast( cast(src.a, F32) * 65535.0f + 0.5f, U16 );
+    U16 r = cast( cast(src.r, F32) * 65535 + 0.5, U16 ),
+        g = cast( cast(src.g, F32) * 65535 + 0.5, U16 ),
+        b = cast( cast(src.b, F32) * 65535 + 0.5, U16 ),
+        a = cast( cast(src.a, F32) * 65535 + 0.5, U16 );
     *(U16x4*)ptr = shuffle(shuffle(r, g, CONCAT),
                            shuffle(b, a, CONCAT), ST4);
 }
@@ -227,8 +227,8 @@ static void drive1(void* dptr,
     RGBA src  = {0};
     Cold cold = {
         .dst = load(dptr),
-        .x   = (F32)x + 0.5f + iota,
-        .y   = (F32)y + 0.5f,
+        .x   = x + 0.5f + iota,
+        .y   = y + 0.5f,
     };
     while (*effect) {
         src = (*effect++)(*ctx++,src,&cold);
