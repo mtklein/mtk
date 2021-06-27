@@ -6,11 +6,7 @@
 static void test_matrix_2x3() {
     float m[] = { 1,2,3,
                   4,5,6 };
-    Cold cold = {
-        .x = splat(2, F32),
-        .y = splat(3, F32),
-    };
-
+    Cold cold = { .x = 2, .y = 3 };
     matrix_2x3(m, (RGBA){0}, &cold);
 
     expect_eq(cold.x[0], 2 +  6 + 3);
@@ -21,11 +17,7 @@ static void test_matrix_3x3() {
     float m[] = { 1,2,3,
                   4,5,6,
                   7,8,9 };
-    Cold cold = {
-        .x = splat(2, F32),
-        .y = splat(3, F32),
-    };
-
+    Cold cold = { .x = 2, .y = 3 };
     matrix_3x3(m, (RGBA){0}, &cold);
 
     expect_eq(cold.x[0], (2 +  6 + 3) * (1.0f/(14 + 24 + 9)));

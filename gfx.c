@@ -45,14 +45,20 @@
 #endif
 
 #if defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
-    typedef vec(int16_t,N) Mask;
+    typedef int16_t __attribute__((ext_vector_type(N))) Mask;
 #else
-    typedef vec(int,N) Mask;
+    typedef int     __attribute__((ext_vector_type(N))) Mask;
 #endif
 
-typedef vec(uint8_t, N) U8;
-typedef vec(uint16_t,N) U16;
-typedef vec(_Float16,N) F16;
+typedef uint8_t __attribute__((ext_vector_type(  N))) U8;
+typedef uint8_t __attribute__((ext_vector_type(3*N))) U8x3;
+typedef uint8_t __attribute__((ext_vector_type(4*N))) U8x4;
+
+typedef uint16_t __attribute__((ext_vector_type(  N))) U16;
+typedef uint16_t __attribute__((ext_vector_type(4*N))) U16x4;
+
+typedef _Float16 __attribute__((ext_vector_type(  N))) F16;
+typedef _Float16 __attribute__((ext_vector_type(4*N))) F16x4;
 
 static Half select(Mask cond, Half t, Half f) { return (Half)( ( cond & (Mask)t)
                                                              | (~cond & (Mask)f)); }
@@ -92,14 +98,17 @@ RGBA matrix_3x3(void* ctx, RGBA src, Cold* cold) {
 }
 
 RGBA shade_rgba_f32(void* ctx, RGBA src, Cold* cold) {
+    typedef float __attribute__((ext_vector_type(4))) F4;
+    typedef half  __attribute__((ext_vector_type(4))) H4;
     (void)cold;
-    vec(float,4) rgba_f32;
+
+    F4 rgba_f32;
     unaligned_load(&rgba_f32, ctx);
-    vec(half,4) rgba = cast(rgba_f32, vec(half,4));
-    src.r = splat(rgba[0], Half);
-    src.g = splat(rgba[1], Half);
-    src.b = splat(rgba[2], Half);
-    src.a = splat(rgba[3], Half);
+    H4 rgba = cast(rgba_f32, H4);
+    src.r = rgba.r;
+    src.g = rgba.g;
+    src.b = rgba.b;
+    src.a = rgba.a;
     return src;
 }
 
@@ -127,15 +136,15 @@ RGBA blend_srcover(void* ctx, RGBA src, Cold* cold) {
 RGBA clamp_01(void* ctx, RGBA src, Cold* cold) {
     (void)ctx;
     (void)cold;
-    src.r = clamp(src.r, splat(0,Half), splat(1,Half));
-    src.g = clamp(src.g, splat(0,Half), splat(1,Half));
-    src.b = clamp(src.b, splat(0,Half), splat(1,Half));
-    src.a = clamp(src.a, splat(0,Half), splat(1,Half));
+    src.r = clamp(src.r, 0,1);
+    src.g = clamp(src.g, 0,1);
+    src.b = clamp(src.b, 0,1);
+    src.a = clamp(src.a, 0,1);
     return src;
 }
 
 RGBA load_rgba_f16(const void* ptr) {
-    vec(_Float16,N*4) v;
+    F16x4 v;
     unaligned_load(&v, ptr);
     return (RGBA) {
         cast(shuffle(v,v, LD4_0), Half),
@@ -150,12 +159,12 @@ void store_rgba_f16(void* ptr, RGBA src) {
         g = cast(src.g, F16),
         b = cast(src.b, F16),
         a = cast(src.a, F16);
-    *(vec(_Float16,N*4)*)ptr = shuffle(shuffle(r, g, CONCAT),
-                                       shuffle(b, a, CONCAT), ST4);
+    *(F16x4*)ptr = shuffle(shuffle(r, g, CONCAT),
+                           shuffle(b, a, CONCAT), ST4);
 }
 
 RGBA load_rgb_unorm8(const void* ptr) {
-    vec(uint8_t,3*N) v;
+    U8x3 v;
     unaligned_load(&v, ptr);
     return (RGBA) {
         Half_from_U8(shuffle(v,v, LD3_0)) * (half)(1/255.0),
@@ -169,12 +178,12 @@ void store_rgb_unorm8(void* ptr, RGBA src) {
     U8 r = cast(src.r * 255 + 0.5, U8),
        g = cast(src.g * 255 + 0.5, U8),
        b = cast(src.b * 255 + 0.5, U8);
-    *(vec(uint8_t,3*N)*)ptr = shuffle(shuffle(r, g, CONCAT),
-                                      shuffle(b, b, CONCAT), ST3);
+    *(U8x3*)ptr = shuffle(shuffle(r, g, CONCAT),
+                          shuffle(b, b, CONCAT), ST3);
 }
 
 RGBA load_rgba_unorm8(const void* ptr) {
-    vec(uint8_t,4*N) v;
+    U8x4 v;
     unaligned_load(&v, ptr);
     return (RGBA) {
         Half_from_U8(shuffle(v,v, LD4_0)) * (half)(1/255.0),
@@ -189,13 +198,13 @@ void store_rgba_unorm8(void* ptr, RGBA src) {
        g = cast(src.g * 255 + 0.5, U8),
        b = cast(src.b * 255 + 0.5, U8),
        a = cast(src.a * 255 + 0.5, U8);
-    *(vec(uint8_t,4*N)*)ptr = shuffle(shuffle(r, g, CONCAT),
-                                      shuffle(b, a, CONCAT), ST4);
+    *(U8x4*)ptr = shuffle(shuffle(r, g, CONCAT),
+                          shuffle(b, a, CONCAT), ST4);
 }
 
 // 0xffff (65535) becomes +inf when converted directly to f16, so this always goes via f32.
 RGBA load_rgba_unorm16(const void* ptr) {
-    vec(uint16_t,4*N) v;
+    U16x4 v;
     unaligned_load(&v, ptr);
     return (RGBA) {
         cast( cast(shuffle(v,v, LD4_0), F32) * (1/65535.0f), Half ),
@@ -210,8 +219,8 @@ void store_rgba_unorm16(void* ptr, RGBA src) {
         g = cast( cast(src.g, F32) * 65535 + 0.5, U16 ),
         b = cast( cast(src.b, F32) * 65535 + 0.5, U16 ),
         a = cast( cast(src.a, F32) * 65535 + 0.5, U16 );
-    *(vec(uint16_t,4*N)*)ptr = shuffle(shuffle(r, g, CONCAT),
-                                       shuffle(b, a, CONCAT), ST4);
+    *(U16x4*)ptr = shuffle(shuffle(r, g, CONCAT),
+                           shuffle(b, a, CONCAT), ST4);
 }
 
 static void driveN(const void* lptr, Load*  load,
