@@ -68,7 +68,7 @@ static Half clamp(Half x, Half lo, Half hi) { return max(lo, min(x, hi)); }
 
 // LLVM won't use uvcvf.8h to convert U16 to Half, otherwise we'd just cast(u8, Half).
 static Half Half_from_U8(U8 u8) {
-#if 1 && defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
+#if defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
     U16  u16 = cast(u8, U16);
     Half h;
     __asm__("ucvtf.8h %0,%1" : "=w"(h) : "w"(u16));
