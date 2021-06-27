@@ -78,6 +78,13 @@ static Half Half_from_U8(U8 u8) {
 #endif
 }
 
+RGBA seed_xy(void* ctx, RGBA src, Cold* cold) {
+    (void)ctx;
+    cold->x = cold->X + 0.5f + iota;
+    cold->y = cold->Y + 0.5f;
+    return src;
+}
+
 RGBA matrix_2x3(void* ctx, RGBA src, Cold* cold) {
     const float* m = ctx;
     F32 x = cold->x * m[0] + (cold->y * m[1] + m[2]),
@@ -225,14 +232,15 @@ void store_rgba_unorm16(void* ptr, RGBA src) {
 
 static void driveN(const void* lptr, Load*  load,
                    void*       sptr, Store* store,
-                   float x, float y,
+                   int x, int y,
                    Effect* effect[], void* ctx[]) {
-    RGBA src  = {0};
-    Cold cold = {
-        .dst = load(lptr),
-        .x   = x + iota,
-        .y   = y,
-    };
+    RGBA src = {0};
+
+    Cold cold;
+    cold.dst = load(lptr);
+    cold.X   = x;
+    cold.Y   = y;
+
     while (*effect) {
         src = (*effect++)(*ctx++,src,&cold);
     }
@@ -243,21 +251,19 @@ void drive(const void* lptr, size_t lbpp, Load*  load,
            void*       sptr, size_t sbpp, Store* store,
            int x, int y, int n,
            Effect* effect[], void* ctx[]) {
-    float X = x + 0.5f,
-          Y = y + 0.5f;
     while (n >= N) {
-        driveN(lptr,load, sptr,store, X,Y, effect,ctx);
+        driveN(lptr,load, sptr,store, x,y, effect,ctx);
 
         lptr = (const char*)lptr + N*lbpp;
         sptr = (      char*)sptr + N*sbpp;
-        X += N;
+        x += N;
         n -= N;
     }
     if (n > 0) {
         assume(lbpp <= 16 && sbpp <= 16);
         char tmp[N*16] = {0};
         memcpy(tmp, lptr, (size_t)n*lbpp);
-        driveN(tmp,load, tmp,store, X,Y, effect,ctx);
+        driveN(tmp,load, tmp,store, x,y, effect,ctx);
         memcpy(sptr, tmp, (size_t)n*sbpp);
     }
 }

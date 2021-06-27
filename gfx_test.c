@@ -3,6 +3,16 @@
 #include "len.h"
 #include <math.h>
 
+static void test_seed_xy() {
+    Cold cold = { .X = 2, .Y = 3 };
+    seed_xy(NULL, (RGBA){0}, &cold);
+
+    expect_eq(cold.x[0], 2.5f);
+    expect_eq(cold.x[1], 3.5f);
+    expect_eq(cold.y[0], 3.5f);
+    expect_eq(cold.y[1], 3.5f);
+}
+
 static void test_matrix_2x3() {
     float m[] = { 1,2,3,
                   4,5,6 };
@@ -226,6 +236,7 @@ int main(void) {
     test_load_rgba_unorm8();
     test_matrix_2x3();
     test_matrix_3x3();
+    test_seed_xy();
     test_store_rgb_unorm8();
     test_store_rgba_f16();
     test_store_rgba_unorm16();

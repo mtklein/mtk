@@ -29,6 +29,8 @@ typedef struct {
 typedef struct {
     RGBA dst;
     F32  x,y;
+    int  X,Y;
+    int  padding[6];
 } Cold;
 
 typedef RGBA (ABI Effect)(void* ctx, RGBA src, Cold*);
@@ -42,6 +44,7 @@ Effect
     clamp_01,
     matrix_2x3,
     matrix_3x3,
+    seed_xy,
     shade_rgba_f32;
 
 Load
