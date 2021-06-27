@@ -3,6 +3,20 @@
 #include "len.h"
 #include <stdint.h>
 
+static double memset32(int k, double *scale, const char* *unit) {
+    *scale = 1024;
+    *unit  = "px";
+
+    double start = now();
+    volatile uint32_t buf[1024];
+    while (k --> 0) {
+        for (int i = 0; i < 1024; i++) {
+            buf[i] = 0xffaaccee;
+        }
+    }
+    return now() - start;
+}
+
 static double rgb_unorm8(int k, double *scale, const char* *unit) {
     *scale = 63;
     *unit  = "px";
@@ -88,6 +102,7 @@ static double rgba_unorm16(int k, double *scale, const char* *unit) {
 }
 
 int main(int argc, char** argv) {
+    bench(   memset32);
     bench( rgb_unorm8);
     bench(rgba_unorm8);
     bench(rgba_unorm16);
