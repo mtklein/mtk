@@ -216,13 +216,13 @@ void store_rgba_unorm16(void* ptr, RGBA src) {
 
 static void driveN(const void* lptr, Load*  load,
                    void*       sptr, Store* store,
-                   int x, int y,
+                   float x, float y,
                    Effect* effect[], void* ctx[]) {
     RGBA src  = {0};
     Cold cold = {
         .dst = load(lptr),
-        .x   = x + 0.5f + iota,
-        .y   = y + 0.5f,
+        .x   = x + iota,
+        .y   = y,
     };
     while (*effect) {
         src = (*effect++)(*ctx++,src,&cold);
@@ -234,19 +234,21 @@ void drive(const void* lptr, size_t lbpp, Load*  load,
            void*       sptr, size_t sbpp, Store* store,
            int x, int y, int n,
            Effect* effect[], void* ctx[]) {
+    float X = x + 0.5f,
+          Y = y + 0.5f;
     while (n >= N) {
-        driveN(lptr,load, sptr,store, x,y, effect,ctx);
+        driveN(lptr,load, sptr,store, X,Y, effect,ctx);
 
         lptr = (const char*)lptr + N*lbpp;
         sptr = (      char*)sptr + N*sbpp;
-        x += N;
+        X += N;
         n -= N;
     }
     if (n > 0) {
         assume(lbpp <= 16 && sbpp <= 16);
         char tmp[N*16] = {0};
         memcpy(tmp, lptr, (size_t)n*lbpp);
-        driveN(tmp,load, tmp,store, x,y, effect,ctx);
+        driveN(tmp,load, tmp,store, X,Y, effect,ctx);
         memcpy(sptr, tmp, (size_t)n*sbpp);
     }
 }
