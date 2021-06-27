@@ -8,11 +8,10 @@ static double memset32(int k, double *scale, const char* *unit) {
     *unit  = "px";
 
     double start = now();
-    volatile uint32_t buf[1024];
+    uint32_t buf[1024];
     while (k --> 0) {
-        for (int i = 0; i < 1024; i++) {
-            buf[i] = 0xffaaccee;
-        }
+        uint32_t p = 0xffaaccee;
+        memset_pattern4(buf, &p, sizeof buf);
     }
     return now() - start;
 }
