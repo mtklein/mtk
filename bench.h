@@ -21,7 +21,7 @@ static void print_rate(double rate) {
 static inline void bench_(const char* name, double(*fn)(int)) {
     int k = 1;
     double elapsed = 0;
-    while (elapsed < 0.025) {
+    while (elapsed < 0.125) {
         k *= 2;
         elapsed = fn(k);
     }
