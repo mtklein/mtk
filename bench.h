@@ -18,17 +18,20 @@ static void print_rate(double rate) {
     printf("%.3g%s", rate, *unit);
 }
 
-static void bench_(const char* name, double(*fn)(int)) {
+static void bench_(const char* name, double(*fn)(int, double*, const char**)) {
+    double      scale = 1.0;
+    const char* unit  = "";
+
     int k = 1;
     double elapsed = 0;
     while (elapsed < 0.125) {
         k *= 2;
-        elapsed = fn(k);
+        elapsed = fn(k, &scale,&unit);
     }
 
     printf("%-30s", name);
-    print_rate(k/elapsed);
-    printf("\n");
+    print_rate(k/elapsed * scale);
+    printf("%s\n", unit);
 }
 
 #define bench(fn) if (argc == 1 || 0 == strcmp(argv[1], #fn)) bench_(#fn,fn)

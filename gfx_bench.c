@@ -3,7 +3,10 @@
 #include "len.h"
 #include <stdint.h>
 
-static double rgb_unorm8(int k) {
+static double rgb_unorm8(int k, double *scale, const char* *unit) {
+    *scale = 63;
+    *unit  = "px";
+
     uint8_t dst[63*3] = {0};
 
     float rgba[] = { 0.333f, 0.5f, 0.666f, 1.0f };
@@ -28,7 +31,10 @@ static double rgb_unorm8(int k) {
     return now() - start;
 }
 
-static double rgba_unorm8(int k) {
+static double rgba_unorm8(int k, double *scale, const char* *unit) {
+    *scale = 63;
+    *unit  = "px";
+
     uint8_t dst[63*4] = {0};
 
     float rgba[] = { 0.333f, 0.5f, 0.666f, 1.0f };
@@ -53,7 +59,10 @@ static double rgba_unorm8(int k) {
     return now() - start;
 }
 
-static double rgba_unorm16(int k) {
+static double rgba_unorm16(int k, double *scale, const char* *unit) {
+    *scale = 63;
+    *unit  = "px";
+
     uint16_t dst[63*4] = {0};
 
     float rgba[] = { 0.333f, 0.5f, 0.666f, 1.0f };

@@ -1,7 +1,10 @@
 #include "array.h"
 #include "bench.h"
 
-static double bench_push(int k) {
+static double bench_push(int k, double *scale, const char* *unit) {
+    *scale = 1.0;
+    *unit  = "";
+
     float* p = NULL;
     int    n = 0;
 
@@ -16,7 +19,10 @@ static double bench_push(int k) {
     return elapsed;
 }
 
-static double bench_pop(int k) {
+static double bench_pop(int k, double *scale, const char* *unit) {
+    *scale = 1.0;
+    *unit  = "";
+
     float* p = NULL;
     int    n = 0;
 
