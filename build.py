@@ -8,11 +8,15 @@ targets = [
     'gfx',
     'ns',
 ]
-modes = {
+bench_modes = {
     '':       '-flto -DNDEBUG',
     'arm64':  '',
-    'san':    '-fsanitize=address,integer,undefined -fno-sanitize-recover=all',
     'x86_64': '-arch x86_64 -arch x86_64h -momit-leaf-frame-pointer',
+}
+test_modes = {
+    'san':    '-fsanitize=address,integer,undefined -fno-sanitize-recover=all',
+}
+build_modes = {
 }
 
 header = '''
@@ -35,17 +39,30 @@ rule run
 with open('build.ninja', 'w') as f:
     print(header, file=f)
     for target in targets:
+        mode  = ''
+        modes = {}
+        p = lambda s: print(s.format(short=target,
+                                     full='out/{}/{}'.format(mode,target),
+                                     flags=modes[mode]), file=f)
+        modes.update(bench_modes)
         for mode in modes:
-            p = lambda s: print(s.format(short=target,
-                                         full='out/{}/{}'.format(mode,target),
-                                         flags=modes[mode]), file=f)
-            p('build {full}.o: compile {short}.c')
+            p('build {full}_bench.o: compile {short}_bench.c')
             p('    cc = $cc {flags}')
+            p('build {full}_bench: link {full}.o {full}_bench.o')
+            p('    cc = $cc {flags}')
+
+        modes.update(test_modes)
+        for mode in modes:
             p('build {full}_test.o: compile {short}_test.c')
             p('    cc = $cc {flags} -Wno-float-equal')
             p('build {full}_test: link {full}.o {full}_test.o')
             p('    cc = $cc {flags}')
             p('build {full}.ok: run {full}_test')
+
+        modes.update(build_modes)
+        for mode in modes:
+            p('build {full}.o: compile {short}.c')
+            p('    cc = $cc {flags}')
 
 rc = os.system(' '.join(['ninja'] + sys.argv[1:]))
 os.remove('build.ninja')

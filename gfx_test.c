@@ -1,8 +1,7 @@
 #include "expect.h"
 #include "gfx.h"
+#include "len.h"
 #include <math.h>
-
-#define len(arr) (int)(sizeof(arr) / sizeof(*arr))
 
 static void test_matrix_2x3() {
     float m[] = { 1,2,3,
