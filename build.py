@@ -6,7 +6,6 @@ import sys
 targets = [
     'array',
     'gfx',
-    'ns',
 ]
 bench_modes = {
     '':       '-flto -DNDEBUG',
