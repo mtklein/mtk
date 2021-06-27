@@ -4,7 +4,7 @@
 #include <string.h>
 #include <time.h>
 
-static inline double now() {
+static double now() {
     return clock() * (1.0 / CLOCKS_PER_SEC);
 }
 
@@ -18,7 +18,7 @@ static void print_rate(double rate) {
     printf("%.3g%s", rate, *unit);
 }
 
-static inline void bench_(const char* name, double(*fn)(int)) {
+static void bench_(const char* name, double(*fn)(int)) {
     int k = 1;
     double elapsed = 0;
     while (elapsed < 0.125) {
