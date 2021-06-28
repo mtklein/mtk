@@ -1,7 +1,5 @@
 #pragma once
 
-#include <stddef.h>
-
 #if defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
     #define N 8
     typedef _Float16 half;
