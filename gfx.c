@@ -47,15 +47,14 @@
     typedef int     __attribute__((ext_vector_type(N))) Mask;
 #endif
 
-typedef uint8_t __attribute__((ext_vector_type(  N))) U8;
-typedef uint8_t __attribute__((ext_vector_type(3*N))) U8x3;
-typedef uint8_t __attribute__((ext_vector_type(4*N))) U8x4;
+typedef uint8_t  __attribute__((ext_vector_type(N))) U8;
+typedef uint16_t __attribute__((ext_vector_type(N))) U16;
+typedef _Float16 __attribute__((ext_vector_type(N))) F16;
 
-typedef uint16_t __attribute__((ext_vector_type(  N))) U16;
-typedef uint16_t __attribute__((ext_vector_type(4*N))) U16x4;
-
-typedef _Float16 __attribute__((ext_vector_type(  N))) F16;
-typedef _Float16 __attribute__((ext_vector_type(4*N))) F16x4;
+typedef uint8_t  __attribute__((ext_vector_type(N*3), aligned(1))) U8x3;
+typedef uint8_t  __attribute__((ext_vector_type(N*4), aligned(1))) U8x4;
+typedef uint16_t __attribute__((ext_vector_type(N*4), aligned(2))) U16x4;
+typedef _Float16 __attribute__((ext_vector_type(N*4), aligned(2))) F16x4;
 
 static Half select(Mask cond, Half t, Half f) { return (Half)( ( cond & (Mask)t)
                                                              | (~cond & (Mask)f)); }

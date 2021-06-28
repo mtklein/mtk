@@ -167,19 +167,40 @@ static void test_store_rgba_unorm16() {
     expect_eq(px[4], 0xffff);
 }
 
-static void test_drive_1() {
-    uint8_t dst[1*4] = {0};
+static void test_drive_rgb_unorm8() {
+    uint8_t dst[63*3] = {0};
 
     float rgba[] = { 0.333f, 0.5f, 0.666f, 1.0f };
 
     Step step[] = {
-        {loadN_rgba_unorm8,  load1_rgba_unorm8,   dst},
-        {shade_rgba_f32,     shade_rgba_f32,     rgba},
-        {blend_srcover,      blend_srcover,      NULL},
-        {storeN_rgba_unorm8, store1_rgba_unorm8,  dst},
+        {loadN_rgb_unorm8,   load1_rgb_unorm8,  dst},
+        {shade_rgba_f32,     shade_rgba_f32,    rgba},
+        {blend_srcover,      blend_srcover,     NULL},
+        {storeN_rgb_unorm8,  store1_rgb_unorm8, dst},
         {0},
     };
-    drive(step,1,0,0);
+    drive(step,len(dst)/3,0,0);
+
+    for (int i = 0; i < len(dst)/3; i++) {
+        expect_eq(dst[3*i+0], 0x55);
+        expect_eq(dst[3*i+1], 0x80);
+        expect_eq(dst[3*i+2], 0xaa);
+    }
+}
+
+static void test_drive_rgba_unorm8() {
+    uint8_t dst[63*4] = {0};
+
+    float rgba[] = { 0.333f, 0.5f, 0.666f, 1.0f };
+
+    Step step[] = {
+        {loadN_rgba_unorm8,  load1_rgba_unorm8,  dst},
+        {shade_rgba_f32,     shade_rgba_f32,     rgba},
+        {blend_srcover,      blend_srcover,      NULL},
+        {storeN_rgba_unorm8, store1_rgba_unorm8, dst},
+        {0},
+    };
+    drive(step,len(dst)/4,0,0);
 
     for (int i = 0; i < len(dst)/4; i++) {
         expect_eq(dst[4*i+0], 0x55);
@@ -189,16 +210,16 @@ static void test_drive_1() {
     }
 }
 
-static void test_drive_n() {
+static void test_drive_rgba_unorm16() {
     uint16_t dst[63*4] = {0};
 
     float rgba[] = { 0.333f, 0.5f, 0.666f, 1.0f };
 
     Step step[] = {
-        {loadN_rgba_unorm16,  load1_rgba_unorm16,   dst},
+        {loadN_rgba_unorm16,  load1_rgba_unorm16,  dst},
         {shade_rgba_f32,      shade_rgba_f32,      rgba},
         {blend_srcover,       blend_srcover,       NULL},
-        {storeN_rgba_unorm16, store1_rgba_unorm16,  dst},
+        {storeN_rgba_unorm16, store1_rgba_unorm16, dst},
         {0},
     };
     drive(step,len(dst)/4,0,0);
@@ -213,8 +234,9 @@ static void test_drive_n() {
 
 int main(void) {
     test_clamp_01();
-    test_drive_1();
-    test_drive_n();
+    test_drive_rgb_unorm8();
+    test_drive_rgba_unorm8();
+    test_drive_rgba_unorm16();
     test_load_rgb_unorm8();
     test_load_rgba_f16();
     test_load_rgba_unorm16();
