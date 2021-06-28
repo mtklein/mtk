@@ -1,4 +1,3 @@
-#include "assume.h"
 #include "gfx.h"
 #include <stdint.h>
 #include <string.h>
@@ -82,8 +81,8 @@ static Half Half_from_U8(U8 u8) {
 // or n itself to signal a size < N tail chunk, of size (p%N) == (n%N) > 0.
 //
 // Either way, first_lane_index(p) returns the index of the first lane.
-static size_t first_lane_index(size_t p) {
-    return p & ~(size_t)(N-1);
+static int first_lane_index(int p) {
+    return p & ~(N-1);
 }
 
 // Adjust base ctx pointer to the index of the first lane, scaled by a constant byte stride.
@@ -92,21 +91,21 @@ static size_t first_lane_index(size_t p) {
 // adjusts ctx ahead by the appropriate number of 3-byte structs, while a call like
 //     ctx = stride(0,ctx,p);
 // is a noop, basically a comment that the context pointer is uniform.
-static void* stride(size_t k, void* ctx, size_t p) {
-    return k ? (char*)ctx + first_lane_index(p)*k : ctx;
+static void* stride(size_t k, void* ctx, int p) {
+    return k ? (char*)ctx + (size_t)first_lane_index(p)*k : ctx;
 }
 
-RGBA seed_xy(void* ctx, size_t p, RGBA src, Cold* cold) {
+RGBA seed_xy(void* ctx, int p, RGBA src, Cold* cold) {
     ctx = stride(0,ctx,p);
 
     // In any given call to drive(), x marches along one at a time, while y remains constant.
     const int* xy = ctx;
-    cold->x = xy[0] + (int)first_lane_index(p) + iota + 0.5f;
-    cold->y = xy[1]                                   + 0.5f;
+    cold->x = xy[0] + first_lane_index(p) + iota + 0.5f;
+    cold->y = xy[1]                              + 0.5f;
     return src;
 }
 
-RGBA matrix_2x3(void* ctx, size_t p, RGBA src, Cold* cold) {
+RGBA matrix_2x3(void* ctx, int p, RGBA src, Cold* cold) {
     ctx = stride(0,ctx,p);
 
     const float* m = ctx;
@@ -117,7 +116,7 @@ RGBA matrix_2x3(void* ctx, size_t p, RGBA src, Cold* cold) {
     return src;
 }
 
-RGBA matrix_3x3(void* ctx, size_t p, RGBA src, Cold* cold) {
+RGBA matrix_3x3(void* ctx, int p, RGBA src, Cold* cold) {
     ctx = stride(0,ctx,p);
 
     const float* m = ctx;
@@ -129,7 +128,7 @@ RGBA matrix_3x3(void* ctx, size_t p, RGBA src, Cold* cold) {
     return src;
 }
 
-RGBA shade_rgba_f32(void* ctx, size_t p, RGBA src, Cold* cold) {
+RGBA shade_rgba_f32(void* ctx, int p, RGBA src, Cold* cold) {
     typedef float __attribute__((ext_vector_type(4))) F4;
     typedef half  __attribute__((ext_vector_type(4))) H4;
 
@@ -147,21 +146,21 @@ RGBA shade_rgba_f32(void* ctx, size_t p, RGBA src, Cold* cold) {
     return src;
 }
 
-RGBA blend_src(void* ctx, size_t p, RGBA src, Cold* cold) {
+RGBA blend_src(void* ctx, int p, RGBA src, Cold* cold) {
     ctx = stride(0,ctx,p);
     (void)cold;
 
     return src;
 }
 
-RGBA blend_dst(void* ctx, size_t p, RGBA src, Cold* cold) {
+RGBA blend_dst(void* ctx, int p, RGBA src, Cold* cold) {
     ctx = stride(0,ctx,p);
 
     src = cold->dst;
     return src;
 }
 
-RGBA blend_srcover(void* ctx, size_t p, RGBA src, Cold* cold) {
+RGBA blend_srcover(void* ctx, int p, RGBA src, Cold* cold) {
     ctx = stride(0,ctx,p);
 
     src.r += cold->dst.r * (1-src.a);
@@ -171,7 +170,7 @@ RGBA blend_srcover(void* ctx, size_t p, RGBA src, Cold* cold) {
     return src;
 }
 
-RGBA clamp_01(void* ctx, size_t p, RGBA src, Cold* cold) {
+RGBA clamp_01(void* ctx, int p, RGBA src, Cold* cold) {
     ctx = stride(0,ctx,p);
     (void)cold;
 
@@ -182,7 +181,7 @@ RGBA clamp_01(void* ctx, size_t p, RGBA src, Cold* cold) {
     return src;
 }
 
-RGBA load_rgba_f16(void* ctx, size_t p, RGBA src, Cold* cold) {
+RGBA load_rgba_f16(void* ctx, int p, RGBA src, Cold* cold) {
     ctx = stride(8,ctx,p);
     (void)cold;
 
@@ -205,7 +204,7 @@ RGBA load_rgba_f16(void* ctx, size_t p, RGBA src, Cold* cold) {
     return src;
 }
 
-RGBA store_rgba_f16(void* ctx, size_t p, RGBA src, Cold* cold) {
+RGBA store_rgba_f16(void* ctx, int p, RGBA src, Cold* cold) {
     ctx = stride(8,ctx,p);
     (void)cold;
 
@@ -224,7 +223,7 @@ RGBA store_rgba_f16(void* ctx, size_t p, RGBA src, Cold* cold) {
     return src;
 }
 
-RGBA load_rgb_unorm8(void* ctx, size_t p, RGBA src, Cold* cold) {
+RGBA load_rgb_unorm8(void* ctx, int p, RGBA src, Cold* cold) {
     ctx = stride(3,ctx,p);
     (void)cold;
 
@@ -247,7 +246,7 @@ RGBA load_rgb_unorm8(void* ctx, size_t p, RGBA src, Cold* cold) {
     return src;
 }
 
-RGBA store_rgb_unorm8(void* ctx, size_t p, RGBA src, Cold* cold) {
+RGBA store_rgb_unorm8(void* ctx, int p, RGBA src, Cold* cold) {
     ctx = stride(3,ctx,p);
     (void)cold;
 
@@ -266,7 +265,7 @@ RGBA store_rgb_unorm8(void* ctx, size_t p, RGBA src, Cold* cold) {
     return src;
 }
 
-RGBA load_rgba_unorm8(void* ctx, size_t p, RGBA src, Cold* cold) {
+RGBA load_rgba_unorm8(void* ctx, int p, RGBA src, Cold* cold) {
     ctx = stride(4,ctx,p);
     (void)cold;
 
@@ -289,7 +288,7 @@ RGBA load_rgba_unorm8(void* ctx, size_t p, RGBA src, Cold* cold) {
     return src;
 }
 
-RGBA store_rgba_unorm8(void* ctx, size_t p, RGBA src, Cold* cold) {
+RGBA store_rgba_unorm8(void* ctx, int p, RGBA src, Cold* cold) {
     ctx = stride(4,ctx,p);
     (void)cold;
 
@@ -309,7 +308,7 @@ RGBA store_rgba_unorm8(void* ctx, size_t p, RGBA src, Cold* cold) {
 }
 
 // 0xffff (65535) becomes +inf when converted directly to f16, so unorm16 always goes via f32.
-RGBA load_rgba_unorm16(void* ctx, size_t p, RGBA src, Cold* cold) {
+RGBA load_rgba_unorm16(void* ctx, int p, RGBA src, Cold* cold) {
     ctx = stride(8,ctx,p);
     (void)cold;
 
@@ -332,7 +331,7 @@ RGBA load_rgba_unorm16(void* ctx, size_t p, RGBA src, Cold* cold) {
     return src;
 }
 
-RGBA store_rgba_unorm16(void* ctx, size_t p, RGBA src, Cold* cold) {
+RGBA store_rgba_unorm16(void* ctx, int p, RGBA src, Cold* cold) {
     ctx = stride(8,ctx,p);
     (void)cold;
 
@@ -352,20 +351,19 @@ RGBA store_rgba_unorm16(void* ctx, size_t p, RGBA src, Cold* cold) {
 }
 
 void drive(const Step step[], const int n) {
-    assume(n >= 0);
     Cold cold = {0};
 
-    size_t i = 0;
-    for (; i+N <= (size_t)n; i += N) {
+    int i = 0;
+    for (; i+N <= n; i += N) {
         RGBA src = {0};
         for (const Step* s = step; s->effect; s++) {
             src = s->effect(s->ctx,i,src,&cold);
         }
     }
-    if (i < (size_t)n) {
+    if (i < n) {
         RGBA src = {0};
         for (const Step* s = step; s->effect; s++) {
-            src = s->effect(s->ctx,(size_t)n,src,&cold);
+            src = s->effect(s->ctx,n,src,&cold);
         }
     }
 }
