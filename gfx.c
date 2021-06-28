@@ -74,6 +74,15 @@ static Half Half_from_U8(U8 u8) {
 #endif
 }
 
+RGBA seed_xy(void* ctx, int i, RGBA src, Cold* cold) {
+    (void)i;
+
+    const int* xy = ctx;
+    cold->x = xy[0] + 0.5f + iota;
+    cold->y = xy[1] + 0.5f;
+    return src;
+}
+
 RGBA matrix_2x3(void* ctx, int i, RGBA src, Cold* cold) {
     (void)i;
 
@@ -359,11 +368,8 @@ RGBA store1_rgba_unorm16(void* ctx, int i, RGBA src, Cold* cold) {
     return src;
 }
 
-void drive(const Step step[], int n, int x, int y) {
-    Cold cold = {
-        .x = x + 0.5f + iota,
-        .y = y + 0.5f,
-    };
+void drive(const Step step[], int n) {
+    Cold cold = {0};
 
     int i = 0;
     for (; i+N <= n; i += N) {
@@ -371,7 +377,6 @@ void drive(const Step step[], int n, int x, int y) {
         for (const Step* s = step; s->effectN; s++) {
             src = s->effectN(s->ctx,i,src,&cold);
         }
-        cold.x += N;
     }
 
     for (; i < n; i += 1) {
@@ -379,6 +384,5 @@ void drive(const Step step[], int n, int x, int y) {
         for (const Step* s = step; s->effect1; s++) {
             src = s->effect1(s->ctx,i,src,&cold);
         }
-        cold.x += 1;
     }
 }

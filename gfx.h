@@ -46,6 +46,7 @@ Effect
     loadN_rgba_unorm8,
     matrix_2x3,
     matrix_3x3,
+    seed_xy,
     shade_rgba_f32,
     store1_rgb_unorm8,
     store1_rgba_f16,
@@ -62,4 +63,4 @@ typedef struct {
     void   *ctx;
 } Step;
 
-void drive(const Step step[], int n, int x, int y);
+void drive(const Step step[], int n);

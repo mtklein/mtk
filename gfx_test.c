@@ -5,6 +5,17 @@
 
 static const RGBA zero = {0};
 
+static void test_seed_xy() {
+    int xy[] = {2,7};
+    Cold cold = {0};
+    seed_xy(xy,0,zero,&cold);
+
+    expect_eq(cold.x[0], 2.5f);
+    expect_eq(cold.x[1], 3.5f);
+    expect_eq(cold.y[0], 7.5f);
+    expect_eq(cold.y[1], 7.5f);
+}
+
 static void test_matrix_2x3() {
     float m[] = { 1,2,3,
                   4,5,6 };
@@ -179,7 +190,7 @@ static void test_drive_rgb_unorm8() {
         {storeN_rgb_unorm8,  store1_rgb_unorm8, dst},
         {0},
     };
-    drive(step,len(dst)/3,0,0);
+    drive(step,len(dst)/3);
 
     for (int i = 0; i < len(dst)/3; i++) {
         expect_eq(dst[3*i+0], 0x55);
@@ -200,7 +211,7 @@ static void test_drive_rgba_unorm8() {
         {storeN_rgba_unorm8, store1_rgba_unorm8, dst},
         {0},
     };
-    drive(step,len(dst)/4,0,0);
+    drive(step,len(dst)/4);
 
     for (int i = 0; i < len(dst)/4; i++) {
         expect_eq(dst[4*i+0], 0x55);
@@ -222,7 +233,7 @@ static void test_drive_rgba_unorm16() {
         {storeN_rgba_unorm16, store1_rgba_unorm16, dst},
         {0},
     };
-    drive(step,len(dst)/4,0,0);
+    drive(step,len(dst)/4);
 
     for (int i = 0; i < len(dst)/4; i++) {
         expect_in(dst[4*i+0], 0x553f, 0x5540);
@@ -243,6 +254,7 @@ int main(void) {
     test_load_rgba_unorm8();
     test_matrix_2x3();
     test_matrix_3x3();
+    test_seed_xy();
     test_store_rgb_unorm8();
     test_store_rgba_f16();
     test_store_rgba_unorm16();

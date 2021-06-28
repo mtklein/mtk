@@ -33,7 +33,7 @@ static double rgb_unorm8(int k, double *scale, const char* *unit) {
 
     double start = now();
     while (k --> 0) {
-        drive(step,len(dst)/3,0,0);
+        drive(step,len(dst)/3);
     }
     return now() - start;
 }
@@ -55,7 +55,7 @@ static double rgba_unorm8(int k, double *scale, const char* *unit) {
 
     double start = now();
     while (k --> 0) {
-        drive(step,len(dst)/4,0,0);
+        drive(step,len(dst)/4);
     }
     return now() - start;
 }
@@ -77,7 +77,7 @@ static double rgba_unorm16(int k, double *scale, const char* *unit) {
 
     double start = now();
     while (k --> 0) {
-        drive(step,len(dst)/4,0,0);
+        drive(step,len(dst)/4);
     }
     return now() - start;
 }
