@@ -79,8 +79,8 @@ RGBA seed_xy(void* ctx, int i, RGBA src, Cold* cold) {
     stride(0);
 
     const int* xy = ctx;
-    cold->x = xy[0] + 0.5f + iota;
-    cold->y = xy[1] + 0.5f;
+    cold->x = xy[0] + i + iota + 0.5f;
+    cold->y = xy[1]            + 0.5f;
     return src;
 }
 

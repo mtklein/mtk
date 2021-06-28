@@ -8,12 +8,12 @@ static const RGBA zero = {0};
 static void test_seed_xy() {
     int xy[] = {2,7};
     Cold cold = {0};
-    seed_xy(xy,0,zero,&cold);
+    seed_xy(xy,8,zero,&cold);
 
-    expect_eq(cold.x[0], 2.5f);
-    expect_eq(cold.x[1], 3.5f);
-    expect_eq(cold.y[0], 7.5f);
-    expect_eq(cold.y[1], 7.5f);
+    expect_eq(cold.x[0], 10.5f);
+    expect_eq(cold.x[1], 11.5f);
+    expect_eq(cold.y[0],  7.5f);
+    expect_eq(cold.y[1],  7.5f);
 }
 
 static void test_matrix_2x3() {
