@@ -29,37 +29,40 @@ typedef struct {
 typedef struct {
     RGBA dst;
     F32  x,y;
-    int  X,Y;
-    int  padding[6];
 } Cold;
 
 typedef RGBA (ABI Effect)(void* ctx, RGBA src, Cold*);
-typedef RGBA (ABI Load  )(const void*);
-typedef void (ABI Store )(void*, RGBA);
 
 Effect
     blend_dst,
     blend_src,
     blend_srcover,
     clamp_01,
+    load1_rgb_unorm8,
+    load1_rgba_f16,
+    load1_rgba_unorm16,
+    load1_rgba_unorm8,
+    loadN_rgb_unorm8,
+    loadN_rgba_f16,
+    loadN_rgba_unorm16,
+    loadN_rgba_unorm8,
     matrix_2x3,
     matrix_3x3,
-    seed_xy,
-    shade_rgba_f32;
+    shade_rgba_f32,
+    store1_rgb_unorm8,
+    store1_rgba_f16,
+    store1_rgba_unorm16,
+    store1_rgba_unorm8,
+    storeN_rgb_unorm8,
+    storeN_rgba_f16,
+    storeN_rgba_unorm16,
+    storeN_rgba_unorm8;
 
-Load
-    load_rgb_unorm8,
-    load_rgba_f16,
-    load_rgba_unorm16,
-    load_rgba_unorm8;
+typedef struct {
+    Effect *effectN,
+           *effect1;
+    void   *ctx;
+    size_t  bpp;
+} Step;
 
-Store
-    store_rgb_unorm8,
-    store_rgba_f16,
-    store_rgba_unorm16,
-    store_rgba_unorm8;
-
-void drive(const void*, size_t lbpp, Load*,
-           void*,       size_t sbpp, Store*,
-           int x, int y, int n,
-           Effect* effect[], void* ctx[]);
+void drive(Step step[], int n, int x, int y);
