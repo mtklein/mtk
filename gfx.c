@@ -75,20 +75,34 @@ static Half Half_from_U8(U8 u8) {
 #endif
 }
 
-static size_t first(size_t p) {
+// drive() runs its n instances in chunks of size N while possible,
+// then possibly one final tail chunk of size < N if that won't divide evenly.
+//
+// The p parameter is the index of the first lane for size N chunks, with (p%N) == 0,
+// or n itself to signal a size < N tail chunk, of size (p%N) == (n%N) > 0.
+//
+// Either way, first_lane_index(p) returns the index of the first lane.
+static size_t first_lane_index(size_t p) {
     return p & ~(size_t)(N-1);
 }
 
+// Adjust base ctx pointer to the index of the first lane, scaled by a constant byte stride.
+// A call like
+//     ctx = stride(3,ctx,p);
+// adjusts ctx ahead by the appropriate number of 3-byte structs, while a call like
+//     ctx = stride(0,ctx,p);
+// is a noop, basically a comment that the context pointer is uniform.
 static void* stride(size_t k, void* ctx, size_t p) {
-    return k ? (char*)ctx + first(p)*k : ctx;
+    return k ? (char*)ctx + first_lane_index(p)*k : ctx;
 }
 
 RGBA seed_xy(void* ctx, size_t p, RGBA src, Cold* cold) {
     ctx = stride(0,ctx,p);
 
+    // In any given call to drive(), x marches along one at a time, while y remains constant.
     const int* xy = ctx;
-    cold->x = xy[0] + (int)first(p) + iota + 0.5f;
-    cold->y = xy[1]                        + 0.5f;
+    cold->x = xy[0] + (int)first_lane_index(p) + iota + 0.5f;
+    cold->y = xy[1]                                   + 0.5f;
     return src;
 }
 
@@ -118,6 +132,7 @@ RGBA matrix_3x3(void* ctx, size_t p, RGBA src, Cold* cold) {
 RGBA shade_rgba_f32(void* ctx, size_t p, RGBA src, Cold* cold) {
     typedef float __attribute__((ext_vector_type(4))) F4;
     typedef half  __attribute__((ext_vector_type(4))) H4;
+
     ctx = stride(0,ctx,p);
     (void)cold;
 
