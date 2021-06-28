@@ -5,8 +5,6 @@
 
 #define cast      __builtin_convertvector
 #define shuffle   __builtin_shufflevector
-#define first     (p & ~(size_t)(N-1))
-#define stride(k) ctx = k ? (char*)ctx + first*k : ctx
 
 #if N == 8
     static const F32 iota = {0,1,2,3, 4,5,6,7};
@@ -77,17 +75,25 @@ static Half Half_from_U8(U8 u8) {
 #endif
 }
 
+static size_t first(size_t p) {
+    return p & ~(size_t)(N-1);
+}
+
+static void* stride(size_t k, void* ctx, size_t p) {
+    return k ? (char*)ctx + first(p)*k : ctx;
+}
+
 RGBA seed_xy(void* ctx, size_t p, RGBA src, Cold* cold) {
-    stride(0);
+    ctx = stride(0,ctx,p);
 
     const int* xy = ctx;
-    cold->x = xy[0] + (int)first + iota + 0.5f;
-    cold->y = xy[1]                     + 0.5f;
+    cold->x = xy[0] + (int)first(p) + iota + 0.5f;
+    cold->y = xy[1]                        + 0.5f;
     return src;
 }
 
 RGBA matrix_2x3(void* ctx, size_t p, RGBA src, Cold* cold) {
-    stride(0);
+    ctx = stride(0,ctx,p);
 
     const float* m = ctx;
     F32 x = cold->x * m[0] + (cold->y * m[1] + m[2]),
@@ -98,7 +104,7 @@ RGBA matrix_2x3(void* ctx, size_t p, RGBA src, Cold* cold) {
 }
 
 RGBA matrix_3x3(void* ctx, size_t p, RGBA src, Cold* cold) {
-    stride(0);
+    ctx = stride(0,ctx,p);
 
     const float* m = ctx;
     F32 x = cold->x * m[0] + (cold->y * m[1] + m[2]),
@@ -112,7 +118,7 @@ RGBA matrix_3x3(void* ctx, size_t p, RGBA src, Cold* cold) {
 RGBA shade_rgba_f32(void* ctx, size_t p, RGBA src, Cold* cold) {
     typedef float __attribute__((ext_vector_type(4))) F4;
     typedef half  __attribute__((ext_vector_type(4))) H4;
-    stride(0);
+    ctx = stride(0,ctx,p);
     (void)cold;
 
     F4 rgba_f32;
@@ -127,21 +133,21 @@ RGBA shade_rgba_f32(void* ctx, size_t p, RGBA src, Cold* cold) {
 }
 
 RGBA blend_src(void* ctx, size_t p, RGBA src, Cold* cold) {
-    stride(0);
+    ctx = stride(0,ctx,p);
     (void)cold;
 
     return src;
 }
 
 RGBA blend_dst(void* ctx, size_t p, RGBA src, Cold* cold) {
-    stride(0);
+    ctx = stride(0,ctx,p);
 
     src = cold->dst;
     return src;
 }
 
 RGBA blend_srcover(void* ctx, size_t p, RGBA src, Cold* cold) {
-    stride(0);
+    ctx = stride(0,ctx,p);
 
     src.r += cold->dst.r * (1-src.a);
     src.g += cold->dst.g * (1-src.a);
@@ -151,7 +157,7 @@ RGBA blend_srcover(void* ctx, size_t p, RGBA src, Cold* cold) {
 }
 
 RGBA clamp_01(void* ctx, size_t p, RGBA src, Cold* cold) {
-    stride(0);
+    ctx = stride(0,ctx,p);
     (void)cold;
 
     src.r = clamp(src.r, 0,1);
@@ -162,7 +168,7 @@ RGBA clamp_01(void* ctx, size_t p, RGBA src, Cold* cold) {
 }
 
 RGBA load_rgba_f16(void* ctx, size_t p, RGBA src, Cold* cold) {
-    stride(8);
+    ctx = stride(8,ctx,p);
     (void)cold;
 
     if (p%N) {
@@ -185,7 +191,7 @@ RGBA load_rgba_f16(void* ctx, size_t p, RGBA src, Cold* cold) {
 }
 
 RGBA store_rgba_f16(void* ctx, size_t p, RGBA src, Cold* cold) {
-    stride(8);
+    ctx = stride(8,ctx,p);
     (void)cold;
 
     F16 r = cast(src.r, F16),
@@ -204,7 +210,7 @@ RGBA store_rgba_f16(void* ctx, size_t p, RGBA src, Cold* cold) {
 }
 
 RGBA load_rgb_unorm8(void* ctx, size_t p, RGBA src, Cold* cold) {
-    stride(3);
+    ctx = stride(3,ctx,p);
     (void)cold;
 
     if (p%N) {
@@ -227,7 +233,7 @@ RGBA load_rgb_unorm8(void* ctx, size_t p, RGBA src, Cold* cold) {
 }
 
 RGBA store_rgb_unorm8(void* ctx, size_t p, RGBA src, Cold* cold) {
-    stride(3);
+    ctx = stride(3,ctx,p);
     (void)cold;
 
     U8 r = cast(src.r * 255 + 0.5, U8),
@@ -246,7 +252,7 @@ RGBA store_rgb_unorm8(void* ctx, size_t p, RGBA src, Cold* cold) {
 }
 
 RGBA load_rgba_unorm8(void* ctx, size_t p, RGBA src, Cold* cold) {
-    stride(4);
+    ctx = stride(4,ctx,p);
     (void)cold;
 
     if (p%N) {
@@ -269,7 +275,7 @@ RGBA load_rgba_unorm8(void* ctx, size_t p, RGBA src, Cold* cold) {
 }
 
 RGBA store_rgba_unorm8(void* ctx, size_t p, RGBA src, Cold* cold) {
-    stride(4);
+    ctx = stride(4,ctx,p);
     (void)cold;
 
     U8 r = cast(src.r * 255 + 0.5, U8),
@@ -289,7 +295,7 @@ RGBA store_rgba_unorm8(void* ctx, size_t p, RGBA src, Cold* cold) {
 
 // 0xffff (65535) becomes +inf when converted directly to f16, so unorm16 always goes via f32.
 RGBA load_rgba_unorm16(void* ctx, size_t p, RGBA src, Cold* cold) {
-    stride(8);
+    ctx = stride(8,ctx,p);
     (void)cold;
 
     if (p%N) {
@@ -312,7 +318,7 @@ RGBA load_rgba_unorm16(void* ctx, size_t p, RGBA src, Cold* cold) {
 }
 
 RGBA store_rgba_unorm16(void* ctx, size_t p, RGBA src, Cold* cold) {
-    stride(8);
+    ctx = stride(8,ctx,p);
     (void)cold;
 
     U16 r = cast( cast(src.r, F32) * 65535 + 0.5, U16 ),
