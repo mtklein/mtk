@@ -375,8 +375,7 @@ void drive(const Step step[], int n) {
             src = s->effectN(s->ctx,i,src,&cold);
         }
     }
-
-    for (; i < n; i += 1) {
+    for (; i+1 <= n; i += 1) {
         RGBA src = {0};
         for (const Step* s = step; s->effect1; s++) {
             src = s->effect1(s->ctx,i,src,&cold);
