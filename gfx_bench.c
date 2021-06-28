@@ -23,16 +23,16 @@ static double rgb_unorm8(int k, double *scale, const char* *unit) {
     uint8_t dst[63*3] = {0};
 
     float rgba[] = { 0.333f, 0.5f, 0.666f, 1.0f };
+    Step step[] = {
+        {loadN_rgb_unorm8,  load1_rgb_unorm8,   dst},
+        {shade_rgba_f32,    shade_rgba_f32,    rgba},
+        {blend_srcover,     blend_srcover,     NULL},
+        {storeN_rgb_unorm8, store1_rgb_unorm8,  dst},
+        {0},
+    };
 
     double start = now();
     while (k --> 0) {
-        Step step[] = {
-            {loadN_rgb_unorm8,  load1_rgb_unorm8,   dst, 3},
-            {shade_rgba_f32,    shade_rgba_f32,    rgba, 0},
-            {blend_srcover,     blend_srcover,     NULL, 0},
-            {storeN_rgb_unorm8, store1_rgb_unorm8,  dst, 3},
-            {0},
-        };
         drive(step,len(dst)/3,0,0);
     }
     return now() - start;
@@ -45,16 +45,16 @@ static double rgba_unorm8(int k, double *scale, const char* *unit) {
     uint8_t dst[63*4] = {0};
 
     float rgba[] = { 0.333f, 0.5f, 0.666f, 1.0f };
+    Step step[] = {
+        {loadN_rgba_unorm8,  load1_rgba_unorm8,   dst},
+        {shade_rgba_f32,     shade_rgba_f32,     rgba},
+        {blend_srcover,      blend_srcover,      NULL},
+        {storeN_rgba_unorm8, store1_rgba_unorm8,  dst},
+        {0},
+    };
 
     double start = now();
     while (k --> 0) {
-        Step step[] = {
-            {loadN_rgba_unorm8,  load1_rgba_unorm8,   dst, 4},
-            {shade_rgba_f32,     shade_rgba_f32,     rgba, 0},
-            {blend_srcover,      blend_srcover,      NULL, 0},
-            {storeN_rgba_unorm8, store1_rgba_unorm8,  dst, 4},
-            {0},
-        };
         drive(step,len(dst)/4,0,0);
     }
     return now() - start;
@@ -67,16 +67,16 @@ static double rgba_unorm16(int k, double *scale, const char* *unit) {
     uint16_t dst[63*4] = {0};
 
     float rgba[] = { 0.333f, 0.5f, 0.666f, 1.0f };
+    Step step[] = {
+        {loadN_rgba_unorm16,  load1_rgba_unorm16,   dst},
+        {shade_rgba_f32,      shade_rgba_f32,      rgba},
+        {blend_srcover,       blend_srcover,       NULL},
+        {storeN_rgba_unorm16, store1_rgba_unorm16,  dst},
+        {0},
+    };
 
     double start = now();
     while (k --> 0) {
-        Step step[] = {
-            {loadN_rgba_unorm16,  load1_rgba_unorm16,   dst, 8},
-            {shade_rgba_f32,      shade_rgba_f32,      rgba, 0},
-            {blend_srcover,       blend_srcover,       NULL, 0},
-            {storeN_rgba_unorm16, store1_rgba_unorm16,  dst, 8},
-            {0},
-        };
         drive(step,len(dst)/4,0,0);
     }
     return now() - start;

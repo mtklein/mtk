@@ -31,7 +31,7 @@ typedef struct {
     F32  x,y;
 } Cold;
 
-typedef RGBA (ABI Effect)(void* ctx, RGBA src, Cold*);
+typedef RGBA (ABI Effect)(void* ctx, int i, RGBA src, Cold*);
 
 Effect
     blend_dst,
@@ -62,7 +62,6 @@ typedef struct {
     Effect *effectN,
            *effect1;
     void   *ctx;
-    size_t  bpp;
 } Step;
 
-void drive(Step step[], int n, int x, int y);
+void drive(const Step step[], int n, int x, int y);

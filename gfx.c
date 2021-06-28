@@ -75,7 +75,9 @@ static Half Half_from_U8(U8 u8) {
 #endif
 }
 
-RGBA matrix_2x3(void* ctx, RGBA src, Cold* cold) {
+RGBA matrix_2x3(void* ctx, int i, RGBA src, Cold* cold) {
+    (void)i;
+
     const float* m = ctx;
     F32 x = cold->x * m[0] + (cold->y * m[1] + m[2]),
         y = cold->x * m[3] + (cold->y * m[4] + m[5]);
@@ -84,7 +86,9 @@ RGBA matrix_2x3(void* ctx, RGBA src, Cold* cold) {
     return src;
 }
 
-RGBA matrix_3x3(void* ctx, RGBA src, Cold* cold) {
+RGBA matrix_3x3(void* ctx, int i, RGBA src, Cold* cold) {
+    (void)i;
+
     const float* m = ctx;
     F32 x = cold->x * m[0] + (cold->y * m[1] + m[2]),
         y = cold->x * m[3] + (cold->y * m[4] + m[5]),
@@ -94,9 +98,10 @@ RGBA matrix_3x3(void* ctx, RGBA src, Cold* cold) {
     return src;
 }
 
-RGBA shade_rgba_f32(void* ctx, RGBA src, Cold* cold) {
+RGBA shade_rgba_f32(void* ctx, int i, RGBA src, Cold* cold) {
     typedef float __attribute__((ext_vector_type(4))) F4;
     typedef half  __attribute__((ext_vector_type(4))) H4;
+    (void)i;
     (void)cold;
 
     F4 rgba_f32;
@@ -110,20 +115,26 @@ RGBA shade_rgba_f32(void* ctx, RGBA src, Cold* cold) {
     return src;
 }
 
-RGBA blend_src(void* ctx, RGBA src, Cold* cold) {
+RGBA blend_src(void* ctx, int i, RGBA src, Cold* cold) {
     (void)ctx;
+    (void)i;
     (void)cold;
+
     return src;
 }
 
-RGBA blend_dst(void* ctx, RGBA src, Cold* cold) {
+RGBA blend_dst(void* ctx, int i, RGBA src, Cold* cold) {
     (void)ctx;
+    (void)i;
+
     src = cold->dst;
     return src;
 }
 
-RGBA blend_srcover(void* ctx, RGBA src, Cold* cold) {
+RGBA blend_srcover(void* ctx, int i, RGBA src, Cold* cold) {
     (void)ctx;
+    (void)i;
+
     src.r += cold->dst.r * (1-src.a);
     src.g += cold->dst.g * (1-src.a);
     src.b += cold->dst.b * (1-src.a);
@@ -131,9 +142,11 @@ RGBA blend_srcover(void* ctx, RGBA src, Cold* cold) {
     return src;
 }
 
-RGBA clamp_01(void* ctx, RGBA src, Cold* cold) {
+RGBA clamp_01(void* ctx, int i, RGBA src, Cold* cold) {
     (void)ctx;
+    (void)i;
     (void)cold;
+
     src.r = clamp(src.r, 0,1);
     src.g = clamp(src.g, 0,1);
     src.b = clamp(src.b, 0,1);
@@ -141,8 +154,10 @@ RGBA clamp_01(void* ctx, RGBA src, Cold* cold) {
     return src;
 }
 
-RGBA loadN_rgba_f16(void* ctx, RGBA src, Cold* cold) {
+RGBA loadN_rgba_f16(void* ctx, int i, RGBA src, Cold* cold) {
+    ctx = (char*)ctx + 8*i;
     (void)cold;
+
     F16x4 v;
     memcpy(&v, ctx, sizeof v);
     src.r = cast(shuffle(v,v, LD4_0), Half);
@@ -151,8 +166,10 @@ RGBA loadN_rgba_f16(void* ctx, RGBA src, Cold* cold) {
     src.a = cast(shuffle(v,v, LD4_3), Half);
     return src;
 }
-RGBA load1_rgba_f16(void* ctx, RGBA src, Cold* cold) {
+RGBA load1_rgba_f16(void* ctx, int i, RGBA src, Cold* cold) {
+    ctx = (char*)ctx + 8*i;
     (void)cold;
+
     const _Float16* p = ctx;
     src.r = (half)*p++;
     src.g = (half)*p++;
@@ -161,8 +178,10 @@ RGBA load1_rgba_f16(void* ctx, RGBA src, Cold* cold) {
     return src;
 }
 
-RGBA storeN_rgba_f16(void* ctx, RGBA src, Cold* cold) {
+RGBA storeN_rgba_f16(void* ctx, int i, RGBA src, Cold* cold) {
+    ctx = (char*)ctx + 8*i;
     (void)cold;
+
     F16 r = cast(src.r, F16),
         g = cast(src.g, F16),
         b = cast(src.b, F16),
@@ -171,8 +190,10 @@ RGBA storeN_rgba_f16(void* ctx, RGBA src, Cold* cold) {
                            shuffle(b, a, CONCAT), ST4);
     return src;
 }
-RGBA store1_rgba_f16(void* ctx, RGBA src, Cold* cold) {
+RGBA store1_rgba_f16(void* ctx, int i, RGBA src, Cold* cold) {
+    ctx = (char*)ctx + 8*i;
     (void)cold;
+
     F16 r = cast(src.r, F16),
         g = cast(src.g, F16),
         b = cast(src.b, F16),
@@ -185,8 +206,10 @@ RGBA store1_rgba_f16(void* ctx, RGBA src, Cold* cold) {
     return src;
 }
 
-RGBA loadN_rgb_unorm8(void* ctx, RGBA src, Cold* cold) {
+RGBA loadN_rgb_unorm8(void* ctx, int i, RGBA src, Cold* cold) {
+    ctx = (char*)ctx + 3*i;
     (void)cold;
+
     U8x3 v;
     memcpy(&v, ctx, sizeof v);
     src.r = Half_from_U8(shuffle(v,v, LD3_0)) * (half)(1/255.0);
@@ -195,8 +218,10 @@ RGBA loadN_rgb_unorm8(void* ctx, RGBA src, Cold* cold) {
     src.a = 1;
     return src;
 }
-RGBA load1_rgb_unorm8(void* ctx, RGBA src, Cold* cold) {
+RGBA load1_rgb_unorm8(void* ctx, int i, RGBA src, Cold* cold) {
+    ctx = (char*)ctx + 3*i;
     (void)cold;
+
     const uint8_t* p = ctx;
     src.r = Half_from_U8(*p++) * (half)(1/255.0);
     src.g = Half_from_U8(*p++) * (half)(1/255.0);
@@ -205,8 +230,10 @@ RGBA load1_rgb_unorm8(void* ctx, RGBA src, Cold* cold) {
     return src;
 }
 
-RGBA storeN_rgb_unorm8(void* ctx, RGBA src, Cold* cold) {
+RGBA storeN_rgb_unorm8(void* ctx, int i, RGBA src, Cold* cold) {
+    ctx = (char*)ctx + 3*i;
     (void)cold;
+
     U8 r = cast(src.r * 255 + 0.5, U8),
        g = cast(src.g * 255 + 0.5, U8),
        b = cast(src.b * 255 + 0.5, U8);
@@ -214,8 +241,10 @@ RGBA storeN_rgb_unorm8(void* ctx, RGBA src, Cold* cold) {
                           shuffle(b, b, CONCAT), ST3);
     return src;
 }
-RGBA store1_rgb_unorm8(void* ctx, RGBA src, Cold* cold) {
+RGBA store1_rgb_unorm8(void* ctx, int i, RGBA src, Cold* cold) {
+    ctx = (char*)ctx + 3*i;
     (void)cold;
+
     U8 r = cast(src.r * 255 + 0.5, U8),
        g = cast(src.g * 255 + 0.5, U8),
        b = cast(src.b * 255 + 0.5, U8);
@@ -226,8 +255,10 @@ RGBA store1_rgb_unorm8(void* ctx, RGBA src, Cold* cold) {
     return src;
 }
 
-RGBA loadN_rgba_unorm8(void* ctx, RGBA src, Cold* cold) {
+RGBA loadN_rgba_unorm8(void* ctx, int i, RGBA src, Cold* cold) {
+    ctx = (char*)ctx + 4*i;
     (void)cold;
+
     U8x4 v;
     memcpy(&v, ctx, sizeof v);
     src.r = Half_from_U8(shuffle(v,v, LD4_0)) * (half)(1/255.0);
@@ -236,8 +267,10 @@ RGBA loadN_rgba_unorm8(void* ctx, RGBA src, Cold* cold) {
     src.a = Half_from_U8(shuffle(v,v, LD4_3)) * (half)(1/255.0);
     return src;
 }
-RGBA load1_rgba_unorm8(void* ctx, RGBA src, Cold* cold) {
+RGBA load1_rgba_unorm8(void* ctx, int i, RGBA src, Cold* cold) {
+    ctx = (char*)ctx + 4*i;
     (void)cold;
+
     const uint8_t* p = ctx;
     src.r = Half_from_U8(*p++) * (half)(1/255.0);
     src.g = Half_from_U8(*p++) * (half)(1/255.0);
@@ -246,8 +279,10 @@ RGBA load1_rgba_unorm8(void* ctx, RGBA src, Cold* cold) {
     return src;
 }
 
-RGBA storeN_rgba_unorm8(void* ctx, RGBA src, Cold* cold) {
+RGBA storeN_rgba_unorm8(void* ctx, int i, RGBA src, Cold* cold) {
+    ctx = (char*)ctx + 4*i;
     (void)cold;
+
     U8 r = cast(src.r * 255 + 0.5, U8),
        g = cast(src.g * 255 + 0.5, U8),
        b = cast(src.b * 255 + 0.5, U8),
@@ -256,8 +291,10 @@ RGBA storeN_rgba_unorm8(void* ctx, RGBA src, Cold* cold) {
                           shuffle(b, a, CONCAT), ST4);
     return src;
 }
-RGBA store1_rgba_unorm8(void* ctx, RGBA src, Cold* cold) {
+RGBA store1_rgba_unorm8(void* ctx, int i, RGBA src, Cold* cold) {
+    ctx = (char*)ctx + 4*i;
     (void)cold;
+
     U8 r = cast(src.r * 255 + 0.5, U8),
        g = cast(src.g * 255 + 0.5, U8),
        b = cast(src.b * 255 + 0.5, U8),
@@ -271,8 +308,10 @@ RGBA store1_rgba_unorm8(void* ctx, RGBA src, Cold* cold) {
 }
 
 // 0xffff (65535) becomes +inf when converted directly to f16, so unorm16 always goes via f32.
-RGBA loadN_rgba_unorm16(void* ctx, RGBA src, Cold* cold) {
+RGBA loadN_rgba_unorm16(void* ctx, int i, RGBA src, Cold* cold) {
+    ctx = (char*)ctx + 8*i;
     (void)cold;
+
     U16x4 v;
     memcpy(&v, ctx, sizeof v);
     src.r = cast( cast(shuffle(v,v, LD4_0), F32) * (1/65535.0f), Half );
@@ -281,8 +320,10 @@ RGBA loadN_rgba_unorm16(void* ctx, RGBA src, Cold* cold) {
     src.a = cast( cast(shuffle(v,v, LD4_3), F32) * (1/65535.0f), Half );
     return src;
 }
-RGBA load1_rgba_unorm16(void* ctx, RGBA src, Cold* cold) {
+RGBA load1_rgba_unorm16(void* ctx, int i, RGBA src, Cold* cold) {
+    ctx = (char*)ctx + 8*i;
     (void)cold;
+
     const uint16_t* p = ctx;
     src.r = (half)(*p++ * (1/65535.0f));
     src.g = (half)(*p++ * (1/65535.0f));
@@ -291,8 +332,10 @@ RGBA load1_rgba_unorm16(void* ctx, RGBA src, Cold* cold) {
     return src;
 }
 
-RGBA storeN_rgba_unorm16(void* ctx, RGBA src, Cold* cold) {
+RGBA storeN_rgba_unorm16(void* ctx, int i, RGBA src, Cold* cold) {
+    ctx = (char*)ctx + 8*i;
     (void)cold;
+
     U16 r = cast( cast(src.r, F32) * 65535 + 0.5, U16 ),
         g = cast( cast(src.g, F32) * 65535 + 0.5, U16 ),
         b = cast( cast(src.b, F32) * 65535 + 0.5, U16 ),
@@ -301,8 +344,10 @@ RGBA storeN_rgba_unorm16(void* ctx, RGBA src, Cold* cold) {
                            shuffle(b, a, CONCAT), ST4);
     return src;
 }
-RGBA store1_rgba_unorm16(void* ctx, RGBA src, Cold* cold) {
+RGBA store1_rgba_unorm16(void* ctx, int i, RGBA src, Cold* cold) {
+    ctx = (char*)ctx + 8*i;
     (void)cold;
+
     U16 r = cast( cast(src.r, F32) * 65535 + 0.5, U16 ),
         g = cast( cast(src.g, F32) * 65535 + 0.5, U16 ),
         b = cast( cast(src.b, F32) * 65535 + 0.5, U16 ),
@@ -315,26 +360,25 @@ RGBA store1_rgba_unorm16(void* ctx, RGBA src, Cold* cold) {
     return src;
 }
 
-void drive(Step step[], int n, int x, int y) {
+void drive(const Step step[], int n, int x, int y) {
     Cold cold = {
         .x = x + 0.5f + iota,
         .y = y + 0.5f,
     };
 
-    for (; n >= N; n -= N) {
+    int i = 0;
+    for (; i+N <= n; i += N) {
         RGBA src = {0};
-        for (Step* s = step; s->effectN; s++) {
-            src = s->effectN(s->ctx,src,&cold);
-            s->ctx = (void*)( (uintptr_t)s->ctx + N*s->bpp );
+        for (const Step* s = step; s->effectN; s++) {
+            src = s->effectN(s->ctx,i,src,&cold);
         }
         cold.x += N;
     }
 
-    while (n --> 0) {
+    for (; i < n; i += 1) {
         RGBA src = {0};
-        for (Step* s = step; s->effect1; s++) {
-            src = s->effect1(s->ctx,src,&cold);
-            s->ctx = (void*)( (uintptr_t)s->ctx + 1*s->bpp );
+        for (const Step* s = step; s->effect1; s++) {
+            src = s->effect1(s->ctx,i,src,&cold);
         }
         cold.x += 1;
     }
