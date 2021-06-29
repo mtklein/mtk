@@ -29,13 +29,19 @@ typedef struct {
     F32  x,y;
 } Cold;
 
-typedef RGBA (ABI Effect)(void* ctx, int p, RGBA src, Cold*);
+union Step;
+typedef RGBA (ABI Effect)(union Step* step, int p, RGBA src, Cold*);
+typedef union Step {
+    Effect* effect;
+    void*   ctx;
+} Step;
 
 Effect
     blend_dst,
     blend_src,
     blend_srcover,
     clamp_01,
+    done,
     load_rgb_unorm8,
     load_rgba_f16,
     load_rgba_unorm16,
@@ -49,9 +55,4 @@ Effect
     store_rgba_unorm16,
     store_rgba_unorm8;
 
-typedef struct {
-    Effect* effect;
-    void*   ctx;
-} Step;
-
-void drive(const Step step[], int n);
+void drive(Step step[], int n);

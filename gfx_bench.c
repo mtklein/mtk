@@ -24,11 +24,11 @@ static double rgb_unorm8(int k, double *scale, const char* *unit) {
 
     float rgba[] = { 0.333f, 0.5f, 0.666f, 1.0f };
     Step step[] = {
-        {load_rgb_unorm8,  dst},
-        {shade_rgba_f32,   rgba},
-        {blend_srcover,    NULL},
-        {store_rgb_unorm8, dst},
-        {0},
+        {.effect=load_rgb_unorm8},  {.ctx=dst},
+        {.effect=shade_rgba_f32},   {.ctx=rgba},
+        {.effect=blend_srcover},
+        {.effect=store_rgb_unorm8}, {.ctx=dst},
+        {.effect=done},
     };
 
     double start = now();
@@ -46,11 +46,11 @@ static double rgba_unorm8(int k, double *scale, const char* *unit) {
 
     float rgba[] = { 0.333f, 0.5f, 0.666f, 1.0f };
     Step step[] = {
-        {load_rgba_unorm8,  dst},
-        {shade_rgba_f32,    rgba},
-        {blend_srcover,     NULL},
-        {store_rgba_unorm8, dst},
-        {0},
+        {.effect=load_rgba_unorm8},  {.ctx=dst},
+        {.effect=shade_rgba_f32},    {.ctx=rgba},
+        {.effect=blend_srcover},
+        {.effect=store_rgba_unorm8}, {.ctx=dst},
+        {.effect=done},
     };
 
     double start = now();
@@ -68,11 +68,11 @@ static double rgba_unorm16(int k, double *scale, const char* *unit) {
 
     float rgba[] = { 0.333f, 0.5f, 0.666f, 1.0f };
     Step step[] = {
-        {load_rgba_unorm16,  dst},
-        {shade_rgba_f32,     rgba},
-        {blend_srcover,      NULL},
-        {store_rgba_unorm16, dst},
-        {0},
+        {.effect=load_rgba_unorm16},  {.ctx=dst},
+        {.effect=shade_rgba_f32},     {.ctx=rgba},
+        {.effect=blend_srcover},
+        {.effect=store_rgba_unorm16}, {.ctx=dst},
+        {.effect=done},
     };
 
     double start = now();
