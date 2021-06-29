@@ -42,9 +42,9 @@
 #endif
 
 #if defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
-    typedef int16_t __attribute__((ext_vector_type(N))) Mask;
+    typedef int16_t __attribute__((ext_vector_type(N))) Cond;
 #else
-    typedef int     __attribute__((ext_vector_type(N))) Mask;
+    typedef int     __attribute__((ext_vector_type(N))) Cond;
 #endif
 
 typedef uint8_t  __attribute__((ext_vector_type(N))) U8;
@@ -56,8 +56,8 @@ typedef uint8_t  __attribute__((ext_vector_type(N*4), aligned(1))) U8x4;
 typedef uint16_t __attribute__((ext_vector_type(N*4), aligned(2))) U16x4;
 typedef _Float16 __attribute__((ext_vector_type(N*4), aligned(2))) F16x4;
 
-static Half select(Mask cond, Half t, Half f) { return (Half)( ( cond & (Mask)t)
-                                                             | (~cond & (Mask)f)); }
+static Half select(Cond cond, Half t, Half f) { return (Half)( ( cond & (Cond)t)
+                                                             | (~cond & (Cond)f)); }
 static Half min(Half x, Half y) { return select(y < x, y, x); }
 static Half max(Half x, Half y) { return select(x < y, y, x); }
 static Half clamp(Half x, Half lo, Half hi) { return max(lo, min(x, hi)); }
