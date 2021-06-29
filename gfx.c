@@ -108,7 +108,7 @@ RGBA done(Step step[], size_t p, RGBA src, Cold* cold) {
 }
 
 RGBA seed_xy(Step step[], size_t p, RGBA src, Cold* cold) {
-    void* ctx = stride(0,(step++)->ctx,p);
+    void* ctx = stride(0,(step++)->ptr,p);
 
     // In any given call to drive(), x marches along one at a time, while y remains constant.
     const int* xy = ctx;
@@ -118,7 +118,7 @@ RGBA seed_xy(Step step[], size_t p, RGBA src, Cold* cold) {
 }
 
 RGBA matrix_2x3(Step step[], size_t p, RGBA src, Cold* cold) {
-    void* ctx = stride(0,(step++)->ctx,p);
+    void* ctx = stride(0,(step++)->ptr,p);
 
     const float* m = ctx;
     F32 x = cold->x * m[0] + (cold->y * m[1] + m[2]),
@@ -129,7 +129,7 @@ RGBA matrix_2x3(Step step[], size_t p, RGBA src, Cold* cold) {
 }
 
 RGBA matrix_3x3(Step step[], size_t p, RGBA src, Cold* cold) {
-    void* ctx = stride(0,(step++)->ctx,p);
+    void* ctx = stride(0,(step++)->ptr,p);
 
     const float* m = ctx;
     F32 x = cold->x * m[0] + (cold->y * m[1] + m[2]),
@@ -144,7 +144,7 @@ RGBA shade_rgba_f32(Step step[], size_t p, RGBA src, Cold* cold) {
     typedef float __attribute__((ext_vector_type(4))) F4;
     typedef half  __attribute__((ext_vector_type(4))) H4;
 
-    void* ctx = stride(0,(step++)->ctx,p);
+    void* ctx = stride(0,(step++)->ptr,p);
 
     F4 rgba_f32;
     memcpy(&rgba_f32, ctx, sizeof rgba_f32);
@@ -183,7 +183,7 @@ RGBA clamp_01(Step step[], size_t p, RGBA src, Cold* cold) {
 }
 
 RGBA load_rgba_f16(Step step[], size_t p, RGBA src, Cold* cold) {
-    void* ctx = stride(8,(step++)->ctx,p);
+    void* ctx = stride(8,(step++)->ptr,p);
 
     if (p%N) {
         F16x4 v;
@@ -205,7 +205,7 @@ RGBA load_rgba_f16(Step step[], size_t p, RGBA src, Cold* cold) {
 }
 
 RGBA store_rgba_f16(Step step[], size_t p, RGBA src, Cold* cold) {
-    void* ctx = stride(8,(step++)->ctx,p);
+    void* ctx = stride(8,(step++)->ptr,p);
 
     F16 r = cast(src.r, F16),
         g = cast(src.g, F16),
@@ -223,7 +223,7 @@ RGBA store_rgba_f16(Step step[], size_t p, RGBA src, Cold* cold) {
 }
 
 RGBA load_rgb_unorm8(Step step[], size_t p, RGBA src, Cold* cold) {
-    void* ctx = stride(3,(step++)->ctx,p);
+    void* ctx = stride(3,(step++)->ptr,p);
 
     if (p%N) {
         U8x3 v;
@@ -245,7 +245,7 @@ RGBA load_rgb_unorm8(Step step[], size_t p, RGBA src, Cold* cold) {
 }
 
 RGBA store_rgb_unorm8(Step step[], size_t p, RGBA src, Cold* cold) {
-    void* ctx = stride(3,(step++)->ctx,p);
+    void* ctx = stride(3,(step++)->ptr,p);
 
     U8 r = cast(src.r * 255 + 0.5, U8),
        g = cast(src.g * 255 + 0.5, U8),
@@ -263,7 +263,7 @@ RGBA store_rgb_unorm8(Step step[], size_t p, RGBA src, Cold* cold) {
 }
 
 RGBA load_rgba_unorm8(Step step[], size_t p, RGBA src, Cold* cold) {
-    void* ctx = stride(4,(step++)->ctx,p);
+    void* ctx = stride(4,(step++)->ptr,p);
 
     if (p%N) {
         U8x4 v;
@@ -285,7 +285,7 @@ RGBA load_rgba_unorm8(Step step[], size_t p, RGBA src, Cold* cold) {
 }
 
 RGBA store_rgba_unorm8(Step step[], size_t p, RGBA src, Cold* cold) {
-    void* ctx = stride(4,(step++)->ctx,p);
+    void* ctx = stride(4,(step++)->ptr,p);
 
     U8 r = cast(src.r * 255 + 0.5, U8),
        g = cast(src.g * 255 + 0.5, U8),
@@ -304,7 +304,7 @@ RGBA store_rgba_unorm8(Step step[], size_t p, RGBA src, Cold* cold) {
 
 // 0xffff (65535) becomes +inf when converted directly to f16, so unorm16 always goes via f32.
 RGBA load_rgba_unorm16(Step step[], size_t p, RGBA src, Cold* cold) {
-    void* ctx = stride(8,(step++)->ctx,p);
+    void* ctx = stride(8,(step++)->ptr,p);
 
     if (p%N) {
         U16x4 v;
@@ -326,7 +326,7 @@ RGBA load_rgba_unorm16(Step step[], size_t p, RGBA src, Cold* cold) {
 }
 
 RGBA store_rgba_unorm16(Step step[], size_t p, RGBA src, Cold* cold) {
-    void* ctx = stride(8,(step++)->ctx,p);
+    void* ctx = stride(8,(step++)->ptr,p);
     (void)cold;
 
     U16 r = cast( cast(src.r, F32) * 65535 + 0.5, U16 ),

@@ -35,7 +35,7 @@ union Step;
 typedef RGBA (ABI Effect)(union Step* step, size_t p, RGBA src, Cold*);
 typedef union Step {
     Effect* effect;
-    void*   ctx;
+    void*   ptr;
 } Step;
 
 Effect
