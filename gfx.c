@@ -165,14 +165,13 @@ RGBA clamp_01(Step step[], size_t p, RGBA src, Cold* cold) {
 }
 
 RGBA load(Step step[], size_t p, RGBA src, Cold* cold) {
-    void*       scratch =              (step++)->ptr;
     Load*       fn      =              (step++)->load;
     size_t      bpp     =              (step++)->size;
     const void* ptr     = (const char*)(step++)->ptr + first_lane_index(p) * bpp;
 
     if (p%N) {
-        memcpy(scratch, ptr, bpp*(p%N));
-        src = fn(scratch);
+        memcpy(cold->scratch, ptr, bpp*(p%N));
+        src = fn(cold->scratch);
         next;
     }
     src = fn(ptr);
@@ -180,14 +179,13 @@ RGBA load(Step step[], size_t p, RGBA src, Cold* cold) {
 }
 
 RGBA store(Step step[], size_t p, RGBA src, Cold* cold) {
-    void*  scratch =        (step++)->ptr;
     Store* fn      =        (step++)->store;
     size_t bpp     =        (step++)->size;
     void*  ptr     = (char*)(step++)->ptr + first_lane_index(p) * bpp;
 
     if (p%N) {
-        src = fn(scratch, src);
-        memcpy(ptr, scratch, bpp*(p%N));
+        src = fn(cold->scratch, src);
+        memcpy(ptr, cold->scratch, bpp*(p%N));
         next;
     }
     src = fn(ptr, src);

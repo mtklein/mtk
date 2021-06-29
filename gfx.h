@@ -29,6 +29,7 @@ typedef struct {
 typedef struct {
     RGBA dst;
     F32  x,y;
+    char scratch[N*16];
 } Cold;
 
 union Step;
