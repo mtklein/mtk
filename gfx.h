@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stddef.h>
+
 #if defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
     #define N 8
     typedef _Float16 half;
@@ -30,7 +32,7 @@ typedef struct {
 } Cold;
 
 union Step;
-typedef RGBA (ABI Effect)(union Step* step, int p, RGBA src, Cold*);
+typedef RGBA (ABI Effect)(union Step* step, size_t p, RGBA src, Cold*);
 typedef union Step {
     Effect* effect;
     void*   ctx;
