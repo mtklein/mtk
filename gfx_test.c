@@ -3,7 +3,7 @@
 #include "len.h"
 #include <math.h>
 
-static const RGBA zero = {0};
+static const RGBA zero;
 
 static void test_seed_xy() {
     int xy[] = {2,7};
@@ -69,8 +69,8 @@ static void test_clamp_01() {
 }
 
 static void test_load_rgba_f16() {
-    const _Float16 px[4*N] = { 0.0, 0.25, 0.5, 0.75, 1.0 };
-    RGBA s = load_rgba_f16(px);
+    _Float16 px[4*N] = { 0.0, 0.25, 0.5, 0.75, 1.0 };
+    RGBA s = load_rgba_f16(px,zero);
 
     expect_eq(s.r[0], (half)0.00);
     expect_eq(s.g[0], (half)0.25);
@@ -97,8 +97,8 @@ static void test_store_rgba_f16() {
 }
 
 static void test_load_rgb_unorm8() {
-    const uint8_t px[3*N] = { 0x00, 0x55, 0xaa, 0xfe, 0xff };
-    RGBA s = load_rgb_unorm8(px);
+    uint8_t px[3*N] = { 0x00, 0x55, 0xaa, 0xfe, 0xff };
+    RGBA s = load_rgb_unorm8(px,zero);
 
     expect_eq(s.r[0], (half)0.0);
     expect_in(s.g[0], (half)0.333, (half)0.334);
@@ -125,8 +125,8 @@ static void test_store_rgb_unorm8() {
 }
 
 static void test_load_rgba_unorm8() {
-    const uint8_t px[4*N] = { 0x00, 0x55, 0xaa, 0xfe, 0xff };
-    RGBA s = load_rgba_unorm8(px);
+    uint8_t px[4*N] = { 0x00, 0x55, 0xaa, 0xfe, 0xff };
+    RGBA s = load_rgba_unorm8(px,zero);
 
     expect_eq(s.r[0], (half)0.0);
     expect_in(s.g[0], (half)0.333, (half)0.334);
@@ -153,8 +153,8 @@ static void test_store_rgba_unorm8() {
 }
 
 static void test_load_rgba_unorm16() {
-    const uint16_t px[4*N] = { 0x0000, 0x5555, 0xaaaa, 0xffee, 0xffff };
-    RGBA s = load_rgba_unorm16(px);
+    uint16_t px[4*N] = { 0x0000, 0x5555, 0xaaaa, 0xffee, 0xffff };
+    RGBA s = load_rgba_unorm16(px,zero);
 
     expect_eq(s.r[0], (half)0.0);
     expect_in(s.g[0], (half)0.333, (half)0.334);
@@ -187,10 +187,10 @@ static void test_drive_1() {
 
 
     Step step[] = {
-        {.effect=load}, {.load=load_rgba_f16}, {.size=8}, {.ptr=dst},
+        {.effect=load}, {.memfn=load_rgba_f16}, {.size=8}, {.ptr=dst},
         {.effect=shade_rgba_f32}, {.ptr=rgba},
         {.effect=blend_srcover},
-        {.effect=store}, {.store=store_rgba_f16}, {.size=8}, {.ptr=dst},
+        {.effect=store}, {.memfn=store_rgba_f16}, {.size=8}, {.ptr=dst},
         {.effect=done},
     };
     drive(step,len(dst)/4);
@@ -209,10 +209,10 @@ static void test_drive_N() {
     float rgba[] = { 0.333f, 0.5f, 0.666f, 1.0f };
 
     Step step[] = {
-        {.effect=load}, {.load=load_rgba_f16}, {.size=8}, {.ptr=dst},
+        {.effect=load}, {.memfn=load_rgba_f16}, {.size=8}, {.ptr=dst},
         {.effect=shade_rgba_f32}, {.ptr=rgba},
         {.effect=blend_srcover},
-        {.effect=store}, {.store=store_rgba_f16}, {.size=8}, {.ptr=dst},
+        {.effect=store}, {.memfn=store_rgba_f16}, {.size=8}, {.ptr=dst},
         {.effect=done},
     };
     drive(step,len(dst)/4);
@@ -231,10 +231,10 @@ static void test_drive_Np1() {
     float rgba[] = { 0.333f, 0.5f, 0.666f, 1.0f };
 
     Step step[] = {
-        {.effect=load}, {.load=load_rgba_f16}, {.size=8}, {.ptr=dst},
+        {.effect=load}, {.memfn=load_rgba_f16}, {.size=8}, {.ptr=dst},
         {.effect=shade_rgba_f32}, {.ptr=rgba},
         {.effect=blend_srcover},
-        {.effect=store}, {.store=store_rgba_f16}, {.size=8}, {.ptr=dst},
+        {.effect=store}, {.memfn=store_rgba_f16}, {.size=8}, {.ptr=dst},
         {.effect=done},
     };
     drive(step,len(dst)/4);
@@ -253,10 +253,10 @@ static void test_drive_rgb_unorm8() {
     float rgba[] = { 0.333f, 0.5f, 0.666f, 1.0f };
 
     Step step[] = {
-        {.effect=load}, {.load=load_rgb_unorm8}, {.size=3}, {.ptr=dst},
+        {.effect=load}, {.memfn=load_rgb_unorm8}, {.size=3}, {.ptr=dst},
         {.effect=shade_rgba_f32}, {.ptr=rgba},
         {.effect=blend_srcover},
-        {.effect=store}, {.store=store_rgb_unorm8}, {.size=3}, {.ptr=dst},
+        {.effect=store}, {.memfn=store_rgb_unorm8}, {.size=3}, {.ptr=dst},
         {.effect=done},
     };
     drive(step,len(dst)/3);
@@ -274,10 +274,10 @@ static void test_drive_rgba_unorm8() {
     float rgba[] = { 0.333f, 0.5f, 0.666f, 1.0f };
 
     Step step[] = {
-        {.effect=load}, {.load=load_rgba_unorm8}, {.size=4}, {.ptr=dst},
+        {.effect=load}, {.memfn=load_rgba_unorm8}, {.size=4}, {.ptr=dst},
         {.effect=shade_rgba_f32}, {.ptr=rgba},
         {.effect=blend_srcover},
-        {.effect=store}, {.store=store_rgba_unorm8}, {.size=4}, {.ptr=dst},
+        {.effect=store}, {.memfn=store_rgba_unorm8}, {.size=4}, {.ptr=dst},
         {.effect=done},
     };
     drive(step,len(dst)/4);
@@ -296,10 +296,10 @@ static void test_drive_rgba_unorm16() {
     float rgba[] = { 0.333f, 0.5f, 0.666f, 1.0f };
 
     Step step[] = {
-        {.effect=load}, {.load=load_rgba_unorm16}, {.size=8}, {.ptr=dst},
+        {.effect=load}, {.memfn=load_rgba_unorm16}, {.size=8}, {.ptr=dst},
         {.effect=shade_rgba_f32}, {.ptr=rgba},
         {.effect=blend_srcover},
-        {.effect=store}, {.store=store_rgba_unorm16}, {.size=8}, {.ptr=dst},
+        {.effect=store}, {.memfn=store_rgba_unorm16}, {.size=8}, {.ptr=dst},
         {.effect=done},
     };
     drive(step,len(dst)/4);

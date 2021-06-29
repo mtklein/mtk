@@ -35,13 +35,11 @@ typedef struct {
 union Step;
 
 typedef RGBA (ABI Effect)(union Step* step, size_t p, RGBA src, Cold*);
-typedef RGBA (ABI Load  )(const void*);
-typedef RGBA (ABI Store )(void*, RGBA);
+typedef RGBA (ABI Memory)(void*, RGBA);
 
 typedef union Step {
     Effect* effect;
-    Load*   load;
-    Store*  store;
+    Memory* memfn;
     void*   ptr;
     size_t  size;
 } Step;
@@ -59,13 +57,11 @@ Effect
     shade_rgba_f32,
     store;
 
-Load
+Memory
     load_rgb_unorm8,
     load_rgba_f16,
     load_rgba_unorm16,
-    load_rgba_unorm8;
-
-Store
+    load_rgba_unorm8,
     store_rgb_unorm8,
     store_rgba_f16,
     store_rgba_unorm16,

@@ -165,23 +165,23 @@ RGBA clamp_01(Step step[], size_t p, RGBA src, Cold* cold) {
 }
 
 RGBA load(Step step[], size_t p, RGBA src, Cold* cold) {
-    Load*       fn      =              (step++)->load;
-    size_t      bpp     =              (step++)->size;
-    const void* ptr     = (const char*)(step++)->ptr + first_lane_index(p) * bpp;
+    Memory* fn  =        (step++)->memfn;
+    size_t  bpp =        (step++)->size;
+    void*   ptr = (char*)(step++)->ptr + first_lane_index(p) * bpp;
 
     if (p%N) {
         memcpy(cold->scratch, ptr, bpp*(p%N));
-        src = fn(cold->scratch);
+        src = fn(cold->scratch, src);
         next;
     }
-    src = fn(ptr);
+    src = fn(ptr, src);
     next;
 }
 
 RGBA store(Step step[], size_t p, RGBA src, Cold* cold) {
-    Store* fn      =        (step++)->store;
-    size_t bpp     =        (step++)->size;
-    void*  ptr     = (char*)(step++)->ptr + first_lane_index(p) * bpp;
+    Memory* fn  =        (step++)->memfn;
+    size_t  bpp =        (step++)->size;
+    void*   ptr = (char*)(step++)->ptr + first_lane_index(p) * bpp;
 
     if (p%N) {
         src = fn(cold->scratch, src);
@@ -192,15 +192,14 @@ RGBA store(Step step[], size_t p, RGBA src, Cold* cold) {
     next;
 }
 
-RGBA load_rgba_f16(const void* ptr) {
+RGBA load_rgba_f16(void* ptr, RGBA src) {
     F16x4 v;
     memcpy(&v, ptr, sizeof v);
-    return (RGBA) {
-        cast(shuffle(v,v, LD4_0), Half),
-        cast(shuffle(v,v, LD4_1), Half),
-        cast(shuffle(v,v, LD4_2), Half),
-        cast(shuffle(v,v, LD4_3), Half),
-    };
+    src.r = cast(shuffle(v,v, LD4_0), Half);
+    src.g = cast(shuffle(v,v, LD4_1), Half);
+    src.b = cast(shuffle(v,v, LD4_2), Half);
+    src.a = cast(shuffle(v,v, LD4_3), Half);
+    return src;
 }
 
 RGBA store_rgba_f16(void* ptr, RGBA src) {
@@ -213,15 +212,14 @@ RGBA store_rgba_f16(void* ptr, RGBA src) {
     return src;
 }
 
-RGBA load_rgb_unorm8(const void* ptr) {
+RGBA load_rgb_unorm8(void* ptr, RGBA src) {
     U8x3 v;
     memcpy(&v, ptr, sizeof v);
-    return (RGBA) {
-        Half_from_U8(shuffle(v,v, LD3_0)) * (half)(1/255.0),
-        Half_from_U8(shuffle(v,v, LD3_1)) * (half)(1/255.0),
-        Half_from_U8(shuffle(v,v, LD3_2)) * (half)(1/255.0),
-        1,
-    };
+    src.r = Half_from_U8(shuffle(v,v, LD3_0)) * (half)(1/255.0);
+    src.g = Half_from_U8(shuffle(v,v, LD3_1)) * (half)(1/255.0);
+    src.b = Half_from_U8(shuffle(v,v, LD3_2)) * (half)(1/255.0);
+    src.a = 1;
+    return src;
 }
 
 RGBA store_rgb_unorm8(void* ptr, RGBA src) {
@@ -233,15 +231,14 @@ RGBA store_rgb_unorm8(void* ptr, RGBA src) {
     return src;
 }
 
-RGBA load_rgba_unorm8(const void* ptr) {
+RGBA load_rgba_unorm8(void* ptr, RGBA src) {
     U8x4 v;
     memcpy(&v, ptr, sizeof v);
-    return (RGBA) {
-        Half_from_U8(shuffle(v,v, LD4_0)) * (half)(1/255.0),
-        Half_from_U8(shuffle(v,v, LD4_1)) * (half)(1/255.0),
-        Half_from_U8(shuffle(v,v, LD4_2)) * (half)(1/255.0),
-        Half_from_U8(shuffle(v,v, LD4_3)) * (half)(1/255.0),
-    };
+    src.r = Half_from_U8(shuffle(v,v, LD4_0)) * (half)(1/255.0);
+    src.g = Half_from_U8(shuffle(v,v, LD4_1)) * (half)(1/255.0);
+    src.b = Half_from_U8(shuffle(v,v, LD4_2)) * (half)(1/255.0);
+    src.a = Half_from_U8(shuffle(v,v, LD4_3)) * (half)(1/255.0);
+    return src;
 }
 
 RGBA store_rgba_unorm8(void* ptr, RGBA src) {
@@ -255,15 +252,14 @@ RGBA store_rgba_unorm8(void* ptr, RGBA src) {
 }
 
 // 0xffff (65535) becomes +inf when converted directly to f16, so unorm16 always goes via f32.
-RGBA load_rgba_unorm16(const void* ptr) {
+RGBA load_rgba_unorm16(void* ptr, RGBA src) {
     U16x4 v;
     memcpy(&v, ptr, sizeof v);
-    return (RGBA) {
-        cast( cast(shuffle(v,v, LD4_0), F32) * (1/65535.0f), Half ),
-        cast( cast(shuffle(v,v, LD4_1), F32) * (1/65535.0f), Half ),
-        cast( cast(shuffle(v,v, LD4_2), F32) * (1/65535.0f), Half ),
-        cast( cast(shuffle(v,v, LD4_3), F32) * (1/65535.0f), Half ),
-    };
+    src.r = cast( cast(shuffle(v,v, LD4_0), F32) * (1/65535.0f), Half );
+    src.g = cast( cast(shuffle(v,v, LD4_1), F32) * (1/65535.0f), Half );
+    src.b = cast( cast(shuffle(v,v, LD4_2), F32) * (1/65535.0f), Half );
+    src.a = cast( cast(shuffle(v,v, LD4_3), F32) * (1/65535.0f), Half );
+    return src;
 }
 
 RGBA store_rgba_unorm16(void* ptr, RGBA src) {
