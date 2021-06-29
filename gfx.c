@@ -171,10 +171,10 @@ RGBA load(Step step[], size_t p, RGBA src, Cold* cold) {
 
     if (p%N) {
         memcpy(cold->scratch, ptr, bpp*(p%N));
-        src = fn(cold->scratch, src);
+        cold->dst = fn(cold->scratch, src);
         next;
     }
-    src = fn(ptr, src);
+    cold->dst = fn(ptr, src);
     next;
 }
 
@@ -273,7 +273,7 @@ RGBA store_rgba_unorm16(void* ptr, RGBA src) {
 }
 
 void drive(Step step[], const int n) {
-    Cold cold = {0};
+    Cold cold;
 
     int i = 0;
     for (; i+N <= n; i += N) {

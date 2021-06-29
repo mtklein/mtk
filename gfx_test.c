@@ -3,6 +3,32 @@
 #include "len.h"
 #include <math.h>
 
+ABI static RGBA trace(Step step[], size_t p, RGBA src, Cold* cold) {
+    fprintf(stderr, "p=%zu\nsrc.r={ ", p);
+    for (int i = 0; i < N; i++) { fprintf(stderr, "%g ", (double)src.r[i]); }
+    fprintf(stderr, "}\nsrc.g={ ");
+    for (int i = 0; i < N; i++) { fprintf(stderr, "%g ", (double)src.g[i]); }
+    fprintf(stderr, "}\nsrc.b={ ");
+    for (int i = 0; i < N; i++) { fprintf(stderr, "%g ", (double)src.b[i]); }
+    fprintf(stderr, "}\nsrc.a={ ");
+    for (int i = 0; i < N; i++) { fprintf(stderr, "%g ", (double)src.a[i]); }
+    fprintf(stderr, "}\ndst.r={ ");
+    for (int i = 0; i < N; i++) { fprintf(stderr, "%g ", (double)cold->dst.r[i]); }
+    fprintf(stderr, "}\ndst.g={ ");
+    for (int i = 0; i < N; i++) { fprintf(stderr, "%g ", (double)cold->dst.g[i]); }
+    fprintf(stderr, "}\ndst.b={ ");
+    for (int i = 0; i < N; i++) { fprintf(stderr, "%g ", (double)cold->dst.b[i]); }
+    fprintf(stderr, "}\ndst.a={ ");
+    for (int i = 0; i < N; i++) { fprintf(stderr, "%g ", (double)cold->dst.a[i]); }
+    fprintf(stderr, "}\nx={ ");
+    for (int i = 0; i < N; i++) { fprintf(stderr, "%g ", (double)cold->x[i]); }
+    fprintf(stderr, "}\ny={ ");
+    for (int i = 0; i < N; i++) { fprintf(stderr, "%g ", (double)cold->y[i]); }
+    fprintf(stderr, "}\n");
+
+    return step->effect(step+1,p,src,cold);
+}
+
 static const RGBA zero;
 
 static void test_seed_xy() {
@@ -313,6 +339,7 @@ static void test_drive_rgba_unorm16() {
 }
 
 int main(void) {
+    (void)trace;
     test_clamp_01();
     test_drive_1();
     test_drive_N();
