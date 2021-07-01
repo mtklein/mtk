@@ -1,5 +1,6 @@
 #include "array.h"
 #include "bench.h"
+#include <stddef.h>
 
 static double bench_push(int k, double *scale, const char* *unit) {
     *scale = 1.0;

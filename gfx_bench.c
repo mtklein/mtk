@@ -2,6 +2,7 @@
 #include "gfx.h"
 #include "len.h"
 #include <stdint.h>
+#include <string.h>
 
 static double memset32(int k, double *scale, const char* *unit) {
     *scale = 1024;
