@@ -150,7 +150,7 @@ RGBA clamp_01(Step step[], size_t p, RGBA src, Cold* cold) {
 
 RGBA load(Step step[], size_t p, RGBA src, Cold* cold) {
     Memory* fn  =        (step++)->memfn;
-    size_t  bpp =        (step++)->size;
+    size_t  bpp =        (step++)->bpp;
     void*   ptr = (char*)(step++)->ptr + p/N*N * bpp;
 
     if (p%N) {
@@ -164,7 +164,7 @@ RGBA load(Step step[], size_t p, RGBA src, Cold* cold) {
 
 RGBA store(Step step[], size_t p, RGBA src, Cold* cold) {
     Memory* fn  =        (step++)->memfn;
-    size_t  bpp =        (step++)->size;
+    size_t  bpp =        (step++)->bpp;
     void*   ptr = (char*)(step++)->ptr + p/N*N * bpp;
 
     if (p%N) {

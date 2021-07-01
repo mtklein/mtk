@@ -41,7 +41,7 @@ typedef union Step {
     Effect* effect;
     Memory* memfn;
     void*   ptr;
-    size_t  size;
+    size_t  bpp;
 } Step;
 
 Effect
