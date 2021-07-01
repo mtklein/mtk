@@ -273,13 +273,14 @@ RGBA store_rgba_unorm16(void* ptr, RGBA src) {
 }
 
 void drive(Step step[], const int n) {
+    RGBA src[1];
     Cold cold;
 
     int i = 0;
     for (; i+N <= n; i += N) {
-        next_(step,(size_t)i,(RGBA){0},&cold);
+        next_(step,(size_t)i,src[0],&cold);
     }
     if (i < n) {
-        next_(step,(size_t)n,(RGBA){0},&cold);
+        next_(step,(size_t)n,src[0],&cold);
     }
 }
