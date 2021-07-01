@@ -74,22 +74,6 @@ static Half Half_from_U8(U8 u8) {
 #endif
 }
 
-// drive() runs its n instances in chunks of size N while possible,
-// then possibly one final tail chunk of size < N if that won't divide evenly.
-//
-// The p parameter is the index of the first lane for size N chunks, with (p%N) == 0,
-// or n itself to signal a size < N tail chunk, of size (p%N) == (n%N) > 0.
-//
-// Either way, first_lane_index(p) returns the index of the first lane.
-static size_t first_lane_index(size_t p) {
-    return p & ~(size_t)(N-1);
-}
-
-static RGBA next_(Step step[], size_t p, RGBA src, Cold* cold) {
-    return step->effect(step+1,p,src,cold);
-}
-#define next return next_(step,p,src,cold)
-
 RGBA done(Step step[], size_t p, RGBA src, Cold* cold) {
     (void)step;
     (void)p;
@@ -100,9 +84,9 @@ RGBA done(Step step[], size_t p, RGBA src, Cold* cold) {
 RGBA seed_xy(Step step[], size_t p, RGBA src, Cold* cold) {
     // In any given call to drive(), x marches along one at a time, while y remains constant.
     const int* xy = (step++)->ptr;
-    cold->x = xy[0] + (int)first_lane_index(p) + iota + 0.5f;
-    cold->y = xy[1]                                   + 0.5f;
-    next;
+    cold->x = xy[0] + (int)(p/N*N) + iota + 0.5f;
+    cold->y = xy[1]                       + 0.5f;
+    return step->effect(step+1,p,src,cold);
 }
 
 RGBA matrix_2x3(Step step[], size_t p, RGBA src, Cold* cold) {
@@ -111,7 +95,7 @@ RGBA matrix_2x3(Step step[], size_t p, RGBA src, Cold* cold) {
         y = cold->x * m[3] + (cold->y * m[4] + m[5]);
     cold->x = x;
     cold->y = y;
-    next;
+    return step->effect(step+1,p,src,cold);
 }
 
 RGBA matrix_3x3(Step step[], size_t p, RGBA src, Cold* cold) {
@@ -121,7 +105,7 @@ RGBA matrix_3x3(Step step[], size_t p, RGBA src, Cold* cold) {
         z = cold->x * m[6] + (cold->y * m[7] + m[8]);
     cold->x = x * (1/z);
     cold->y = y * (1/z);
-    next;
+    return step->effect(step+1,p,src,cold);
 }
 
 RGBA shade_rgba_f32(Step step[], size_t p, RGBA src, Cold* cold) {
@@ -136,16 +120,16 @@ RGBA shade_rgba_f32(Step step[], size_t p, RGBA src, Cold* cold) {
     src.g = rgba.g;
     src.b = rgba.b;
     src.a = rgba.a;
-    next;
+    return step->effect(step+1,p,src,cold);
 }
 
 RGBA blend_src(Step step[], size_t p, RGBA src, Cold* cold) {
-    next;
+    return step->effect(step+1,p,src,cold);
 }
 
 RGBA blend_dst(Step step[], size_t p, RGBA src, Cold* cold) {
     src = cold->dst;
-    next;
+    return step->effect(step+1,p,src,cold);
 }
 
 RGBA blend_srcover(Step step[], size_t p, RGBA src, Cold* cold) {
@@ -153,7 +137,7 @@ RGBA blend_srcover(Step step[], size_t p, RGBA src, Cold* cold) {
     src.g += cold->dst.g * (1-src.a);
     src.b += cold->dst.b * (1-src.a);
     src.a += cold->dst.a * (1-src.a);
-    next;
+    return step->effect(step+1,p,src,cold);
 }
 
 RGBA clamp_01(Step step[], size_t p, RGBA src, Cold* cold) {
@@ -161,35 +145,35 @@ RGBA clamp_01(Step step[], size_t p, RGBA src, Cold* cold) {
     src.g = clamp(src.g, 0,1);
     src.b = clamp(src.b, 0,1);
     src.a = clamp(src.a, 0,1);
-    next;
+    return step->effect(step+1,p,src,cold);
 }
 
 RGBA load(Step step[], size_t p, RGBA src, Cold* cold) {
     Memory* fn  =        (step++)->memfn;
     size_t  bpp =        (step++)->size;
-    void*   ptr = (char*)(step++)->ptr + first_lane_index(p) * bpp;
+    void*   ptr = (char*)(step++)->ptr + p/N*N * bpp;
 
     if (p%N) {
         memcpy(cold->scratch, ptr, bpp*(p%N));
         cold->dst = fn(cold->scratch, src);
-        next;
+        return step->effect(step+1,p,src,cold);
     }
     cold->dst = fn(ptr, src);
-    next;
+    return step->effect(step+1,p,src,cold);
 }
 
 RGBA store(Step step[], size_t p, RGBA src, Cold* cold) {
     Memory* fn  =        (step++)->memfn;
     size_t  bpp =        (step++)->size;
-    void*   ptr = (char*)(step++)->ptr + first_lane_index(p) * bpp;
+    void*   ptr = (char*)(step++)->ptr + p/N*N * bpp;
 
     if (p%N) {
         src = fn(cold->scratch, src);
         memcpy(ptr, cold->scratch, bpp*(p%N));
-        next;
+        return step->effect(step+1,p,src,cold);
     }
     src = fn(ptr, src);
-    next;
+    return step->effect(step+1,p,src,cold);
 }
 
 RGBA load_rgba_f16(void* ptr, RGBA src) {
@@ -277,10 +261,6 @@ void drive(Step step[], const int n) {
     Cold cold;
 
     int i = 0;
-    for (; i+N <= n; i += N) {
-        next_(step,(size_t)i,src[0],&cold);
-    }
-    if (i < n) {
-        next_(step,(size_t)n,src[0],&cold);
-    }
+    for (; i+N <= n; i += N) { step->effect(step+1,(size_t)i,*src,&cold); }
+    if  (  i   <  n        ) { step->effect(step+1,(size_t)n,*src,&cold); }
 }
