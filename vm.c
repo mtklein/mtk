@@ -54,18 +54,39 @@ Builder* builder() {
     return b;
 }
 
-static void op_done(const Program* p, const Inst* inst, Val val[], void* arg[]) {
+static void op1_done(const Program* p, const Inst* inst, Val val[], void* arg[]) {
+    (void)inst;
+    (void)val;
+    for (int i = 0; i < p->args; i++) {
+        arg[i] = (char*)arg[i] + 1*p->stride[i];
+    }
+}
+static void opN_done(const Program* p, const Inst* inst, Val val[], void* arg[]) {
+    (void)inst;
+    (void)val;
+    for (int i = 0; i < p->args; i++) {
+        arg[i] = (char*)arg[i] + N*p->stride[i];
+    }
+}
+
+static void op1_done1(const Program* p, const Inst* inst, Val val[], void* arg[]) {
     (void)p;
     (void)inst;
     (void)val;
-    (void)arg;
+    arg[0] = (char*)arg[0] + 1*p->stride[0];
+}
+static void opN_done1(const Program* p, const Inst* inst, Val val[], void* arg[]) {
+    (void)p;
+    (void)inst;
+    (void)val;
+    arg[0] = (char*)arg[0] + N*p->stride[0];
 }
 
 Program* compile(Builder* b) {
-    push(b->inst,b->insts) = (Inst) {
-        .op1 = op_done,
-        .opN = op_done,
-    };
+    switch (b->args) {
+        default: push(b->inst,b->insts) = (Inst) {.op1 = op1_done , .opN = opN_done }; break;
+        case 1:  push(b->inst,b->insts) = (Inst) {.op1 = op1_done1, .opN = opN_done1}; break;
+    }
 
     Program* p = calloc(1, sizeof *p);
     p->inst   = b->inst;
@@ -134,18 +155,8 @@ void st1_32(Builder* b, Ptr p, U32 v) {
 void run(const Program* p, int n, void* arg[]) {
     Val* val = calloc((size_t)p->insts, sizeof *val);
 
-    for (; n >= N; n -= N) {
-        p->inst->opN(p,p->inst,val,arg);
-        for (int i = 0; i < p->args; i++) {
-            arg[i] = (char*)arg[i] + N*p->stride[i];
-        }
-    }
-    while (n --> 0) {
-        p->inst->op1(p,p->inst,val,arg);
-        for (int i = 0; i < p->args; i++) {
-            arg[i] = (char*)arg[i] + p->stride[i];
-        }
-    }
+    for (; n >= N; n -= N) { p->inst->opN(p,p->inst,val,arg); }
+    while (n --> 0)        { p->inst->op1(p,p->inst,val,arg); }
 
     free(val);
 }
