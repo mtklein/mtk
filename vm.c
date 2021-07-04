@@ -28,8 +28,8 @@ typedef union {
 } Val;
 
 typedef struct Inst {
-    void (*op1)(int id, const struct Inst*, Val val[], void* arg[]);
-    void (*opN)(int id, const struct Inst*, Val val[], void* arg[]);
+    void (*op1)(const struct Inst*, const struct Inst*, Val val[], void* arg[]);
+    void (*opN)(const struct Inst*, const struct Inst*, Val val[], void* arg[]);
     int x,y,z,w;
     Ptr ptr;
     Imm imm;
@@ -54,7 +54,19 @@ Builder* builder() {
     return b;
 }
 
+static void op_done(const Inst* program, const Inst* inst, Val val[], void* arg[]) {
+    (void)program;
+    (void)inst;
+    (void)val;
+    (void)arg;
+}
+
 Program* compile(Builder* b) {
+    push(b->inst,b->insts) = (Inst) {
+        .op1 = op_done,
+        .opN = op_done,
+    };
+
     Program* p = calloc(1, sizeof *p);
     p->inst   = b->inst;
     p->stride = b->stride;
@@ -77,29 +89,38 @@ Ptr arg(Builder* b, int stride) {
     return (Ptr){ix};
 }
 
-static void op_splat_32(int id, const Inst* inst, Val val[], void* arg[]) {
-    (void)arg;
+#define next1 inst++; inst->op1(program, inst, val, arg)
+#define nextN inst++; inst->opN(program, inst, val, arg)
+
+static void op1_splat_32(const Inst* program, const Inst* inst, Val val[], void* arg[]) {
     Val v = {0};
     v.u32 += inst->imm.u32;
-    val[id] = v;
+    val[inst-program] = v;
+    next1;
+}
+static void opN_splat_32(const Inst* program, const Inst* inst, Val val[], void* arg[]) {
+    Val v = {0};
+    v.u32 += inst->imm.u32;
+    val[inst-program] = v;
+    nextN;
 }
 U32 splat_U32(Builder* b, uint32_t imm) {
     int id = b->insts;
     push(b->inst,b->insts) = (Inst) {
-        .op1     = op_splat_32,
-        .opN     = op_splat_32,
+        .op1     = op1_splat_32,
+        .opN     = opN_splat_32,
         .imm.u32 = imm,
     };
     return (U32){id};
 }
 
-static void op1_st1_32(int id, const Inst* inst, Val val[], void* arg[]) {
-    (void)id;
+static void op1_st1_32(const Inst* program, const Inst* inst, Val val[], void* arg[]) {
     memcpy(arg[inst->ptr.ix], &val[inst->x].u32, 1*4);
+    next1;
 }
-static void opN_st1_32(int id, const Inst* inst, Val val[], void* arg[]) {
-    (void)id;
+static void opN_st1_32(const Inst* program, const Inst* inst, Val val[], void* arg[]) {
     memcpy(arg[inst->ptr.ix], &val[inst->x].u32, N*4);
+    nextN;
 }
 void st1_32(Builder* b, Ptr p, U32 v) {
     push(b->inst,b->insts) = (Inst) {
@@ -114,19 +135,15 @@ void run(const Program* p, int n, void* arg[]) {
     Val* val = calloc((size_t)p->insts, sizeof *val);
 
     for (; n >= N; n -= N) {
-        for (int i = 0; i < p->insts; i++) {
-            const Inst* inst = p->inst+i;
-            inst->opN(i,inst,val,arg);
-        }
+        const Inst* program = p->inst;
+        program->opN(program,program,val,arg);
         for (int i = 0; i < p->args; i++) {
             arg[i] = (char*)arg[i] + N*p->stride[i];
         }
     }
     while (n --> 0) {
-        for (int i = 0; i < p->insts; i++) {
-            const Inst* inst = p->inst+i;
-            inst->op1(i,inst,val,arg);
-        }
+        const Inst* program = p->inst;
+        program->op1(program,program,val,arg);
         for (int i = 0; i < p->args; i++) {
             arg[i] = (char*)arg[i] + p->stride[i];
         }
