@@ -79,26 +79,8 @@ static void op1_done(const Program* p, const Inst* inst, Val* dst, Val val[], vo
     }
 }
 
-static void opN_done1(const Program* p, const Inst* inst, Val* dst, Val val[], void* arg[]) {
-    (void)p;
-    (void)inst;
-    (void)dst;
-    (void)val;
-    arg[0] = (char*)arg[0] + N*p->stride[0];
-}
-static void op1_done1(const Program* p, const Inst* inst, Val* dst, Val val[], void* arg[]) {
-    (void)p;
-    (void)inst;
-    (void)dst;
-    (void)val;
-    arg[0] = (char*)arg[0] + 1*p->stride[0];
-}
-
 Program* compile(Builder* b) {
-    switch (b->args) {
-        default: push(b->inst,b->insts) = (BInst) {.opN = opN_done , .op1 = op1_done }; break;
-        case 1:  push(b->inst,b->insts) = (BInst) {.opN = opN_done1, .op1 = op1_done1}; break;
-    }
+    push(b->inst,b->insts) = (BInst){.opN = opN_done, .op1 = op1_done};
 
     Program* p = malloc(sizeof *p + 2*(size_t)b->insts * sizeof(Inst));
     p->stride = b->stride;
