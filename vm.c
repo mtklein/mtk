@@ -1,4 +1,5 @@
 #include "array.h"
+#include "len.h"
 #include "vm.h"
 #include <stdlib.h>
 #include <string.h>
@@ -153,10 +154,15 @@ void st1_32(Builder* b, Ptr p, U32 v) {
 }
 
 void run(const Program* p, int n, void* arg[]) {
-    Val* val = malloc((size_t)p->insts * sizeof *val);
+    Val scratch[16], *val = scratch;
+    if (len(scratch) < p->insts) {
+        val = malloc((size_t)p->insts * sizeof *val);
+    }
 
     for (; n >= N; n -= N) { p->inst->opN(p,p->inst,val,arg); }
     while (n --> 0)        { p->inst->op1(p,p->inst,val,arg); }
 
-    free(val);
+    if (val != scratch) {
+        free(val);
+    }
 }
