@@ -1,6 +1,9 @@
 #include "array.h"
 #include "vm.h"
 #include <stdlib.h>
+#include <string.h>
+
+#define N 16
 
 typedef union {
     uint8_t  u8;
@@ -11,13 +14,25 @@ typedef union {
      int32_t s32;
     _Float16 f16;
     float    f32;
+} Imm;
+
+typedef union {
+    uint8_t  __attribute__((vector_size(1*N))) u8;
+    uint16_t __attribute__((vector_size(2*N))) u16;
+    uint32_t __attribute__((vector_size(4*N))) u32;
+     int8_t  __attribute__((vector_size(1*N))) s8;
+     int16_t __attribute__((vector_size(2*N))) s16;
+     int32_t __attribute__((vector_size(4*N))) s32;
+    _Float16 __attribute__((vector_size(2*N))) f16;
+    float    __attribute__((vector_size(4*N))) f32;
 } Val;
 
 typedef struct Inst {
-    void (*op)(int id, const struct Inst*, Val val[], void* arg[]);
+    void (*op1)(int id, const struct Inst*, Val val[], void* arg[]);
+    void (*opN)(int id, const struct Inst*, Val val[], void* arg[]);
     int x,y,z,w;
     Ptr ptr;
-    Val imm;
+    Imm imm;
 } Inst;
 
 struct Builder {
@@ -62,27 +77,34 @@ Ptr arg(Builder* b, int stride) {
     return (Ptr){ix};
 }
 
-static void op_splat(int id, const Inst* inst, Val val[], void* arg[]) {
+static void op_splat_32(int id, const Inst* inst, Val val[], void* arg[]) {
     (void)arg;
-    val[id] = inst->imm;
+    Val v = {0};
+    v.u32 += inst->imm.u32;
+    val[id] = v;
 }
 U32 splat_U32(Builder* b, uint32_t imm) {
     int id = b->insts;
     push(b->inst,b->insts) = (Inst) {
-        .op      = op_splat,
+        .op1     = op_splat_32,
+        .opN     = op_splat_32,
         .imm.u32 = imm,
     };
     return (U32){id};
 }
 
-static void op_st1_32(int id, const Inst* inst, Val val[], void* arg[]) {
+static void op1_st1_32(int id, const Inst* inst, Val val[], void* arg[]) {
     (void)id;
-    uint32_t* p = arg[inst->ptr.ix];
-    *p = val[inst->x].u32;
+    memcpy(arg[inst->ptr.ix], &val[inst->x].u32, 1*4);
+}
+static void opN_st1_32(int id, const Inst* inst, Val val[], void* arg[]) {
+    (void)id;
+    memcpy(arg[inst->ptr.ix], &val[inst->x].u32, N*4);
 }
 void st1_32(Builder* b, Ptr p, U32 v) {
     push(b->inst,b->insts) = (Inst) {
-        .op  = op_st1_32,
+        .op1 = op1_st1_32,
+        .opN = opN_st1_32,
         .ptr = p,
         .x   = v.id,
     };
@@ -91,10 +113,19 @@ void st1_32(Builder* b, Ptr p, U32 v) {
 void run(const Program* p, int n, void* arg[]) {
     Val* val = calloc((size_t)p->insts, sizeof *val);
 
+    for (; n >= N; n -= N) {
+        for (int i = 0; i < p->insts; i++) {
+            const Inst* inst = p->inst+i;
+            inst->opN(i,inst,val,arg);
+        }
+        for (int i = 0; i < p->args; i++) {
+            arg[i] = (char*)arg[i] + N*p->stride[i];
+        }
+    }
     while (n --> 0) {
         for (int i = 0; i < p->insts; i++) {
             const Inst* inst = p->inst+i;
-            inst->op(i,inst,val,arg);
+            inst->op1(i,inst,val,arg);
         }
         for (int i = 0; i < p->args; i++) {
             arg[i] = (char*)arg[i] + p->stride[i];
