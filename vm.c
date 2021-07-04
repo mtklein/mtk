@@ -29,22 +29,30 @@ typedef union {
 } Val;
 
 typedef struct Inst {
-    void (*opN)(const Program*, const struct Inst*, Val* dst, Val val[], void* arg[]);
-    void (*op1)(const Program*, const struct Inst*, Val* dst, Val val[], void* arg[]);
+    void (*op)(const Program*, const struct Inst*, Val* dst, Val val[], void* arg[]);
     int x,y,z,w;
     Ptr ptr;
     Imm imm;
 } Inst;
 
+typedef struct {
+    void (*opN)(const Program*, const Inst*, Val* dst, Val val[], void* arg[]);
+    void (*op1)(const Program*, const Inst*, Val* dst, Val val[], void* arg[]);
+    int x,y,z,w;
+    Ptr ptr;
+    Imm imm;
+} BInst;
+
 struct Builder {
-    Inst* inst;
-    int*  stride;
-    int   insts;
-    int   args;
+    BInst* inst;
+    int*   stride;
+    int    insts;
+    int    args;
 };
 
 struct Program {
-    Inst* inst;
+    Inst* instN;
+    Inst* inst1;
     int*  stride;
     int   insts;
     int   args;
@@ -89,22 +97,46 @@ static void op1_done1(const Program* p, const Inst* inst, Val* dst, Val val[], v
 
 Program* compile(Builder* b) {
     switch (b->args) {
-        default: push(b->inst,b->insts) = (Inst) {.opN = opN_done , .op1 = op1_done }; break;
-        case 1:  push(b->inst,b->insts) = (Inst) {.opN = opN_done1, .op1 = op1_done1}; break;
+        default: push(b->inst,b->insts) = (BInst) {.opN = opN_done , .op1 = op1_done }; break;
+        case 1:  push(b->inst,b->insts) = (BInst) {.opN = opN_done1, .op1 = op1_done1}; break;
     }
 
     Program* p = calloc(1, sizeof *p);
-    p->inst   = b->inst;
+    p->instN  = calloc((size_t)b->insts, sizeof *p->instN);
+    p->inst1  = calloc((size_t)b->insts, sizeof *p->inst1);
     p->stride = b->stride;
     p->insts  = b->insts;
     p->args   = b->args;
 
+    for (int i = 0; i < b->insts; i++) {
+        p->instN[i] = (Inst) {
+            .op  = b->inst[i].opN,
+            .x   = b->inst[i].x,
+            .y   = b->inst[i].y,
+            .z   = b->inst[i].z,
+            .w   = b->inst[i].w,
+            .ptr = b->inst[i].ptr,
+            .imm = b->inst[i].imm,
+        };
+        p->inst1[i] = (Inst) {
+            .op  = b->inst[i].op1,
+            .x   = b->inst[i].x,
+            .y   = b->inst[i].y,
+            .z   = b->inst[i].z,
+            .w   = b->inst[i].w,
+            .ptr = b->inst[i].ptr,
+            .imm = b->inst[i].imm,
+        };
+    }
+
+    free(b->inst);
     free(b);
     return p;
 }
 
 void drop(Program* p) {
-    free(p->inst);
+    free(p->instN);
+    free(p->inst1);
     free(p->stride);
     free(p);
 }
@@ -115,26 +147,19 @@ Ptr arg(Builder* b, int stride) {
     return (Ptr){ix};
 }
 
-#define nextN inst[1].opN(p,inst+1,dst+1,val,arg)
-#define next1 inst[1].op1(p,inst+1,dst+1,val,arg)
+#define next inst[1].op(p,inst+1,dst+1,val,arg)
 
-static void opN_splat_32(const Program* p, const Inst* inst, Val* dst, Val val[], void* arg[]) {
+static void op_splat_32(const Program* p, const Inst* inst, Val* dst, Val val[], void* arg[]) {
     Val v = {0};
     v.u32 += inst->imm.u32;
     *dst = v;
-    nextN;
-}
-static void op1_splat_32(const Program* p, const Inst* inst, Val* dst, Val val[], void* arg[]) {
-    Val v = {0};
-    v.u32 += inst->imm.u32;
-    *dst = v;
-    next1;
+    next;
 }
 U32 splat_U32(Builder* b, uint32_t imm) {
     int id = b->insts;
-    push(b->inst,b->insts) = (Inst) {
-        .opN     = opN_splat_32,
-        .op1     = op1_splat_32,
+    push(b->inst,b->insts) = (BInst) {
+        .opN     = op_splat_32,
+        .op1     = op_splat_32,
         .imm.u32 = imm,
     };
     return (U32){id};
@@ -142,14 +167,14 @@ U32 splat_U32(Builder* b, uint32_t imm) {
 
 static void opN_st1_32(const Program* p, const Inst* inst, Val* dst, Val val[], void* arg[]) {
     memcpy(arg[inst->ptr.ix], &val[inst->x].u32, N*4);
-    nextN;
+    next;
 }
 static void op1_st1_32(const Program* p, const Inst* inst, Val* dst, Val val[], void* arg[]) {
     memcpy(arg[inst->ptr.ix], &val[inst->x].u32, 1*4);
-    next1;
+    next;
 }
 void st1_32(Builder* b, Ptr p, U32 v) {
-    push(b->inst,b->insts) = (Inst) {
+    push(b->inst,b->insts) = (BInst) {
         .opN = opN_st1_32,
         .op1 = op1_st1_32,
         .ptr = p,
@@ -163,12 +188,16 @@ void run(const Program* p, int n, void* arg[]) {
         val = malloc((size_t)p->insts * sizeof *val);
     }
 
-    const Inst* start = p->inst;
-    void (*opN)(const Program*, const Inst*, Val*, Val[], void*[]) = start->opN;
-    void (*op1)(const Program*, const Inst*, Val*, Val[], void*[]) = start->op1;
-
-    for (int i = 0; i < n/N; i++) { opN(p,start,val,val,arg); }
-    for (int i = 0; i < n%N; i++) { op1(p,start,val,val,arg); }
+    {
+        const Inst* start = p->instN;
+        void (*op)(const Program*, const Inst*, Val*, Val[], void*[]) = start->op;
+        for (int i = 0; i < n/N; i++) { op(p,start,val,val,arg); }
+    }
+    {
+        const Inst* start = p->inst1;
+        void (*op)(const Program*, const Inst*, Val*, Val[], void*[]) = start->op;
+        for (int i = 0; i < n%N; i++) { op(p,start,val,val,arg); }
+    }
 
     if (val != scratch) {
         free(val);
