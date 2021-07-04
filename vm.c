@@ -153,7 +153,7 @@ void st1_32(Builder* b, Ptr p, U32 v) {
 }
 
 void run(const Program* p, int n, void* arg[]) {
-    Val* val = calloc((size_t)p->insts, sizeof *val);
+    Val* val = malloc((size_t)p->insts * sizeof *val);
 
     for (; n >= N; n -= N) { p->inst->opN(p,p->inst,val,arg); }
     while (n --> 0)        { p->inst->op1(p,p->inst,val,arg); }
