@@ -3,10 +3,12 @@
 import os
 import sys
 
-targets = [
-    'array',
-    'gfx',
-]
+deps = {
+    'array': [],
+    'gfx':   [],
+    'vm':    ['array'],
+}
+
 modes = {
     '':       '',
     'lto':    '-flto',
@@ -33,8 +35,9 @@ rule run
 
 with open('build.ninja', 'w') as f:
     print(header, file=f)
-    for target in targets:
+    for target in deps:
         for mode in modes:
+            objs = ''.join(' out/{}/{}.o'.format(mode,dep) for dep in deps[target])
             p = lambda s: print(s.format(short=target,
                                          full='out/{}/{}'.format(mode,target),
                                          flags=modes[mode]), file=f)
@@ -43,13 +46,13 @@ with open('build.ninja', 'w') as f:
 
             p('build {full}_test.o: compile {short}_test.c')
             p('    cc = $cc {flags} -Wno-float-equal')
-            p('build {full}_test: link {full}.o {full}_test.o')
+            p('build {full}_test: link {full}.o {full}_test.o' + objs)
             p('    cc = $cc {flags}')
             p('build {full}.ok: run {full}_test')
 
             p('build {full}_bench.o: compile {short}_bench.c')
             p('    cc = $cc {flags}')
-            p('build {full}_bench: link {full}.o {full}_bench.o')
+            p('build {full}_bench: link {full}.o {full}_bench.o' + objs)
             p('    cc = $cc {flags}')
 
 
