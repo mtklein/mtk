@@ -163,8 +163,12 @@ void run(const Program* p, int n, void* arg[]) {
         val = malloc((size_t)p->insts * sizeof *val);
     }
 
-    for (int i = 0; i < n/N; i++) { p->inst->opN(p,p->inst,val,val,arg); }
-    for (int i = 0; i < n%N; i++) { p->inst->op1(p,p->inst,val,val,arg); }
+    const Inst* start = p->inst;
+    void (*opN)(const Program*, const Inst*, Val*, Val[], void*[]) = start->opN;
+    void (*op1)(const Program*, const Inst*, Val*, Val[], void*[]) = start->op1;
+
+    for (int i = 0; i < n/N; i++) { opN(p,start,val,val,arg); }
+    for (int i = 0; i < n%N; i++) { op1(p,start,val,val,arg); }
 
     if (val != scratch) {
         free(val);
