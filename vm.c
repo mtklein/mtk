@@ -159,8 +159,8 @@ void run(const Program* p, int n, void* arg[]) {
         val = malloc((size_t)p->insts * sizeof *val);
     }
 
-    for (; n >= N; n -= N) { p->inst->opN(p,p->inst,val,arg); }
-    while (n --> 0)        { p->inst->op1(p,p->inst,val,arg); }
+    for (int i = 0; i < n/N; i++) { p->inst->opN(p,p->inst,val,arg); }
+    for (int i = 0; i < n%N; i++) { p->inst->op1(p,p->inst,val,arg); }
 
     if (val != scratch) {
         free(val);
