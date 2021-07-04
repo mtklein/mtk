@@ -102,8 +102,8 @@ Program* compile(Builder* b) {
     }
 
     Program* p = calloc(1, sizeof *p);
-    p->instN  = calloc((size_t)b->insts, sizeof *p->instN);
-    p->inst1  = calloc((size_t)b->insts, sizeof *p->inst1);
+    p->instN  = calloc(2*(size_t)b->insts, sizeof *p->instN);
+    p->inst1  = p->instN + b->insts;
     p->stride = b->stride;
     p->insts  = b->insts;
     p->args   = b->args;
@@ -136,7 +136,6 @@ Program* compile(Builder* b) {
 
 void drop(Program* p) {
     free(p->instN);
-    free(p->inst1);
     free(p->stride);
     free(p);
 }
