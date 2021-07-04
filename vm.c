@@ -51,11 +51,10 @@ struct Builder {
 };
 
 struct Program {
-    Inst* instN;
-    Inst* inst1;
     int*  stride;
     int   insts;
     int   args;
+    Inst  inst[];
 };
 
 Builder* builder() {
@@ -101,15 +100,13 @@ Program* compile(Builder* b) {
         case 1:  push(b->inst,b->insts) = (BInst) {.opN = opN_done1, .op1 = op1_done1}; break;
     }
 
-    Program* p = calloc(1, sizeof *p);
-    p->instN  = calloc(2*(size_t)b->insts, sizeof *p->instN);
-    p->inst1  = p->instN + b->insts;
+    Program* p = malloc(sizeof *p + 2*(size_t)b->insts * sizeof(Inst));
     p->stride = b->stride;
     p->insts  = b->insts;
     p->args   = b->args;
 
-    for (int i = 0; i < b->insts; i++) {
-        p->instN[i] = (Inst) {
+    for (int i = 0; i < p->insts; i++) {
+        p->inst[i] = (Inst) {
             .op  = b->inst[i].opN,
             .x   = b->inst[i].x,
             .y   = b->inst[i].y,
@@ -118,7 +115,7 @@ Program* compile(Builder* b) {
             .ptr = b->inst[i].ptr,
             .imm = b->inst[i].imm,
         };
-        p->inst1[i] = (Inst) {
+        p->inst[i+p->insts] = (Inst) {
             .op  = b->inst[i].op1,
             .x   = b->inst[i].x,
             .y   = b->inst[i].y,
@@ -135,7 +132,6 @@ Program* compile(Builder* b) {
 }
 
 void drop(Program* p) {
-    free(p->instN);
     free(p->stride);
     free(p);
 }
@@ -188,12 +184,12 @@ void run(const Program* p, int n, void* arg[]) {
     }
 
     {
-        const Inst* start = p->instN;
+        const Inst* start = p->inst;
         void (*op)(const Program*, const Inst*, Val*, Val[], void*[]) = start->op;
         for (int i = 0; i < n/N; i++) { op(p,start,val,val,arg); }
     }
     {
-        const Inst* start = p->inst1;
+        const Inst* start = p->inst + p->insts;
         void (*op)(const Program*, const Inst*, Val*, Val[], void*[]) = start->op;
         for (int i = 0; i < n%N; i++) { op(p,start,val,val,arg); }
     }
