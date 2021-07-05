@@ -61,14 +61,9 @@ static void op_done(_Bool one, const Inst* inst, Val* d, Val v[], void* arg[]) {
     const Program* p;
     memcpy(&p, &inst->x, sizeof p);
 
-    if (one) {
-        for (int i = 0; i < p->args; i++) {
-            arg[i] = (char*)arg[i] + 1*p->stride[i];
-        }
-    } else {
-        for (int i = 0; i < p->args; i++) {
-            arg[i] = (char*)arg[i] + N*p->stride[i];
-        }
+    for (int i = 0; i < p->args; i++) {
+        arg[i] = (char*)arg[i] + (one ? 1*p->stride[i]
+                                      : N*p->stride[i]);
     }
 }
 
