@@ -140,8 +140,26 @@ static void op1_ld1_16(const Program* p, const Inst* inst, Val* dst, Val val[], 
     memcpy(&dst->u16, arg[inst->ptr.ix], 1*2);
     next;
 }
-U16 ld1_16(Builder* b, Ptr ptr) {
+U16 ld1_U16(Builder* b, Ptr ptr) {
     return (U16){
+        push_inst(b, (BInst) {
+            .opN = opN_ld1_16,
+            .op1 = op1_ld1_16,
+            .ptr = ptr,
+        })
+    };
+}
+S16 ld1_S16(Builder* b, Ptr ptr) {
+    return (S16){
+        push_inst(b, (BInst) {
+            .opN = opN_ld1_16,
+            .op1 = op1_ld1_16,
+            .ptr = ptr,
+        })
+    };
+}
+F16 ld1_F16(Builder* b, Ptr ptr) {
+    return (F16){
         push_inst(b, (BInst) {
             .opN = opN_ld1_16,
             .op1 = op1_ld1_16,
@@ -158,7 +176,23 @@ static void op1_st1_16(const Program* p, const Inst* inst, Val* dst, Val val[], 
     memcpy(arg[inst->ptr.ix], &val[inst->x].u16, 1*2);
     next;
 }
-void st1_16(Builder* b, Ptr ptr, U16 v) {
+void st1_U16(Builder* b, Ptr ptr, U16 v) {
+    push_inst(b, (BInst) {
+        .opN = opN_st1_16,
+        .op1 = op1_st1_16,
+        .ptr = ptr,
+        .x   = v.id,
+    });
+}
+void st1_S16(Builder* b, Ptr ptr, S16 v) {
+    push_inst(b, (BInst) {
+        .opN = opN_st1_16,
+        .op1 = op1_st1_16,
+        .ptr = ptr,
+        .x   = v.id,
+    });
+}
+void st1_F16(Builder* b, Ptr ptr, F16 v) {
     push_inst(b, (BInst) {
         .opN = opN_st1_16,
         .op1 = op1_st1_16,
@@ -175,7 +209,23 @@ static void op1_st1_32(const Program* p, const Inst* inst, Val* dst, Val val[], 
     memcpy(arg[inst->ptr.ix], &val[inst->x].u32, 1*4);
     next;
 }
-void st1_32(Builder* b, Ptr ptr, U32 v) {
+void st1_U32(Builder* b, Ptr ptr, U32 v) {
+    push_inst(b, (BInst) {
+        .opN = opN_st1_32,
+        .op1 = op1_st1_32,
+        .ptr = ptr,
+        .x   = v.id,
+    });
+}
+void st1_S32(Builder* b, Ptr ptr, S32 v) {
+    push_inst(b, (BInst) {
+        .opN = opN_st1_32,
+        .op1 = op1_st1_32,
+        .ptr = ptr,
+        .x   = v.id,
+    });
+}
+void st1_F32(Builder* b, Ptr ptr, F32 v) {
     push_inst(b, (BInst) {
         .opN = opN_st1_32,
         .op1 = op1_st1_32,
@@ -196,6 +246,24 @@ U32 splat_U32(Builder* b, uint32_t imm) {
             .opN     = op_splat_32,
             .op1     = op_splat_32,
             .imm.u32 = imm,
+        })
+    };
+}
+S32 splat_S32(Builder* b, int32_t imm) {
+    return (S32) {
+        push_inst(b, (BInst) {
+            .opN     = op_splat_32,
+            .op1     = op_splat_32,
+            .imm.s32 = imm,
+        })
+    };
+}
+F32 splat_F32(Builder* b, float imm) {
+    return (F32) {
+        push_inst(b, (BInst) {
+            .opN     = op_splat_32,
+            .op1     = op_splat_32,
+            .imm.f32 = imm,
         })
     };
 }

@@ -25,7 +25,7 @@ static double memset32_vm(int k, double *scale, const char* *unit) {
         Builder* b = builder();
         Ptr buf = arg(b, 4);
         U32   v = splat_U32(b, 0xffaaccee);
-        st1_32(b, buf, v);
+        st1_U32(b, buf, v);
         p = compile(b);
     }
 

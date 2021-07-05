@@ -8,7 +8,7 @@ static void test_memset32() {
         Builder* b = builder();
         Ptr buf = arg(b, 4);
         U32   v = splat_U32(b, 0xffaaccee);
-        st1_32(b, buf, v);
+        st1_U32(b, buf, v);
         p = compile(b);
     }
 
@@ -29,10 +29,10 @@ static void test_add_F16() {
         Ptr xp = arg(b,2),
             yp = arg(b,2);
 
-        F16 x = {ld1_16(b,xp).id},
-            y = {ld1_16(b,yp).id},
+        F16 x = ld1_F16(b,xp),
+            y = ld1_F16(b,yp),
             z = add_F16(b, x,y);
-        st1_16(b, xp, (U16){z.id});
+        st1_F16(b, xp, z);
 
         p = compile(b);
     }
