@@ -28,6 +28,9 @@ typedef union {
     float    __attribute__((vector_size(4*N))) f32;
 } Val;
 
+// TODO: encode relative (backward,negative) x,y,z,w so that we can pass only Val* v, with d==v?
+// That'd also mean {x,y,z,w}==0 signals an unused argument, which is very nice!
+
 typedef struct Inst {
     void (*op)(_Bool one, const struct Inst*, Val* d, Val v[], void* arg[]);
     int x,y,z,w;
