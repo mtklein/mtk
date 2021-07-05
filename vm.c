@@ -28,11 +28,8 @@ typedef union {
     float    __attribute__((vector_size(4*N))) f32;
 } Val;
 
-// TODO: encode relative (backward,negative) x,y,z,w so that we can pass only Val* v, with d==v?
-// That'd also mean {x,y,z,w}==0 signals an unused argument, which is very nice!
-
 typedef struct Inst {
-    void (*op)(_Bool one, const struct Inst*, Val* d, Val v[], void* arg[]);
+    void (*op)(_Bool one, const struct Inst*, Val* v, void* arg[]);
     int x,y,z,w;
     Ptr ptr;
     Imm imm;
@@ -57,12 +54,11 @@ Builder* builder() {
     return b;
 }
 
-static void op_done(_Bool one, const Inst* inst, Val* d, Val v[], void* arg[]) {
-    (void)d;
+static void op_done(_Bool one, const Inst* inst, Val* v, void* arg[]) {
     (void)v;
 
     const Program* p;
-    memcpy(&p, &inst->x, sizeof p);
+    memcpy(&p, &inst->ptr, sizeof p);
 
     for (int i = 0; i < p->args; i++) {
         arg[i] = (char*)arg[i] + (one ? 1*p->stride[i]
@@ -78,7 +74,7 @@ Program* compile(Builder* b) {
     p->args   = b->args;
 
     Inst inst = { .op = op_done };
-    memcpy(&inst.x, &p, sizeof p);
+    memcpy(&inst.ptr, &p, sizeof p);
     push(p->inst,p->insts) = inst;
 
     free(b);
@@ -97,103 +93,123 @@ Ptr arg(Builder* b, int stride) {
     return (Ptr){ix};
 }
 
-#define next inst[1].op(one,inst+1,d+1,v,arg)
+#define next inst[1].op(one,inst+1,v+1,arg)
 
-static int push_inst(Builder* b, Inst inst) {
-    int id = b->insts;
-    push(b->inst,b->insts) = inst;
-    return id;
-}
-
-static void op_ld1_16(_Bool one, const Inst* inst, Val* d, Val v[], void* arg[]) {
-    if (one) { memcpy(d, arg[inst->ptr.ix], 1*2); }
-    else     { memcpy(d, arg[inst->ptr.ix], N*2); }
+static void op_ld1_16(_Bool one, const Inst* inst, Val* v, void* arg[]) {
+    if (one) { memcpy(v, arg[inst->ptr.ix], 1*2); }
+    else     { memcpy(v, arg[inst->ptr.ix], N*2); }
     next;
 }
 U16 ld1_U16(Builder* b, Ptr ptr) {
-    return (U16){ push_inst(b, (Inst){.op = op_ld1_16, .ptr = ptr}) };
+    int id = b->insts;
+    push(b->inst,b->insts) = (Inst){.op = op_ld1_16, .ptr = ptr};
+    return (U16){ id };
 }
 S16 ld1_S16(Builder* b, Ptr ptr) {
-    return (S16){ push_inst(b, (Inst){.op = op_ld1_16, .ptr = ptr}) };
+    int id = b->insts;
+    push(b->inst,b->insts) = (Inst){.op = op_ld1_16, .ptr = ptr};
+    return (S16){ id };
 }
 F16 ld1_F16(Builder* b, Ptr ptr) {
-    return (F16){ push_inst(b, (Inst){.op = op_ld1_16, .ptr = ptr}) };
+    int id = b->insts;
+    push(b->inst,b->insts) = (Inst){.op = op_ld1_16, .ptr = ptr};
+    return (F16){ id };
 }
 
-static void op_st1_16(_Bool one, const Inst* inst, Val* d, Val v[], void* arg[]) {
+static void op_st1_16(_Bool one, const Inst* inst, Val* v, void* arg[]) {
     if (one) { memcpy(arg[inst->ptr.ix], &v[inst->x], 1*2); }
     else     { memcpy(arg[inst->ptr.ix], &v[inst->x], N*2); }
     next;
 }
 void st1_U16(Builder* b, Ptr ptr, U16 x) {
-    push_inst(b, (Inst){.op = op_st1_16, .ptr = ptr, .x = x.id});
+    int id = b->insts;
+    push(b->inst,b->insts) = (Inst){.op = op_st1_16, .ptr = ptr, .x = x.id-id};
 }
 void st1_S16(Builder* b, Ptr ptr, S16 x) {
-    push_inst(b, (Inst){.op = op_st1_16, .ptr = ptr, .x = x.id});
+    int id = b->insts;
+    push(b->inst,b->insts) = (Inst){.op = op_st1_16, .ptr = ptr, .x = x.id-id};
 }
 void st1_F16(Builder* b, Ptr ptr, F16 x) {
-    push_inst(b, (Inst){.op = op_st1_16, .ptr = ptr, .x = x.id});
+    int id = b->insts;
+    push(b->inst,b->insts) = (Inst){.op = op_st1_16, .ptr = ptr, .x = x.id-id};
 }
 
-static void op_st1_32(_Bool one, const Inst* inst, Val* d, Val v[], void* arg[]) {
+static void op_st1_32(_Bool one, const Inst* inst, Val* v, void* arg[]) {
     if (one) { memcpy(arg[inst->ptr.ix], &v[inst->x], 1*4); }
     else     { memcpy(arg[inst->ptr.ix], &v[inst->x], N*4); }
     next;
 }
 void st1_U32(Builder* b, Ptr ptr, U32 x) {
-    push_inst(b, (Inst){.op = op_st1_32, .ptr = ptr, .x = x.id});
+    int id = b->insts;
+    push(b->inst,b->insts) = (Inst){.op = op_st1_32, .ptr = ptr, .x = x.id-id};
 }
 void st1_S32(Builder* b, Ptr ptr, S32 x) {
-    push_inst(b, (Inst){.op = op_st1_32, .ptr = ptr, .x = x.id});
+    int id = b->insts;
+    push(b->inst,b->insts) = (Inst){.op = op_st1_32, .ptr = ptr, .x = x.id-id};
 }
 void st1_F32(Builder* b, Ptr ptr, F32 x) {
-    push_inst(b, (Inst){.op = op_st1_32, .ptr = ptr, .x = x.id});
+    int id = b->insts;
+    push(b->inst,b->insts) = (Inst){.op = op_st1_32, .ptr = ptr, .x = x.id-id};
 }
 
-static void op_splat_32(_Bool one, const Inst* inst, Val* d, Val v[], void* arg[]) {
-    Val x = {0};
-    x.u32 += inst->imm.u32;
-    *d = x;
+static void op_splat_32(_Bool one, const Inst* inst, Val* v, void* arg[]) {
+    Val imm = {0};
+    imm.u32 += inst->imm.u32;
+    *v = imm;
     next;
 }
 U32 splat_U32(Builder* b, uint32_t imm) {
-    return (U32) { push_inst(b, (Inst){.op = op_splat_32, .imm.u32 = imm}) };
+    int id = b->insts;
+    push(b->inst,b->insts) = (Inst){.op = op_splat_32, .imm.u32 = imm};
+    return (U32){ id };
 }
 S32 splat_S32(Builder* b, int32_t imm) {
-    return (S32) { push_inst(b, (Inst){.op = op_splat_32, .imm.s32 = imm}) };
+    int id = b->insts;
+    push(b->inst,b->insts) = (Inst){.op = op_splat_32, .imm.s32 = imm};
+    return (S32){ id };
 }
 F32 splat_F32(Builder* b, float imm) {
-    return (F32) { push_inst(b, (Inst){.op = op_splat_32, .imm.f32 = imm}) };
+    int id = b->insts;
+    push(b->inst,b->insts) = (Inst){.op = op_splat_32, .imm.f32 = imm};
+    return (F32){ id };
 }
 
 
-static void op_add_F16(_Bool one, const Inst* inst, Val* d, Val v[], void* arg[]) {
-    d->f16 = v[inst->x].f16 + v[inst->y].f16;
+static void op_add_F16(_Bool one, const Inst* inst, Val* v, void* arg[]) {
+    v->f16 = v[inst->x].f16 + v[inst->y].f16;
     next;
 }
-static void op_sub_F16(_Bool one, const Inst* inst, Val* d, Val v[], void* arg[]) {
-    d->f16 = v[inst->x].f16 - v[inst->y].f16;
+static void op_sub_F16(_Bool one, const Inst* inst, Val* v, void* arg[]) {
+    v->f16 = v[inst->x].f16 - v[inst->y].f16;
     next;
 }
-static void op_mul_F16(_Bool one, const Inst* inst, Val* d, Val v[], void* arg[]) {
-    d->f16 = v[inst->x].f16 * v[inst->y].f16;
+static void op_mul_F16(_Bool one, const Inst* inst, Val* v, void* arg[]) {
+    v->f16 = v[inst->x].f16 * v[inst->y].f16;
     next;
 }
-static void op_div_F16(_Bool one, const Inst* inst, Val* d, Val v[], void* arg[]) {
-    d->f16 = v[inst->x].f16 / v[inst->y].f16;
+static void op_div_F16(_Bool one, const Inst* inst, Val* v, void* arg[]) {
+    v->f16 = v[inst->x].f16 / v[inst->y].f16;
     next;
 }
 F16 add_F16(Builder* b, F16 x, F16 y) {
-    return (F16) { push_inst(b, (Inst){.op = op_add_F16, .x = x.id, .y = y.id}) };
+    int id = b->insts;
+    push(b->inst,b->insts) = (Inst){.op = op_add_F16, .x = x.id-id, .y = y.id-id};
+    return (F16){ id };
 }
 F16 sub_F16(Builder* b, F16 x, F16 y) {
-    return (F16) { push_inst(b, (Inst){.op = op_sub_F16, .x = x.id, .y = y.id}) };
+    int id = b->insts;
+    push(b->inst,b->insts) = (Inst){.op = op_sub_F16, .x = x.id-id, .y = y.id-id};
+    return (F16){ id };
 }
 F16 mul_F16(Builder* b, F16 x, F16 y) {
-    return (F16) { push_inst(b, (Inst){.op = op_mul_F16, .x = x.id, .y = y.id}) };
+    int id = b->insts;
+    push(b->inst,b->insts) = (Inst){.op = op_mul_F16, .x = x.id-id, .y = y.id-id};
+    return (F16){ id };
 }
 F16 div_F16(Builder* b, F16 x, F16 y) {
-    return (F16) { push_inst(b, (Inst){.op = op_div_F16, .x = x.id, .y = y.id}) };
+    int id = b->insts;
+    push(b->inst,b->insts) = (Inst){.op = op_div_F16, .x = x.id-id, .y = y.id-id};
+    return (F16){ id };
 }
 
 void run(const Program* p, int n, void* arg[]) {
@@ -203,10 +219,10 @@ void run(const Program* p, int n, void* arg[]) {
     }
 
     const Inst* start = p->inst;
-    void (*op)(_Bool, const Inst*, Val*, Val[], void*[]) = start->op;
+    void (*op)(_Bool, const Inst*, Val* v, void*[]) = start->op;
 
-    for (int i = 0; i < n/N; i++) { op(0,start,v,v,arg); }
-    for (int i = 0; i < n%N; i++) { op(1,start,v,v,arg); }
+    for (int i = 0; i < n/N; i++) { op(0,start,v,arg); }
+    for (int i = 0; i < n%N; i++) { op(1,start,v,arg); }
 
     if (v != scratch) {
         free(v);
