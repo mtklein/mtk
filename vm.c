@@ -96,8 +96,8 @@ Ptr arg(Builder* b, int stride) {
 #define next inst[1].op(one,inst+1,v+1,arg)
 
 static void op_ld1_16(_Bool one, const Inst* inst, Val* v, void* arg[]) {
-    if (one) { memcpy(v, arg[inst->ptr.ix], 1*2); }
-    else     { memcpy(v, arg[inst->ptr.ix], N*2); }
+    one ? memcpy(v, arg[inst->ptr.ix], 1*2)
+        : memcpy(v, arg[inst->ptr.ix], N*2);
     next;
 }
 U16 ld1_U16(Builder* b, Ptr ptr) {
@@ -117,8 +117,8 @@ F16 ld1_F16(Builder* b, Ptr ptr) {
 }
 
 static void op_st1_16(_Bool one, const Inst* inst, Val* v, void* arg[]) {
-    if (one) { memcpy(arg[inst->ptr.ix], &v[inst->x], 1*2); }
-    else     { memcpy(arg[inst->ptr.ix], &v[inst->x], N*2); }
+    one ? memcpy(arg[inst->ptr.ix], &v[inst->x], 1*2)
+        : memcpy(arg[inst->ptr.ix], &v[inst->x], N*2);
     next;
 }
 void st1_U16(Builder* b, Ptr ptr, U16 x) {
@@ -135,8 +135,8 @@ void st1_F16(Builder* b, Ptr ptr, F16 x) {
 }
 
 static void op_st1_32(_Bool one, const Inst* inst, Val* v, void* arg[]) {
-    if (one) { memcpy(arg[inst->ptr.ix], &v[inst->x], 1*4); }
-    else     { memcpy(arg[inst->ptr.ix], &v[inst->x], N*4); }
+    one ? memcpy(arg[inst->ptr.ix], &v[inst->x], 1*4)
+        : memcpy(arg[inst->ptr.ix], &v[inst->x], N*4);
     next;
 }
 void st1_U32(Builder* b, Ptr ptr, U32 x) {
