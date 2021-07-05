@@ -126,6 +126,58 @@ Ptr arg(Builder* b, int stride) {
 
 #define next inst[1].op(p,inst+1,dst+1,val,arg)
 
+static void opN_ld1_16(const Program* p, const Inst* inst, Val* dst, Val val[], void* arg[]) {
+    memcpy(&dst->u16, arg[inst->ptr.ix], N*2);
+    next;
+}
+static void op1_ld1_16(const Program* p, const Inst* inst, Val* dst, Val val[], void* arg[]) {
+    memcpy(&dst->u16, arg[inst->ptr.ix], 1*2);
+    next;
+}
+U16 ld1_16(Builder* b, Ptr ptr) {
+    int id = b->insts;
+    push(b->inst,b->insts) = (BInst) {
+        .opN = opN_ld1_16,
+        .op1 = op1_ld1_16,
+        .ptr = ptr,
+    };
+    return (U16){id};
+}
+
+static void opN_st1_16(const Program* p, const Inst* inst, Val* dst, Val val[], void* arg[]) {
+    memcpy(arg[inst->ptr.ix], &val[inst->x].u16, N*2);
+    next;
+}
+static void op1_st1_16(const Program* p, const Inst* inst, Val* dst, Val val[], void* arg[]) {
+    memcpy(arg[inst->ptr.ix], &val[inst->x].u16, 1*2);
+    next;
+}
+void st1_16(Builder* b, Ptr ptr, U16 v) {
+    push(b->inst,b->insts) = (BInst) {
+        .opN = opN_st1_16,
+        .op1 = op1_st1_16,
+        .ptr = ptr,
+        .x   = v.id,
+    };
+}
+
+static void opN_st1_32(const Program* p, const Inst* inst, Val* dst, Val val[], void* arg[]) {
+    memcpy(arg[inst->ptr.ix], &val[inst->x].u32, N*4);
+    next;
+}
+static void op1_st1_32(const Program* p, const Inst* inst, Val* dst, Val val[], void* arg[]) {
+    memcpy(arg[inst->ptr.ix], &val[inst->x].u32, 1*4);
+    next;
+}
+void st1_32(Builder* b, Ptr ptr, U32 v) {
+    push(b->inst,b->insts) = (BInst) {
+        .opN = opN_st1_32,
+        .op1 = op1_st1_32,
+        .ptr = ptr,
+        .x   = v.id,
+    };
+}
+
 static void op_splat_32(const Program* p, const Inst* inst, Val* dst, Val val[], void* arg[]) {
     Val v = {0};
     v.u32 += inst->imm.u32;
@@ -142,21 +194,20 @@ U32 splat_U32(Builder* b, uint32_t imm) {
     return (U32){id};
 }
 
-static void opN_st1_32(const Program* p, const Inst* inst, Val* dst, Val val[], void* arg[]) {
-    memcpy(arg[inst->ptr.ix], &val[inst->x].u32, N*4);
+
+static void op_add_F16(const Program* p, const Inst* inst, Val* dst, Val val[], void* arg[]) {
+    dst->f16 = val[inst->x].f16 + val[inst->y].f16;
     next;
 }
-static void op1_st1_32(const Program* p, const Inst* inst, Val* dst, Val val[], void* arg[]) {
-    memcpy(arg[inst->ptr.ix], &val[inst->x].u32, 1*4);
-    next;
-}
-void st1_32(Builder* b, Ptr p, U32 v) {
+F16 add_F16(Builder* b, F16 x, F16 y) {
+    int id = b->insts;
     push(b->inst,b->insts) = (BInst) {
-        .opN = opN_st1_32,
-        .op1 = op1_st1_32,
-        .ptr = p,
-        .x   = v.id,
+        .opN = op_add_F16,
+        .op1 = op_add_F16,
+        .x   = x.id,
+        .y   = y.id,
     };
+    return (F16){id};
 }
 
 void run(const Program* p, int n, void* arg[]) {

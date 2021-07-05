@@ -12,6 +12,8 @@ void     drop   (Program*);
 
 typedef struct { int ix; } Ptr;
 
+// TODO struct { int id : 30; int sub : 2; } for U??xN support
+
 typedef struct { int id; } U8;
 typedef struct { int id; } U16;
 typedef struct { int id; } U32;
