@@ -94,6 +94,11 @@ Ptr arg(Builder* b, int stride) {
     return (Ptr){b->args-1};
 }
 
+static int push_inst(Builder* b, Inst inst) {
+    push(b->inst,b->insts) = inst;
+    return b->insts-1;
+}
+
 #define next inst[1].op(one,inst+1,v+1,arg)
 
 op_(ld1_16) {
@@ -102,16 +107,13 @@ op_(ld1_16) {
     next;
 }
 U16 ld1_U16(Builder* b, Ptr ptr) {
-    push(b->inst,b->insts) = (Inst){.op = op_ld1_16, .ptr = ptr};
-    return (U16){b->insts-1};
+    return (U16){ push_inst(b, (Inst){.op=op_ld1_16, .ptr=ptr}) };
 }
 S16 ld1_S16(Builder* b, Ptr ptr) {
-    push(b->inst,b->insts) = (Inst){.op = op_ld1_16, .ptr = ptr};
-    return (S16){b->insts-1};
+    return (S16){ push_inst(b, (Inst){.op=op_ld1_16, .ptr=ptr}) };
 }
 F16 ld1_F16(Builder* b, Ptr ptr) {
-    push(b->inst,b->insts) = (Inst){.op = op_ld1_16, .ptr = ptr};
-    return (F16){b->insts-1};
+    return (F16){ push_inst(b, (Inst){.op=op_ld1_16, .ptr=ptr}) };
 }
 
 op_(st1_16) {
@@ -120,16 +122,13 @@ op_(st1_16) {
     next;
 }
 void st1_U16(Builder* b, Ptr ptr, U16 x) {
-    int id = b->insts;
-    push(b->inst,b->insts) = (Inst){.op = op_st1_16, .ptr = ptr, .x = x.id-id};
+    push_inst(b, (Inst){.op=op_st1_16, .ptr=ptr, .x=x.id-b->insts});
 }
 void st1_S16(Builder* b, Ptr ptr, S16 x) {
-    int id = b->insts;
-    push(b->inst,b->insts) = (Inst){.op = op_st1_16, .ptr = ptr, .x = x.id-id};
+    push_inst(b, (Inst){.op=op_st1_16, .ptr=ptr, .x=x.id-b->insts});
 }
 void st1_F16(Builder* b, Ptr ptr, F16 x) {
-    int id = b->insts;
-    push(b->inst,b->insts) = (Inst){.op = op_st1_16, .ptr = ptr, .x = x.id-id};
+    push_inst(b, (Inst){.op=op_st1_16, .ptr=ptr, .x=x.id-b->insts});
 }
 
 op_(st1_32) {
@@ -138,16 +137,13 @@ op_(st1_32) {
     next;
 }
 void st1_U32(Builder* b, Ptr ptr, U32 x) {
-    int id = b->insts;
-    push(b->inst,b->insts) = (Inst){.op = op_st1_32, .ptr = ptr, .x = x.id-id};
+    push_inst(b, (Inst){.op=op_st1_32, .ptr=ptr, .x=x.id-b->insts});
 }
 void st1_S32(Builder* b, Ptr ptr, S32 x) {
-    int id = b->insts;
-    push(b->inst,b->insts) = (Inst){.op = op_st1_32, .ptr = ptr, .x = x.id-id};
+    push_inst(b, (Inst){.op=op_st1_32, .ptr=ptr, .x=x.id-b->insts});
 }
 void st1_F32(Builder* b, Ptr ptr, F32 x) {
-    int id = b->insts;
-    push(b->inst,b->insts) = (Inst){.op = op_st1_32, .ptr = ptr, .x = x.id-id};
+    push_inst(b, (Inst){.op=op_st1_32, .ptr=ptr, .x=x.id-b->insts});
 }
 
 op_(splat_32) {
@@ -157,16 +153,13 @@ op_(splat_32) {
     next;
 }
 U32 splat_U32(Builder* b, uint32_t imm) {
-    push(b->inst,b->insts) = (Inst){.op = op_splat_32, .imm.u32 = imm};
-    return (U32){b->insts-1};
+    return (U32){ push_inst(b, (Inst){.op = op_splat_32, .imm.u32 = imm}) };
 }
 S32 splat_S32(Builder* b, int32_t imm) {
-    push(b->inst,b->insts) = (Inst){.op = op_splat_32, .imm.s32 = imm};
-    return (S32){b->insts-1};
+    return (S32){ push_inst(b, (Inst){.op = op_splat_32, .imm.s32 = imm}) };
 }
 F32 splat_F32(Builder* b, float imm) {
-    push(b->inst,b->insts) = (Inst){.op = op_splat_32, .imm.f32 = imm};
-    return (F32){b->insts-1};
+    return (F32){ push_inst(b, (Inst){.op = op_splat_32, .imm.f32 = imm}) };
 }
 
 
@@ -176,24 +169,16 @@ op_(mul_F16) { v->f16 = v[inst->x].f16 * v[inst->y].f16; next; }
 op_(div_F16) { v->f16 = v[inst->x].f16 / v[inst->y].f16; next; }
 
 F16 add_F16(Builder* b, F16 x, F16 y) {
-    int id = b->insts;
-    push(b->inst,b->insts) = (Inst){.op = op_add_F16, .x = x.id-id, .y = y.id-id};
-    return (F16){ id };
+    return (F16){ push_inst(b, (Inst){.op=op_add_F16, .x=x.id-b->insts, .y=y.id-b->insts}) };
 }
 F16 sub_F16(Builder* b, F16 x, F16 y) {
-    int id = b->insts;
-    push(b->inst,b->insts) = (Inst){.op = op_sub_F16, .x = x.id-id, .y = y.id-id};
-    return (F16){ id };
+    return (F16){ push_inst(b, (Inst){.op=op_sub_F16, .x=x.id-b->insts, .y=y.id-b->insts}) };
 }
 F16 mul_F16(Builder* b, F16 x, F16 y) {
-    int id = b->insts;
-    push(b->inst,b->insts) = (Inst){.op = op_mul_F16, .x = x.id-id, .y = y.id-id};
-    return (F16){ id };
+    return (F16){ push_inst(b, (Inst){.op=op_mul_F16, .x=x.id-b->insts, .y=y.id-b->insts}) };
 }
 F16 div_F16(Builder* b, F16 x, F16 y) {
-    int id = b->insts;
-    push(b->inst,b->insts) = (Inst){.op = op_div_F16, .x = x.id-id, .y = y.id-id};
-    return (F16){ id };
+    return (F16){ push_inst(b, (Inst){.op=op_div_F16, .x=x.id-b->insts, .y=y.id-b->insts}) };
 }
 
 void run(const Program* p, int n, void* arg[]) {
