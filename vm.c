@@ -108,96 +108,48 @@ static int push_inst(Builder* b, Inst inst) {
 }
 
 static void op_ld1_16(_Bool one, const Inst* inst, Val* d, Val v[], void* a[]) {
-    if (one) {
-        memcpy(d, a[inst->ptr.ix], 1*2);
-    } else {
-        memcpy(d, a[inst->ptr.ix], N*2);
-    }
+    if (one) { memcpy(d, a[inst->ptr.ix], 1*2); }
+    else     { memcpy(d, a[inst->ptr.ix], N*2); }
     next;
 }
 U16 ld1_U16(Builder* b, Ptr ptr) {
-    return (U16){
-        push_inst(b, (Inst) {
-            .op  = op_ld1_16,
-            .ptr = ptr,
-        })
-    };
+    return (U16){ push_inst(b, (Inst){.op = op_ld1_16, .ptr = ptr}) };
 }
 S16 ld1_S16(Builder* b, Ptr ptr) {
-    return (S16){
-        push_inst(b, (Inst) {
-            .op  = op_ld1_16,
-            .ptr = ptr,
-        })
-    };
+    return (S16){ push_inst(b, (Inst){.op = op_ld1_16, .ptr = ptr}) };
 }
 F16 ld1_F16(Builder* b, Ptr ptr) {
-    return (F16){
-        push_inst(b, (Inst) {
-            .op  = op_ld1_16,
-            .ptr = ptr,
-        })
-    };
+    return (F16){ push_inst(b, (Inst){.op = op_ld1_16, .ptr = ptr}) };
 }
 
 static void op_st1_16(_Bool one, const Inst* inst, Val* d, Val v[], void* a[]) {
-    if (one) {
-        memcpy(a[inst->ptr.ix], &v[inst->x], 1*2);
-    } else {
-        memcpy(a[inst->ptr.ix], &v[inst->x], N*2);
-    }
+    if (one) { memcpy(a[inst->ptr.ix], &v[inst->x], 1*2); }
+    else     { memcpy(a[inst->ptr.ix], &v[inst->x], N*2); }
     next;
 }
 void st1_U16(Builder* b, Ptr ptr, U16 x) {
-    push_inst(b, (Inst) {
-        .op  = op_st1_16,
-        .ptr = ptr,
-        .x   = x.id,
-    });
+    push_inst(b, (Inst){.op = op_st1_16, .ptr = ptr, .x = x.id});
 }
 void st1_S16(Builder* b, Ptr ptr, S16 x) {
-    push_inst(b, (Inst) {
-        .op  = op_st1_16,
-        .ptr = ptr,
-        .x   = x.id,
-    });
+    push_inst(b, (Inst){.op = op_st1_16, .ptr = ptr, .x = x.id});
 }
 void st1_F16(Builder* b, Ptr ptr, F16 x) {
-    push_inst(b, (Inst) {
-        .op  = op_st1_16,
-        .ptr = ptr,
-        .x   = x.id,
-    });
+    push_inst(b, (Inst){.op = op_st1_16, .ptr = ptr, .x = x.id});
 }
 
 static void op_st1_32(_Bool one, const Inst* inst, Val* d, Val v[], void* a[]) {
-    if (one) {
-        memcpy(a[inst->ptr.ix], &v[inst->x], 1*4);
-    } else {
-        memcpy(a[inst->ptr.ix], &v[inst->x], N*4);
-    }
+    if (one) { memcpy(a[inst->ptr.ix], &v[inst->x], 1*4); }
+    else     { memcpy(a[inst->ptr.ix], &v[inst->x], N*4); }
     next;
 }
 void st1_U32(Builder* b, Ptr ptr, U32 x) {
-    push_inst(b, (Inst) {
-        .op  = op_st1_32,
-        .ptr = ptr,
-        .x   = x.id,
-    });
+    push_inst(b, (Inst){.op = op_st1_32, .ptr = ptr, .x = x.id});
 }
 void st1_S32(Builder* b, Ptr ptr, S32 x) {
-    push_inst(b, (Inst) {
-        .op  = op_st1_32,
-        .ptr = ptr,
-        .x   = x.id,
-    });
+    push_inst(b, (Inst){.op = op_st1_32, .ptr = ptr, .x = x.id});
 }
 void st1_F32(Builder* b, Ptr ptr, F32 x) {
-    push_inst(b, (Inst) {
-        .op  = op_st1_32,
-        .ptr = ptr,
-        .x   = x.id,
-    });
+    push_inst(b, (Inst){.op = op_st1_32, .ptr = ptr, .x = x.id});
 }
 
 static void op_splat_32(_Bool one, const Inst* inst, Val* d, Val v[], void* a[]) {
@@ -207,28 +159,13 @@ static void op_splat_32(_Bool one, const Inst* inst, Val* d, Val v[], void* a[])
     next;
 }
 U32 splat_U32(Builder* b, uint32_t imm) {
-    return (U32) {
-        push_inst(b, (Inst) {
-            .op      = op_splat_32,
-            .imm.u32 = imm,
-        })
-    };
+    return (U32) { push_inst(b, (Inst){.op = op_splat_32, .imm.u32 = imm}) };
 }
 S32 splat_S32(Builder* b, int32_t imm) {
-    return (S32) {
-        push_inst(b, (Inst) {
-            .op      = op_splat_32,
-            .imm.s32 = imm,
-        })
-    };
+    return (S32) { push_inst(b, (Inst){.op = op_splat_32, .imm.s32 = imm}) };
 }
 F32 splat_F32(Builder* b, float imm) {
-    return (F32) {
-        push_inst(b, (Inst) {
-            .op      = op_splat_32,
-            .imm.f32 = imm,
-        })
-    };
+    return (F32) { push_inst(b, (Inst){.op = op_splat_32, .imm.f32 = imm}) };
 }
 
 
@@ -236,56 +173,29 @@ static void op_add_F16(_Bool one, const Inst* inst, Val* d, Val v[], void* a[]) 
     d->f16 = v[inst->x].f16 + v[inst->y].f16;
     next;
 }
-F16 add_F16(Builder* b, F16 x, F16 y) {
-    return (F16) {
-        push_inst(b, (Inst) {
-            .op = op_add_F16,
-            .x  = x.id,
-            .y  = y.id,
-        })
-    };
-}
-
 static void op_sub_F16(_Bool one, const Inst* inst, Val* d, Val v[], void* a[]) {
     d->f16 = v[inst->x].f16 - v[inst->y].f16;
     next;
 }
-F16 sub_F16(Builder* b, F16 x, F16 y) {
-    return (F16) {
-        push_inst(b, (Inst) {
-            .op = op_sub_F16,
-            .x  = x.id,
-            .y  = y.id,
-        })
-    };
-}
-
 static void op_mul_F16(_Bool one, const Inst* inst, Val* d, Val v[], void* a[]) {
     d->f16 = v[inst->x].f16 * v[inst->y].f16;
     next;
 }
-F16 mul_F16(Builder* b, F16 x, F16 y) {
-    return (F16) {
-        push_inst(b, (Inst) {
-            .op = op_mul_F16,
-            .x  = x.id,
-            .y  = y.id,
-        })
-    };
-}
-
 static void op_div_F16(_Bool one, const Inst* inst, Val* d, Val v[], void* a[]) {
     d->f16 = v[inst->x].f16 / v[inst->y].f16;
     next;
 }
+F16 add_F16(Builder* b, F16 x, F16 y) {
+    return (F16) { push_inst(b, (Inst){.op = op_add_F16, .x = x.id, .y = y.id}) };
+}
+F16 sub_F16(Builder* b, F16 x, F16 y) {
+    return (F16) { push_inst(b, (Inst){.op = op_sub_F16, .x = x.id, .y = y.id}) };
+}
+F16 mul_F16(Builder* b, F16 x, F16 y) {
+    return (F16) { push_inst(b, (Inst){.op = op_mul_F16, .x = x.id, .y = y.id}) };
+}
 F16 div_F16(Builder* b, F16 x, F16 y) {
-    return (F16) {
-        push_inst(b, (Inst) {
-            .op = op_div_F16,
-            .x  = x.id,
-            .y  = y.id,
-        })
-    };
+    return (F16) { push_inst(b, (Inst){.op = op_div_F16, .x = x.id, .y = y.id}) };
 }
 
 void run(const Program* p, int n, void* arg[]) {
