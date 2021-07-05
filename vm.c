@@ -80,7 +80,10 @@ static void op1_done(const Program* p, const Inst* inst, Val* dst, Val val[], vo
 }
 
 Program* compile(Builder* b) {
-    push(b->inst,b->insts) = (BInst){.opN = opN_done, .op1 = op1_done};
+    push(b->inst,b->insts) = (BInst) {
+        .opN = opN_done,
+        .op1 = op1_done,
+    };
 
     Program* p = malloc(sizeof *p + 2*(size_t)b->insts * sizeof(Inst));
     p->stride = b->stride;
@@ -98,7 +101,8 @@ Program* compile(Builder* b) {
             .imm = b->inst[i].imm,
         };
         p->inst[i+p->insts] = (Inst) {
-            .op  = b->inst[i].op1,
+            .op  = b->inst[i].op1 ? b->inst[i].op1
+                                  : b->inst[i].opN,
             .x   = b->inst[i].x,
             .y   = b->inst[i].y,
             .z   = b->inst[i].z,
@@ -244,7 +248,6 @@ U32 splat_U32(Builder* b, uint32_t imm) {
     return (U32) {
         push_inst(b, (BInst) {
             .opN     = op_splat_32,
-            .op1     = op_splat_32,
             .imm.u32 = imm,
         })
     };
@@ -253,7 +256,6 @@ S32 splat_S32(Builder* b, int32_t imm) {
     return (S32) {
         push_inst(b, (BInst) {
             .opN     = op_splat_32,
-            .op1     = op_splat_32,
             .imm.s32 = imm,
         })
     };
@@ -262,7 +264,6 @@ F32 splat_F32(Builder* b, float imm) {
     return (F32) {
         push_inst(b, (BInst) {
             .opN     = op_splat_32,
-            .op1     = op_splat_32,
             .imm.f32 = imm,
         })
     };
@@ -277,7 +278,48 @@ F16 add_F16(Builder* b, F16 x, F16 y) {
     return (F16) {
         push_inst(b, (BInst) {
             .opN = op_add_F16,
-            .op1 = op_add_F16,
+            .x   = x.id,
+            .y   = y.id,
+        })
+    };
+}
+
+static void op_sub_F16(const Program* p, const Inst* inst, Val* dst, Val val[], void* arg[]) {
+    dst->f16 = val[inst->x].f16 - val[inst->y].f16;
+    next;
+}
+F16 sub_F16(Builder* b, F16 x, F16 y) {
+    return (F16) {
+        push_inst(b, (BInst) {
+            .opN = op_sub_F16,
+            .x   = x.id,
+            .y   = y.id,
+        })
+    };
+}
+
+static void op_mul_F16(const Program* p, const Inst* inst, Val* dst, Val val[], void* arg[]) {
+    dst->f16 = val[inst->x].f16 * val[inst->y].f16;
+    next;
+}
+F16 mul_F16(Builder* b, F16 x, F16 y) {
+    return (F16) {
+        push_inst(b, (BInst) {
+            .opN = op_mul_F16,
+            .x   = x.id,
+            .y   = y.id,
+        })
+    };
+}
+
+static void op_div_F16(const Program* p, const Inst* inst, Val* dst, Val val[], void* arg[]) {
+    dst->f16 = val[inst->x].f16 / val[inst->y].f16;
+    next;
+}
+F16 div_F16(Builder* b, F16 x, F16 y) {
+    return (F16) {
+        push_inst(b, (BInst) {
+            .opN = op_div_F16,
             .x   = x.id,
             .y   = y.id,
         })
