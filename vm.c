@@ -29,7 +29,7 @@ typedef union {
 } Val;
 
 typedef struct Inst {
-    void (*op)(_Bool one, const Program*, const struct Inst*, Val* d, Val v[], void* arg[]);
+    void (*op)(_Bool one, const struct Inst*, Val* d, Val v[], void* arg[]);
     int x,y,z,w;
     Ptr ptr;
     Imm imm;
@@ -54,10 +54,13 @@ Builder* builder() {
     return b;
 }
 
-static void op_done(_Bool one, const Program* p, const Inst* inst, Val* d, Val v[], void* arg[]) {
-    (void)inst;
+static void op_done(_Bool one, const Inst* inst, Val* d, Val v[], void* arg[]) {
     (void)d;
     (void)v;
+
+    const Program* p;
+    memcpy(&p, &inst->x, sizeof p);
+
     if (one) {
         for (int i = 0; i < p->args; i++) {
             arg[i] = (char*)arg[i] + 1*p->stride[i];
@@ -70,13 +73,15 @@ static void op_done(_Bool one, const Program* p, const Inst* inst, Val* d, Val v
 }
 
 Program* compile(Builder* b) {
-    push(b->inst,b->insts) = (Inst){ .op = op_done };
-
     Program* p = calloc(1, sizeof *p);
     p->inst   = b->inst;
     p->stride = b->stride;
     p->insts  = b->insts;
     p->args   = b->args;
+
+    Inst inst = { .op = op_done };
+    memcpy(&inst.x, &p, sizeof p);
+    push(p->inst,p->insts) = inst;
 
     free(b);
     return p;
@@ -94,7 +99,7 @@ Ptr arg(Builder* b, int stride) {
     return (Ptr){ix};
 }
 
-#define next inst[1].op(one,p,inst+1,d+1,v,a)
+#define next inst[1].op(one,inst+1,d+1,v,a)
 
 static int push_inst(Builder* b, Inst inst) {
     int id = b->insts;
@@ -102,7 +107,7 @@ static int push_inst(Builder* b, Inst inst) {
     return id;
 }
 
-static void op_ld1_16(_Bool one, const Program* p, const Inst* inst, Val* d, Val v[], void* a[]) {
+static void op_ld1_16(_Bool one, const Inst* inst, Val* d, Val v[], void* a[]) {
     if (one) {
         memcpy(d, a[inst->ptr.ix], 1*2);
     } else {
@@ -135,7 +140,7 @@ F16 ld1_F16(Builder* b, Ptr ptr) {
     };
 }
 
-static void op_st1_16(_Bool one, const Program* p, const Inst* inst, Val* d, Val v[], void* a[]) {
+static void op_st1_16(_Bool one, const Inst* inst, Val* d, Val v[], void* a[]) {
     if (one) {
         memcpy(a[inst->ptr.ix], &v[inst->x], 1*2);
     } else {
@@ -165,7 +170,7 @@ void st1_F16(Builder* b, Ptr ptr, F16 x) {
     });
 }
 
-static void op_st1_32(_Bool one, const Program* p, const Inst* inst, Val* d, Val v[], void* a[]) {
+static void op_st1_32(_Bool one, const Inst* inst, Val* d, Val v[], void* a[]) {
     if (one) {
         memcpy(a[inst->ptr.ix], &v[inst->x], 1*4);
     } else {
@@ -195,7 +200,7 @@ void st1_F32(Builder* b, Ptr ptr, F32 x) {
     });
 }
 
-static void op_splat_32(_Bool one, const Program* p, const Inst* inst, Val* d, Val v[], void* a[]) {
+static void op_splat_32(_Bool one, const Inst* inst, Val* d, Val v[], void* a[]) {
     Val x = {0};
     x.u32 += inst->imm.u32;
     *d = x;
@@ -227,7 +232,7 @@ F32 splat_F32(Builder* b, float imm) {
 }
 
 
-static void op_add_F16(_Bool one, const Program* p, const Inst* inst, Val* d, Val v[], void* a[]) {
+static void op_add_F16(_Bool one, const Inst* inst, Val* d, Val v[], void* a[]) {
     d->f16 = v[inst->x].f16 + v[inst->y].f16;
     next;
 }
@@ -241,7 +246,7 @@ F16 add_F16(Builder* b, F16 x, F16 y) {
     };
 }
 
-static void op_sub_F16(_Bool one, const Program* p, const Inst* inst, Val* d, Val v[], void* a[]) {
+static void op_sub_F16(_Bool one, const Inst* inst, Val* d, Val v[], void* a[]) {
     d->f16 = v[inst->x].f16 - v[inst->y].f16;
     next;
 }
@@ -255,7 +260,7 @@ F16 sub_F16(Builder* b, F16 x, F16 y) {
     };
 }
 
-static void op_mul_F16(_Bool one, const Program* p, const Inst* inst, Val* d, Val v[], void* a[]) {
+static void op_mul_F16(_Bool one, const Inst* inst, Val* d, Val v[], void* a[]) {
     d->f16 = v[inst->x].f16 * v[inst->y].f16;
     next;
 }
@@ -269,7 +274,7 @@ F16 mul_F16(Builder* b, F16 x, F16 y) {
     };
 }
 
-static void op_div_F16(_Bool one, const Program* p, const Inst* inst, Val* d, Val v[], void* a[]) {
+static void op_div_F16(_Bool one, const Inst* inst, Val* d, Val v[], void* a[]) {
     d->f16 = v[inst->x].f16 / v[inst->y].f16;
     next;
 }
@@ -290,10 +295,10 @@ void run(const Program* p, int n, void* arg[]) {
     }
 
     const Inst* start = p->inst;
-    void (*op)(_Bool, const Program*, const Inst*, Val*, Val[], void*[]) = start->op;
+    void (*op)(_Bool, const Inst*, Val*, Val[], void*[]) = start->op;
 
-    for (int i = 0; i < n/N; i++) { op(0,p,start,v,v,arg); }
-    for (int i = 0; i < n%N; i++) { op(1,p,start,v,v,arg); }
+    for (int i = 0; i < n/N; i++) { op(0,start,v,v,arg); }
+    for (int i = 0; i < n%N; i++) { op(1,start,v,v,arg); }
 
     if (v != scratch) {
         free(v);
