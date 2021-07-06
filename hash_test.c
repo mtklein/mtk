@@ -61,18 +61,14 @@ static void test_basics() {
     free(h.table);
 }
 
-static _Bool ptr_eq(const void* a, const void* b) {
-    return a==b;
-}
-
 static void test_update() {
-    Hash h = {.eq=ptr_eq};
-
+    Hash h = {0};
     for (int i = 0; i < 10; i++) {
         insert(&h, 42,&h,&h);
         expect_eq(h.len, 1);
         expect_eq(h.cap, 1);
     }
+    free(h.table);
 }
 
 int main(void) {
