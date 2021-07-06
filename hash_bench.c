@@ -38,8 +38,52 @@ static double bench_update(int k, double *scale, const char* *unit) {
     return elapsed;
 }
 
+static double bench_hit(int k, double *scale, const char* *unit) {
+    *scale = 1.0;
+    *unit  = "";
+
+    Hash h = {0};
+    for (int i = 1; i <= 128; i++) {
+        void* p = (void*)(intptr_t)i;
+        insert(&h,i,p,p);
+    }
+
+    double start = now();
+    while (k --> 0) {
+        int i = 42;
+        void* p = (void*)(intptr_t)i;
+        expect(p == lookup(&h,i,p));
+    }
+    double elapsed = now() - start;
+    free(h.table);
+    return elapsed;
+}
+
+static double bench_miss(int k, double *scale, const char* *unit) {
+    *scale = 1.0;
+    *unit  = "";
+
+    Hash h = {0};
+    for (int i = 1; i <= 128; i++) {
+        void* p = (void*)(intptr_t)i;
+        insert(&h,i,p,p);
+    }
+
+    double start = now();
+    while (k --> 0) {
+        int i = 420;
+        void* p = (void*)(intptr_t)i;
+        expect(NULL == lookup(&h,i,p));
+    }
+    double elapsed = now() - start;
+    free(h.table);
+    return elapsed;
+}
+
 int main(int argc, char** argv) {
     bench(bench_insert);
     bench(bench_update);
+    bench(bench_hit);
+    bench(bench_miss);
     return 0;
 }
