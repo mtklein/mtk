@@ -56,7 +56,13 @@ Builder* builder() {
 #define op_(name) static void op_##name(_Bool one, const Inst* inst, Val* v, void* arg[])
 #define next inst[1].op(one,inst+1,v+1,arg)
 
-op_(inc_arg) {
+op_(done) {
+    (void)one;
+    (void)inst;
+    (void)v;
+    (void)arg;
+}
+op_(inc_arg_and_done) {
     (void)v;
 
     int ix     = inst->ptr.ix,
@@ -64,13 +70,10 @@ op_(inc_arg) {
 
     arg[ix] = (char*)arg[ix] + (one ? 1*stride
                                     : N*stride);
-    next;
 }
-op_(done) {
-    (void)one;
-    (void)inst;
-    (void)v;
-    (void)arg;
+op_(inc_arg) {
+    op_inc_arg_and_done(one,inst,v,arg);
+    next;
 }
 
 Program* compile(Builder* b) {
@@ -80,7 +83,7 @@ Program* compile(Builder* b) {
 
     for (int i = 0; i < b->args; i++) {
         push(p->inst,p->insts) = (Inst) {
-            .op      = op_inc_arg,
+            .op      = i == b->args-1 ? op_inc_arg_and_done : op_inc_arg,
             .ptr     = (Ptr){i},
             .imm.s32 = b->stride[i],
         };
