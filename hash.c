@@ -3,8 +3,7 @@
 
 static _Bool match(const Hash* h, int ix, int hash, const void* key) {
     return h->table[ix].hash == hash
-        && (h->eq ? h->eq(h->table[ix].key, key)
-                  : h->table[ix].key == key);
+        && (h->table[ix].key == key || (h->eq && h->eq(h->table[ix].key,key)));
 }
 
 
