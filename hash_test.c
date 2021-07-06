@@ -3,12 +3,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-static int cmp_string(const void* a, const void* b) {
-    return strcmp(a,b);
+static _Bool str_eq(const void* a, const void* b) {
+    return 0 == strcmp(a,b);
 }
 
 static void test_basics() {
-    Hash h = {.cmp=cmp_string};
+    Hash h = {.eq=str_eq};
     expect(lookup(&h,  42,  "foo") == NULL);
     expect(lookup(&h,  23,  "bar") == NULL);
     expect(lookup(&h,  47,  "baz") == NULL);
@@ -61,12 +61,12 @@ static void test_basics() {
     free(h.table);
 }
 
-static int cmp_ptr(const void* a, const void* b) {
-    return (a==b) ? 0 : 1;
+static _Bool ptr_eq(const void* a, const void* b) {
+    return a==b;
 }
 
 static void test_update() {
-    Hash h = {.cmp=cmp_ptr};
+    Hash h = {.eq=ptr_eq};
 
     for (int i = 0; i < 10; i++) {
         insert(&h, 42,&h,&h);

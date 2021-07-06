@@ -1,7 +1,7 @@
 #pragma once
 
 typedef struct {
-    int (*cmp)(const void*, const void*);
+    _Bool (*eq)(const void*, const void*);
     struct { int hash,padding; const void* key; void* val; } *table;
     int len,cap;
 } Hash;
