@@ -7,7 +7,7 @@ static int cmp_string(const void* a, const void* b) {
     return strcmp(a,b);
 }
 
-int main(void) {
+static void test_basics() {
     Hash h = {.cmp=cmp_string};
     expect(lookup(&h,  42,  "foo") == NULL);
     expect(lookup(&h,  23,  "bar") == NULL);
@@ -59,5 +59,24 @@ int main(void) {
     expect(lookup(&h, 100, "quux") == &w);
 
     free(h.table);
+}
+
+static int cmp_ptr(const void* a, const void* b) {
+    return (a==b) ? 0 : 1;
+}
+
+static void test_update() {
+    Hash h = {.cmp=cmp_ptr};
+
+    for (int i = 0; i < 10; i++) {
+        insert(&h, 42,&h,&h);
+        expect_eq(h.len, 1);
+        expect_eq(h.cap, 1);
+    }
+}
+
+int main(void) {
+    test_basics();
+    test_update();
     return 0;
 }
