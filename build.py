@@ -5,6 +5,7 @@ import sys
 
 deps = {
     'array': [],
+    'hash':  [],
     'gfx':   [],
     'vm':    ['array'],
 }
