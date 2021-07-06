@@ -44,9 +44,8 @@ struct Builder {
 
 struct Program {
     Inst* inst;
-    int*  stride;
     int   insts;
-    int   args;
+    int   padding;
 };
 
 Builder* builder() {
@@ -55,37 +54,46 @@ Builder* builder() {
 }
 
 #define op_(name) static void op_##name(_Bool one, const Inst* inst, Val* v, void* arg[])
+#define next inst[1].op(one,inst+1,v+1,arg)
 
-op_(done) {
+op_(inc_arg) {
     (void)v;
 
-    const Program* p;
-    memcpy(&p, &inst->ptr, sizeof p);
+    int ix     = inst->ptr.ix,
+        stride = inst->imm.s32;
 
-    for (int i = 0; i < p->args; i++) {
-        arg[i] = (char*)arg[i] + (one ? 1*p->stride[i]
-                                      : N*p->stride[i]);
-    }
+    arg[ix] = (char*)arg[ix] + (one ? 1*stride
+                                    : N*stride);
+    next;
+}
+op_(done) {
+    (void)one;
+    (void)inst;
+    (void)v;
+    (void)arg;
 }
 
 Program* compile(Builder* b) {
     Program* p = calloc(1, sizeof *p);
     p->inst   = b->inst;
-    p->stride = b->stride;
     p->insts  = b->insts;
-    p->args   = b->args;
 
-    Inst inst = { .op = op_done };
-    memcpy(&inst.ptr, &p, sizeof p);
-    push(p->inst,p->insts) = inst;
+    for (int i = 0; i < b->args; i++) {
+        push(p->inst,p->insts) = (Inst) {
+            .op      = op_inc_arg,
+            .ptr     = (Ptr){i},
+            .imm.s32 = b->stride[i],
+        };
+    }
+    push(p->inst,p->insts) = (Inst){.op=op_done};
 
+    free(b->stride);
     free(b);
     return p;
 }
 
 void drop(Program* p) {
     free(p->inst);
-    free(p->stride);
     free(p);
 }
 
@@ -98,8 +106,6 @@ static int push_inst(Builder* b, Inst inst) {
     push(b->inst,b->insts) = inst;
     return b->insts-1;
 }
-
-#define next inst[1].op(one,inst+1,v+1,arg)
 
 op_(ld1_16) {
     one ? memcpy(v, arg[inst->ptr.ix], 1*2)
