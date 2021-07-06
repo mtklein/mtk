@@ -3,7 +3,7 @@
 
 static _Bool match(const Hash* h, int ix, int hash, const void* key) {
     return h->table[ix].hash == hash
-        && (h->table[ix].key == key || (h->eq && h->eq(h->table[ix].key,key)));
+        && (h->table[ix].key == key || (h->eq && h->eq(h->table[ix].key,key, h->ctx)));
 }
 
 
@@ -54,6 +54,7 @@ void insert(Hash* h, int hash, const void* key, void* val) {
     if (h->len >= (h->cap * 3)/4) {
         Hash grown = {
             .eq  = h->eq,
+            .ctx = h->ctx,
             .cap = h->cap ? h->cap*2 : 1,
         };
         grown.table = calloc((size_t)grown.cap, sizeof *grown.table);

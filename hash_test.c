@@ -3,7 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-static _Bool str_eq(const void* a, const void* b) {
+static _Bool str_eq(const void* a, const void* b, void* ctx) {
+    (void)ctx;
     return 0 == strcmp(a,b);
 }
 
@@ -82,9 +83,39 @@ static void test_growth() {
     free(h.table);
 }
 
+static _Bool counting_ptr_eq(const void* a, const void* b, void* ctx) {
+    *(int*)ctx += 1;
+    return a == b;
+}
+
+static void test_eq_ctx() {
+    int calls = 0;
+
+    Hash h = {.eq=counting_ptr_eq, .ctx=&calls};
+
+    int keyA,keyB,keyC;
+
+    insert(&h, 1,&keyA,(void*)1);
+    expect_eq(0, calls);
+
+    insert(&h, 1,&keyA,(void*)2);
+    expect_eq(0, calls);
+
+    insert(&h, 2,&keyB,(void*)3);
+    expect_eq(0, calls);
+
+    insert(&h, 1,&keyC,(void*)4);
+    expect_eq(1, calls);
+
+    expect_eq(3, h.len);
+
+    free(h.table);
+}
+
 int main(void) {
     test_basics();
     test_update();
     test_growth();
+    test_eq_ctx();
     return 0;
 }
