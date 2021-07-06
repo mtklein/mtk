@@ -44,7 +44,7 @@ struct Builder {
 
 struct Program {
     Inst* inst;
-    int   insts;
+    int   vals;
     int   padding;
 };
 
@@ -79,17 +79,17 @@ op_(inc_arg) {
 Program* compile(Builder* b) {
     Program* p = calloc(1, sizeof *p);
     p->inst   = b->inst;
-    p->insts  = b->insts;
+    p->vals   = b->insts;
 
     for (int i = 0; i < b->args; i++) {
-        push(p->inst,p->insts) = (Inst) {
+        push(p->inst,b->insts) = (Inst) {
             .op      = i == b->args-1 ? op_inc_arg_and_done : op_inc_arg,
             .ptr     = (Ptr){i},
             .imm.s32 = b->stride[i],
         };
     }
     if (b->args == 0) {
-        push(p->inst,p->insts) = (Inst){.op=op_done};
+        push(p->inst,b->insts) = (Inst){.op=op_done};
     }
 
     free(b->stride);
@@ -194,8 +194,8 @@ F16 div_F16(Builder* b, F16 x, F16 y) {
 
 void run(const Program* p, int n, void* arg[]) {
     Val scratch[16], *v = scratch;
-    if (len(scratch) < p->insts) {
-        v = malloc((size_t)p->insts * sizeof *v);
+    if (len(scratch) < p->vals) {
+        v = malloc((size_t)p->vals * sizeof *v);
     }
 
     const Inst* start = p->inst;
