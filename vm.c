@@ -88,7 +88,9 @@ Program* compile(Builder* b) {
             .imm.s32 = b->stride[i],
         };
     }
-    push(p->inst,p->insts) = (Inst){.op=op_done};
+    if (b->args == 0) {
+        push(p->inst,p->insts) = (Inst){.op=op_done};
+    }
 
     free(b->stride);
     free(b);
