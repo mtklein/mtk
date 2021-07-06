@@ -51,7 +51,7 @@ void insert(Hash* h, int hash, const void* key, void* val) {
         }
     }
 
-    if (h->len == h->cap) {
+    if (h->len >= (h->cap * 3)/4) {
         Hash grown = {
             .eq  = h->eq,
             .cap = h->cap ? h->cap*2 : 1,

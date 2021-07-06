@@ -52,7 +52,7 @@ static void test_basics() {
     int w = 0;
     insert(&h, 100, "quux", &w);
     expect_eq(h.len, 4);
-    expect_eq(h.cap, 4);
+    expect_eq(h.cap, 8);
     expect(lookup(&h,  42,  "foo") == &x);
     expect(lookup(&h,  23,  "bar") == &y);
     expect(lookup(&h,  47,  "baz") == &x);
@@ -71,8 +71,20 @@ static void test_update() {
     free(h.table);
 }
 
+static void test_growth() {
+    Hash h = {0};
+    const int expected[] = {1,2,4,8,8,8,16,16,16,16,16,16,32,32,32,32,32,32,32,32};
+    for (int i = 0; i < 20; i++) {
+        void* p = (void*)(intptr_t)(i+1);
+        insert(&h,i,p,p);
+        expect_eq(h.cap, expected[i]);
+    }
+    free(h.table);
+}
+
 int main(void) {
     test_basics();
     test_update();
+    test_growth();
     return 0;
 }
