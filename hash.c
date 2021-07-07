@@ -4,8 +4,9 @@
 #include <stdlib.h>
 
 static bool match(const Hash* h, int ix, int hash, const void* key) {
-    return h->table[ix].hash == hash
-        && (h->table[ix].key == key || (h->eq && h->eq(h->table[ix].key,key, h->ctx)));
+    if (h->table[ix].hash != hash) { return false; }
+    if (h->table[ix].key  == key ) { return  true; }
+    return h->eq && h->eq(h->table[ix].key,key, h->ctx);
 }
 
 void* lookup(const Hash* h, int hash, const void* key) {
