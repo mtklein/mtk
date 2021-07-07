@@ -27,7 +27,6 @@ void* lookup(const Hash* h, int hash, const void* key) {
 
 static void just_insert(Hash* h, int hash, const void* key, void* val) {
     assume(key);
-    assume(val);
     assume(h->len < h->cap);
 
     int ix = hash & (h->cap-1);
@@ -46,7 +45,6 @@ static void just_insert(Hash* h, int hash, const void* key, void* val) {
 
 static bool maybe_update(Hash* h, int hash, const void* key, void* val) {
     assume(key);
-    assume(val);
 
     int ix = hash & (h->cap-1);
     for (int i = 0; i < h->cap; i++) {
