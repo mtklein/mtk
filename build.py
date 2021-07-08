@@ -20,7 +20,7 @@ modes = {
 header = '''
 builddir = out
 
-cc = clang -fcolor-diagnostics -Weverything -Wno-poison-system-directories
+cc = clang -fcolor-diagnostics -Weverything -Xclang -nostdsysteminc
 
 rule compile
     command = $cc -Werror -std=c99 -g -Os -ffp-contract=fast -MD -MF $out.d -c $in -o $out
