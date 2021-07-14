@@ -198,7 +198,7 @@ RGBA store_rgba_f16(void* ptr, RGBA src) {
 
 RGBA load_rgb_unorm8(void* ptr, RGBA src) {
     U8x3 v;
-    memcpy(&v, ptr, sizeof v);
+    memcpy(&v, ptr, N*3);  // note: sizeof v == N*4!
     src.r = Half_from_U8(shuffle(v,v, LD3_0)) * (half)(1/255.0);
     src.g = Half_from_U8(shuffle(v,v, LD3_1)) * (half)(1/255.0);
     src.b = Half_from_U8(shuffle(v,v, LD3_2)) * (half)(1/255.0);

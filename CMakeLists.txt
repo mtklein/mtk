@@ -8,8 +8,6 @@ add_library(   vm    vm.c)
 
 target_link_libraries(vm array)
 
-# TODO: gfx_test overflows stack without at least -O1 (san mode).
-
 set(CMAKE_EXE_LINKER_FLAGS_LTO "-Os -flto")
 set(CMAKE_EXE_LINKER_FLAGS_SAN "-O0 -fsanitize=address,integer,undefined -fno-sanitize-recover=all")
 set(CMAKE_EXE_LINKER_FLAGS_X86 "-Os -momit-leaf-frame-pointer")
