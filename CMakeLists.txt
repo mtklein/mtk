@@ -8,13 +8,11 @@ add_library(   vm    vm.c)
 
 target_link_libraries(vm array)
 
-
 # TODO: gfx_test overflows stack without at least -O1 (san mode).
-# TODO: x86 mode also has arm64 slice that needs removing for that mode to be relevant.
 
 set(CMAKE_EXE_LINKER_FLAGS_LTO "-Os -flto")
 set(CMAKE_EXE_LINKER_FLAGS_SAN "-O0 -fsanitize=address,integer,undefined -fno-sanitize-recover=all")
-set(CMAKE_EXE_LINKER_FLAGS_X86 "-Os -arch x86_64 -arch x86_64h -momit-leaf-frame-pointer")
+set(CMAKE_EXE_LINKER_FLAGS_X86 "-Os -momit-leaf-frame-pointer")
 
 set(COMMON_C_FLAGS "-fcolor-diagnostics -Werror -Weverything -ffp-contract=fast")
 set(CMAKE_C_FLAGS_LTO "${COMMON_C_FLAGS} ${CMAKE_EXE_LINKER_FLAGS_LTO}")
@@ -55,3 +53,7 @@ add_test(NAME   gfx_test COMMAND   gfx_test)
 add_test(NAME  hash_test COMMAND  hash_test)
 add_test(NAME    vm_test COMMAND    vm_test)
 
+get_property(targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
+foreach(target IN LISTS targets)
+    set_property(TARGET "${target}" PROPERTY OSX_ARCHITECTURES_X86 x86_64 x86_64h)
+endforeach()
