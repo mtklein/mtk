@@ -3,6 +3,8 @@
 #include "len.h"
 #include <math.h>
 
+#pragma GCC diagnostic ignored "-Wfloat-equal"
+
 ABI static RGBA trace(Step step[], size_t p, RGBA src, Cold* cold) {
     fprintf(stderr, "p=%zu\nsrc.r={ ", p);
     for (int i = 0; i < N; i++) { fprintf(stderr, "%g ", (double)src.r[i]); }

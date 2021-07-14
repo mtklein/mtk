@@ -46,7 +46,7 @@ with open('build.ninja', 'w') as f:
             p('    cc = $cc {flags}')
 
             p('build {full}_test.o: compile {short}_test.c')
-            p('    cc = $cc {flags} -Wno-float-equal')
+            p('    cc = $cc {flags}')
             p('build {full}_test: link {full}.o {full}_test.o' + objs)
             p('    cc = $cc {flags}')
             p('build {full}.ok: run {full}_test')
