@@ -3,14 +3,10 @@ project(mtk LANGUAGES C)
 enable_testing()
 
 if(CMAKE_CONFIGURATION_TYPES)
-    set(CMAKE_LINKER_FLAGS_LTO "-O2 -flto")
-    set(CMAKE_LINKER_FLAGS_SAN "-fsanitize=address,integer,undefined -fno-sanitize-recover=all")
-    set(CMAKE_LINKER_FLAGS_X86 "-O2 -momit-leaf-frame-pointer")
-
-    set(COMMON_C_FLAGS "-fcolor-diagnostics -Werror -Weverything -ffp-contract=fast")
-    set(CMAKE_C_FLAGS_LTO "${COMMON_C_FLAGS} ${CMAKE_LINKER_FLAGS_LTO}")
-    set(CMAKE_C_FLAGS_SAN "${COMMON_C_FLAGS} ${CMAKE_LINKER_FLAGS_SAN}")
-    set(CMAKE_C_FLAGS_X86 "${COMMON_C_FLAGS} ${CMAKE_LINKER_FLAGS_X86}")
+    set(FS "-fcolor-diagnostics -Werror -Weverything -ffp-contract=fast")
+    set(CMAKE_C_FLAGS_LTO "${FS} -O2 -flto")
+    set(CMAKE_C_FLAGS_SAN "${FS} -fsanitize=address,integer,undefined -fno-sanitize-recover=all")
+    set(CMAKE_C_FLAGS_X86 "${FS} -O2 -momit-leaf-frame-pointer")
 
     set(CMAKE_CONFIGURATION_TYPES "${CMAKE_CONFIGURATION_TYPES};lto;san;x86")
     set(CMAKE_CROSS_CONFIGS   "all")
