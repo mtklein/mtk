@@ -8,9 +8,9 @@ add_library(   vm    vm.c)
 
 target_link_libraries(vm array)
 
-set(CMAKE_EXE_LINKER_FLAGS_LTO "-Os -flto")
+set(CMAKE_EXE_LINKER_FLAGS_LTO "-O2 -flto")
 set(CMAKE_EXE_LINKER_FLAGS_SAN "-O0 -fsanitize=address,integer,undefined -fno-sanitize-recover=all")
-set(CMAKE_EXE_LINKER_FLAGS_X86 "-Os -momit-leaf-frame-pointer")
+set(CMAKE_EXE_LINKER_FLAGS_X86 "-O2 -momit-leaf-frame-pointer")
 
 set(COMMON_C_FLAGS "-fcolor-diagnostics -Werror -Weverything -ffp-contract=fast")
 set(CMAKE_C_FLAGS_LTO "${COMMON_C_FLAGS} ${CMAKE_EXE_LINKER_FLAGS_LTO}")

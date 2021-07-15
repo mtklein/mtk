@@ -11,10 +11,10 @@ deps = {
 }
 
 modes = {
-    '':       '-Os',
-    'lto':    '-Os -flto',
-    'san':    '-O0 -fsanitize=address,integer,undefined -fno-sanitize-recover=all',
-    'x86_64': '-Os -arch x86_64 -arch x86_64h -momit-leaf-frame-pointer',
+    '':       '',
+    'lto':    '-flto',
+    'san':    '-fsanitize=address,integer,undefined -fno-sanitize-recover=all -O0',
+    'x86_64': '-arch x86_64 -arch x86_64h -momit-leaf-frame-pointer',
 }
 
 header = '''
@@ -23,7 +23,7 @@ builddir = out
 cc = clang -fcolor-diagnostics -Weverything -Xclang -nostdsysteminc
 
 rule compile
-    command = $cc -Werror -std=c99 -g -ffp-contract=fast -MD -MF $out.d -c $in -o $out
+    command = $cc -Werror -std=c99 -g -O2 -ffp-contract=fast -MD -MF $out.d -c $in -o $out
     depfile = $out.d
     deps    = gcc
 
