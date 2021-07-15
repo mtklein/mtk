@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
@@ -22,9 +23,15 @@ static void bench_(const char* name, double(*fn)(int, double*, const char**)) {
     double      scale = 1.0;
     const char* unit  = "";
 
+    double limit = 0.125;
+    for (const char* BENCH_SEC = getenv("BENCH_SEC"); BENCH_SEC;) {
+        limit = atof(BENCH_SEC);
+        break;
+    }
+
     int k = 1;
     double elapsed = 0;
-    while (elapsed < 0.125) {
+    while (elapsed < limit) {
         k *= 2;
         elapsed = fn(k, &scale,&unit);
     }
