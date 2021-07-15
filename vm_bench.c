@@ -3,6 +3,22 @@
 #include "vm.h"
 #include <string.h>
 
+void approx_jit(uint32_t dst[], uint32_t val, int n);
+
+__attribute__((noinline))
+void approx_jit(uint32_t dst[], uint32_t val, int n) {
+    #define N 8
+    typedef uint32_t __attribute__((ext_vector_type(N), aligned(4))) Wide;
+    for (; n >= N; n -= N) {
+        *(Wide*)dst = val;
+        dst += N;
+    }
+    while (n --> 0) {
+        *dst++ = val;
+    }
+}
+
+
 static double memset32_native(int k, double *scale, const char* *unit) {
     *scale = 1024;
     *unit  = "px";
@@ -12,6 +28,18 @@ static double memset32_native(int k, double *scale, const char* *unit) {
     while (k --> 0) {
         uint32_t p = 0xffaaccee;
         memset_pattern4(buf, &p, sizeof buf);
+    }
+    return now() - start;
+}
+
+static double memset32_goal(int k, double *scale, const char* *unit) {
+    *scale = 1024;
+    *unit  = "px";
+
+    double start = now();
+    uint32_t buf[1024];
+    while (k --> 0) {
+        approx_jit(buf, 0xffaaccee, len(buf));
     }
     return now() - start;
 }
@@ -41,6 +69,7 @@ static double memset32_vm(int k, double *scale, const char* *unit) {
 
 int main(int argc, char** argv) {
     bench(memset32_native);
+    bench(memset32_goal);
     bench(memset32_vm);
     return 0;
 }
