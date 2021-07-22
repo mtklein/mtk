@@ -64,7 +64,7 @@ static void test_cse() {
             w =   add_S32(b, x,y);
         st1_S32(b, ptr, mul_S32(b, z,w));
 
-        // TODO expect_eq(z.id, w.id);
+        expect_eq(z.id, w.id);
 
         p = compile(b);
     }

@@ -1,5 +1,7 @@
 #include "array.h"
+#include "hash.h"
 #include "len.h"
+#include "murmur3.h"
 #include "vm.h"
 #include <stdlib.h>
 #include <string.h>
@@ -40,18 +42,42 @@ struct Builder {
     int*  stride;
     int   insts;
     int   args;
+    Hash  hash;
 };
 
-struct Program {
-    Inst* inst;
-    int   vals;
-    int   padding;
-};
+static _Bool inst_eq(const void* A, const void* B, void* ctx) {
+    const Builder* b = ctx;
+    const Inst *in_table  = b->inst + (intptr_t)A - 1,
+               *candidate = B;
+    return 0 == memcmp(in_table, candidate, sizeof(Inst));
+}
 
 Builder* builder() {
     Builder* b = calloc(1, sizeof *b);
+    b->hash.eq  = inst_eq;
+    b->hash.ctx = b;
     return b;
 }
+
+static int push_inst(Builder* b, Inst inst) {
+    push(b->inst,b->insts) = inst;
+    return b->insts-1;
+}
+
+static int cse_inst(Builder* b, Inst inst) {
+    uint32_t h = murmur3(0, &inst,sizeof inst);
+
+    for (void* v = lookup(&b->hash, (int)h, &inst); v;) {
+        int id = (int)(intptr_t)v - 1;
+        return id;
+    }
+
+    int id = push_inst(b,inst);
+    void* kv = (void*)(intptr_t)(id+1);
+    insert(&b->hash, (int)h, kv,kv);
+    return id;
+}
+
 
 #define op_(name) static void op_##name(_Bool one, const Inst* inst, Val* v, void* arg[])
 #define next inst[1].op(one,inst+1,v+1,arg)
@@ -75,6 +101,12 @@ op_(inc_arg) {
     op_inc_arg_and_done(one,inst,v,arg);
     next;
 }
+
+struct Program {
+    Inst* inst;
+    int   vals;
+    int   padding;
+};
 
 Program* compile(Builder* b) {
     Program* p = calloc(1, sizeof *p);
@@ -101,6 +133,7 @@ Program* compile(Builder* b) {
     }
 
     free(b->stride);
+    free(b->hash.table);
     free(b);
     return p;
 }
@@ -113,11 +146,6 @@ void drop(Program* p) {
 Ptr arg(Builder* b, int stride) {
     push(b->stride,b->args) = stride;
     return (Ptr){b->args-1};
-}
-
-static int push_inst(Builder* b, Inst inst) {
-    push(b->inst,b->insts) = inst;
-    return b->insts-1;
 }
 
 op_(ld1_16) {
@@ -163,13 +191,13 @@ op_(splat_32) {
     next;
 }
 U32 splat_U32(Builder* b, uint32_t imm) {
-    return (U32){ push_inst(b, (Inst){.op = op_splat_32, .imm.u32 = imm}) };
+    return (U32){ cse_inst(b, (Inst){.op = op_splat_32, .imm.u32 = imm}) };
 }
 S32 splat_S32(Builder* b, int32_t imm) {
-    return (S32){ push_inst(b, (Inst){.op = op_splat_32, .imm.s32 = imm}) };
+    return (S32){ cse_inst(b, (Inst){.op = op_splat_32, .imm.s32 = imm}) };
 }
 F32 splat_F32(Builder* b, float imm) {
-    return (F32){ push_inst(b, (Inst){.op = op_splat_32, .imm.f32 = imm}) };
+    return (F32){ cse_inst(b, (Inst){.op = op_splat_32, .imm.f32 = imm}) };
 }
 
 
@@ -179,16 +207,16 @@ op_(mul_F16) { v->f16 = v[inst->x].f16 * v[inst->y].f16; next; }
 op_(div_F16) { v->f16 = v[inst->x].f16 / v[inst->y].f16; next; }
 
 F16 add_F16(Builder* b, F16 x, F16 y) {
-    return (F16){ push_inst(b, (Inst){.op=op_add_F16, .x=x.id, .y=y.id}) };
+    return (F16){ cse_inst(b, (Inst){.op=op_add_F16, .x=x.id, .y=y.id}) };
 }
 F16 sub_F16(Builder* b, F16 x, F16 y) {
-    return (F16){ push_inst(b, (Inst){.op=op_sub_F16, .x=x.id, .y=y.id}) };
+    return (F16){ cse_inst(b, (Inst){.op=op_sub_F16, .x=x.id, .y=y.id}) };
 }
 F16 mul_F16(Builder* b, F16 x, F16 y) {
-    return (F16){ push_inst(b, (Inst){.op=op_mul_F16, .x=x.id, .y=y.id}) };
+    return (F16){ cse_inst(b, (Inst){.op=op_mul_F16, .x=x.id, .y=y.id}) };
 }
 F16 div_F16(Builder* b, F16 x, F16 y) {
-    return (F16){ push_inst(b, (Inst){.op=op_div_F16, .x=x.id, .y=y.id}) };
+    return (F16){ cse_inst(b, (Inst){.op=op_div_F16, .x=x.id, .y=y.id}) };
 }
 
 op_(add_S32) { v->s32 = v[inst->x].s32 + v[inst->y].s32; next; }
@@ -196,13 +224,13 @@ op_(sub_S32) { v->s32 = v[inst->x].s32 - v[inst->y].s32; next; }
 op_(mul_S32) { v->s32 = v[inst->x].s32 * v[inst->y].s32; next; }
 
 S32 add_S32(Builder* b, S32 x, S32 y) {
-    return (S32){ push_inst(b, (Inst){.op=op_add_S32, .x=x.id, .y=y.id}) };
+    return (S32){ cse_inst(b, (Inst){.op=op_add_S32, .x=x.id, .y=y.id}) };
 }
 S32 sub_S32(Builder* b, S32 x, S32 y) {
-    return (S32){ push_inst(b, (Inst){.op=op_sub_S32, .x=x.id, .y=y.id}) };
+    return (S32){ cse_inst(b, (Inst){.op=op_sub_S32, .x=x.id, .y=y.id}) };
 }
 S32 mul_S32(Builder* b, S32 x, S32 y) {
-    return (S32){ push_inst(b, (Inst){.op=op_mul_S32, .x=x.id, .y=y.id}) };
+    return (S32){ cse_inst(b, (Inst){.op=op_mul_S32, .x=x.id, .y=y.id}) };
 }
 
 void run(const Program* p, int n, void* arg[]) {

@@ -8,7 +8,7 @@ deps = {
     'hash':    [],
     'gfx':     [],
     'murmur3': [],
-    'vm':      ['array'],
+    'vm':      ['array', 'hash', 'murmur3'],
 }
 
 modes = {
