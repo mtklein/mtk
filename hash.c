@@ -3,37 +3,30 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-static bool match(const Hash* h, int ix, int hash, const void* key) {
-    if (h->table[ix].hash != hash) { return false; }
-    if (h->table[ix].key  == key ) { return  true; }
-    return h->eq && h->eq(h->table[ix].key,key, h->ctx);
-}
-
-void* lookup(const Hash* h, int hash, const void* key) {
-    assume(key);
-
+bool lookup(const Hash* h, int hash, _Bool(*match)(int val, void* ctx), void* ctx, int* val) {
+    if (hash == 0) { hash = 1; }
     int ix = hash & (h->cap-1);
     for (int i = 0; i < h->cap; i++) {
-        if (h->table[ix].key == NULL) {
-            return NULL;
+        if (h->table[ix].hash == 0) {
+            return false;
         }
-        if (match(h,ix, hash,key)) {
-            return h->table[ix].val;
+        if (h->table[ix].hash == hash && match(h->table[ix].val, ctx)) {
+            *val = h->table[ix].val;
+            return true;
         }
         ix = (ix+1) & (h->cap-1);
     }
-    return NULL;
+    return false;
 }
 
-static void just_insert(Hash* h, int hash, const void* key, void* val) {
-    assume(key);
+static void just_insert(Hash* h, int hash, int val) {
     assume(h->len < h->cap);
 
+    if (hash == 0) { hash = 1; }
     int ix = hash & (h->cap-1);
     for (int i = 0; i < h->cap; i++) {
-        if (h->table[ix].key == NULL) {
+        if (h->table[ix].hash == 0) {
             h->table[ix].hash = hash;
-            h->table[ix].key  = key;
             h->table[ix].val  = val;
             h->len++;
             return;
@@ -43,36 +36,16 @@ static void just_insert(Hash* h, int hash, const void* key, void* val) {
     __builtin_unreachable();
 }
 
-static bool maybe_update(Hash* h, int hash, const void* key, void* val) {
-    assume(key);
-
-    int ix = hash & (h->cap-1);
-    for (int i = 0; i < h->cap; i++) {
-        if (h->table[ix].key == NULL) {
-            break;
-        }
-        if (match(h,ix, hash,key)) {
-            h->table[ix].val = val;
-            return true;
-        }
-        ix = (ix+1) & (h->cap-1);
-    }
-    return false;
-}
-
-static void maybe_grow(Hash* h) {
+void insert(Hash* h, int hash, int val) {
     if (h->len >= (h->cap * 3)/4) {
         Hash grown = {
-            .eq  = h->eq,
-            .ctx = h->ctx,
             .cap = h->cap ? h->cap*2 : 1,
         };
         grown.table = calloc((size_t)grown.cap, sizeof *grown.table);
 
         for (int ix = 0; ix < h->cap; ix++) {
-            if (h->table[ix].key) {
+            if (h->table[ix].hash) {
                 just_insert(&grown, h->table[ix].hash
-                                  , h->table[ix].key
                                   , h->table[ix].val);
             }
         }
@@ -80,11 +53,6 @@ static void maybe_grow(Hash* h) {
         free(h->table);
         *h = grown;
     }
-}
 
-void insert(Hash* h, int hash, const void* key, void* val) {
-    if (!maybe_update(h, hash,key,val)) {
-        maybe_grow(h);
-        just_insert(h, hash,key,val);
-    }
+    just_insert(h, hash,val);
 }

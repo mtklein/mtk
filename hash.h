@@ -1,11 +1,9 @@
 #pragma once
 
 typedef struct {
-    _Bool (*eq)(const void*, const void*, void* ctx);
-    void* ctx;
-    struct { int hash,padding; const void* key; void* val; } *table;
+    struct { int hash,val; } *table;
     int len,cap;
 } Hash;
 
-void  insert(      Hash*, int hash, const void* key, void* val);
-void* lookup(const Hash*, int hash, const void* key);
+_Bool lookup(const Hash*, int hash, _Bool(*match)(int val, void* ctx), void* ctx, int* val);
+void  insert(      Hash*, int hash, int val);

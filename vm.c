@@ -45,17 +45,18 @@ struct Builder {
     Hash  hash;
 };
 
-static _Bool inst_eq(const void* A, const void* B, void* ctx) {
-    const Builder* b = ctx;
-    const Inst *in_table  = b->inst + (intptr_t)A - 1,
-               *candidate = B;
-    return 0 == memcmp(in_table, candidate, sizeof(Inst));
+typedef struct {
+    const Builder* b;
+    const Inst*    inst;
+} inst_eq_ctx;
+
+static _Bool inst_eq(int val, void* vctx) {
+    const inst_eq_ctx* ctx = vctx;
+    return 0 == memcmp(ctx->inst, ctx->b->inst+val, sizeof(Inst));
 }
 
 Builder* builder() {
     Builder* b = calloc(1, sizeof *b);
-    b->hash.eq  = inst_eq;
-    b->hash.ctx = b;
     return b;
 }
 
@@ -67,14 +68,13 @@ static int push_inst(Builder* b, Inst inst) {
 static int cse_inst(Builder* b, Inst inst) {
     uint32_t h = murmur3(0, &inst,sizeof inst);
 
-    for (void* v = lookup(&b->hash, (int)h, &inst); v;) {
-        int id = (int)(intptr_t)v - 1;
+    int id;
+    for (inst_eq_ctx ctx={b,&inst}; lookup(&b->hash, (int)h, inst_eq,&ctx, &id);) {
         return id;
     }
 
-    int id = push_inst(b,inst);
-    void* kv = (void*)(intptr_t)(id+1);
-    insert(&b->hash, (int)h, kv,kv);
+    id = push_inst(b,inst);
+    insert(&b->hash, (int)h, id);
     return id;
 }
 
