@@ -61,21 +61,21 @@ Builder* builder() {
     return b;
 }
 
-static int push_inst(Builder* b, Inst inst) {
+static int no_cse(Builder* b, Inst inst) {
     push(b->inst,b->insts) = inst;
     return b->insts-1;
 }
 
-static int cse_inst(Builder* b, Inst inst) {
-    uint32_t h = murmur3(0, &inst,sizeof inst);
+static int cse(Builder* b, Inst inst) {
+    int h = (int)murmur3(0, &inst,sizeof inst);
 
     int id;
-    for (inst_eq_ctx ctx={b,&inst}; lookup(&b->hash, (int)h, inst_eq,&ctx, &id);) {
+    for (inst_eq_ctx ctx={b,&inst}; lookup(&b->hash,h, inst_eq,&ctx, &id);) {
         return id;
     }
 
-    id = push_inst(b,inst);
-    insert(&b->hash, (int)h, id);
+    id = no_cse(b,inst);
+    insert(&b->hash,h,id);
     return id;
 }
 
@@ -106,13 +106,13 @@ op_(inc_arg) {
 struct Program {
     Inst* inst;
     int   vals;
-    int   padding;
+    int   unused;
 };
 
 Program* compile(Builder* b) {
     Program* p = calloc(1, sizeof *p);
-    p->inst   = b->inst;
-    p->vals   = b->insts;
+    p->inst = b->inst;
+    p->vals = b->insts;
 
     for (int i = 0; i < p->vals; i++) {
         Inst* inst = p->inst+i;
@@ -154,36 +154,36 @@ op_(ld1_16) {
         : memcpy(v, arg[inst->ptr.ix], N*2);
     next;
 }
-U16 ld1_U16(Builder* b, Ptr ptr) { return (U16){ push_inst(b, (Inst){.op=op_ld1_16, .ptr=ptr}) }; }
-S16 ld1_S16(Builder* b, Ptr ptr) { return (S16){ push_inst(b, (Inst){.op=op_ld1_16, .ptr=ptr}) }; }
-F16 ld1_F16(Builder* b, Ptr ptr) { return (F16){ push_inst(b, (Inst){.op=op_ld1_16, .ptr=ptr}) }; }
+U16 ld1_U16(Builder* b, Ptr ptr) { return (U16){ no_cse(b, (Inst){.op=op_ld1_16, .ptr=ptr}) }; }
+S16 ld1_S16(Builder* b, Ptr ptr) { return (S16){ no_cse(b, (Inst){.op=op_ld1_16, .ptr=ptr}) }; }
+F16 ld1_F16(Builder* b, Ptr ptr) { return (F16){ no_cse(b, (Inst){.op=op_ld1_16, .ptr=ptr}) }; }
 
 op_(ld1_32) {
     one ? memcpy(v, arg[inst->ptr.ix], 1*4)
         : memcpy(v, arg[inst->ptr.ix], N*4);
     next;
 }
-U32 ld1_U32(Builder* b, Ptr ptr) { return (U32){ push_inst(b, (Inst){.op=op_ld1_32, .ptr=ptr}) }; }
-S32 ld1_S32(Builder* b, Ptr ptr) { return (S32){ push_inst(b, (Inst){.op=op_ld1_32, .ptr=ptr}) }; }
-F32 ld1_F32(Builder* b, Ptr ptr) { return (F32){ push_inst(b, (Inst){.op=op_ld1_32, .ptr=ptr}) }; }
+U32 ld1_U32(Builder* b, Ptr ptr) { return (U32){ no_cse(b, (Inst){.op=op_ld1_32, .ptr=ptr}) }; }
+S32 ld1_S32(Builder* b, Ptr ptr) { return (S32){ no_cse(b, (Inst){.op=op_ld1_32, .ptr=ptr}) }; }
+F32 ld1_F32(Builder* b, Ptr ptr) { return (F32){ no_cse(b, (Inst){.op=op_ld1_32, .ptr=ptr}) }; }
 
 op_(st1_16) {
     one ? memcpy(arg[inst->ptr.ix], &v[inst->x], 1*2)
         : memcpy(arg[inst->ptr.ix], &v[inst->x], N*2);
     next;
 }
-void st1_U16(Builder* b, Ptr ptr, U16 x) { push_inst(b, (Inst){.op=op_st1_16, .ptr=ptr, .x=x.id}); }
-void st1_S16(Builder* b, Ptr ptr, S16 x) { push_inst(b, (Inst){.op=op_st1_16, .ptr=ptr, .x=x.id}); }
-void st1_F16(Builder* b, Ptr ptr, F16 x) { push_inst(b, (Inst){.op=op_st1_16, .ptr=ptr, .x=x.id}); }
+void st1_U16(Builder* b, Ptr ptr, U16 x) { no_cse(b, (Inst){.op=op_st1_16, .ptr=ptr, .x=x.id}); }
+void st1_S16(Builder* b, Ptr ptr, S16 x) { no_cse(b, (Inst){.op=op_st1_16, .ptr=ptr, .x=x.id}); }
+void st1_F16(Builder* b, Ptr ptr, F16 x) { no_cse(b, (Inst){.op=op_st1_16, .ptr=ptr, .x=x.id}); }
 
 op_(st1_32) {
     one ? memcpy(arg[inst->ptr.ix], &v[inst->x], 1*4)
         : memcpy(arg[inst->ptr.ix], &v[inst->x], N*4);
     next;
 }
-void st1_U32(Builder* b, Ptr ptr, U32 x) { push_inst(b, (Inst){.op=op_st1_32, .ptr=ptr, .x=x.id}); }
-void st1_S32(Builder* b, Ptr ptr, S32 x) { push_inst(b, (Inst){.op=op_st1_32, .ptr=ptr, .x=x.id}); }
-void st1_F32(Builder* b, Ptr ptr, F32 x) { push_inst(b, (Inst){.op=op_st1_32, .ptr=ptr, .x=x.id}); }
+void st1_U32(Builder* b, Ptr ptr, U32 x) { no_cse(b, (Inst){.op=op_st1_32, .ptr=ptr, .x=x.id}); }
+void st1_S32(Builder* b, Ptr ptr, S32 x) { no_cse(b, (Inst){.op=op_st1_32, .ptr=ptr, .x=x.id}); }
+void st1_F32(Builder* b, Ptr ptr, F32 x) { no_cse(b, (Inst){.op=op_st1_32, .ptr=ptr, .x=x.id}); }
 
 op_(splat_32) {
     Val imm = {0};
@@ -192,13 +192,13 @@ op_(splat_32) {
     next;
 }
 U32 splat_U32(Builder* b, uint32_t imm) {
-    return (U32){ cse_inst(b, (Inst){.op = op_splat_32, .imm.u32 = imm}) };
+    return (U32){ cse(b, (Inst){.op = op_splat_32, .imm.u32 = imm}) };
 }
 S32 splat_S32(Builder* b, int32_t imm) {
-    return (S32){ cse_inst(b, (Inst){.op = op_splat_32, .imm.s32 = imm}) };
+    return (S32){ cse(b, (Inst){.op = op_splat_32, .imm.s32 = imm}) };
 }
 F32 splat_F32(Builder* b, float imm) {
-    return (F32){ cse_inst(b, (Inst){.op = op_splat_32, .imm.f32 = imm}) };
+    return (F32){ cse(b, (Inst){.op = op_splat_32, .imm.f32 = imm}) };
 }
 
 
@@ -208,16 +208,16 @@ op_(mul_F16) { v->f16 = v[inst->x].f16 * v[inst->y].f16; next; }
 op_(div_F16) { v->f16 = v[inst->x].f16 / v[inst->y].f16; next; }
 
 F16 add_F16(Builder* b, F16 x, F16 y) {
-    return (F16){ cse_inst(b, (Inst){.op=op_add_F16, .x=x.id, .y=y.id}) };
+    return (F16){ cse(b, (Inst){.op=op_add_F16, .x=x.id, .y=y.id}) };
 }
 F16 sub_F16(Builder* b, F16 x, F16 y) {
-    return (F16){ cse_inst(b, (Inst){.op=op_sub_F16, .x=x.id, .y=y.id}) };
+    return (F16){ cse(b, (Inst){.op=op_sub_F16, .x=x.id, .y=y.id}) };
 }
 F16 mul_F16(Builder* b, F16 x, F16 y) {
-    return (F16){ cse_inst(b, (Inst){.op=op_mul_F16, .x=x.id, .y=y.id}) };
+    return (F16){ cse(b, (Inst){.op=op_mul_F16, .x=x.id, .y=y.id}) };
 }
 F16 div_F16(Builder* b, F16 x, F16 y) {
-    return (F16){ cse_inst(b, (Inst){.op=op_div_F16, .x=x.id, .y=y.id}) };
+    return (F16){ cse(b, (Inst){.op=op_div_F16, .x=x.id, .y=y.id}) };
 }
 
 op_(add_S32) { v->s32 = v[inst->x].s32 + v[inst->y].s32; next; }
@@ -225,13 +225,13 @@ op_(sub_S32) { v->s32 = v[inst->x].s32 - v[inst->y].s32; next; }
 op_(mul_S32) { v->s32 = v[inst->x].s32 * v[inst->y].s32; next; }
 
 S32 add_S32(Builder* b, S32 x, S32 y) {
-    return (S32){ cse_inst(b, (Inst){.op=op_add_S32, .x=x.id, .y=y.id}) };
+    return (S32){ cse(b, (Inst){.op=op_add_S32, .x=x.id, .y=y.id}) };
 }
 S32 sub_S32(Builder* b, S32 x, S32 y) {
-    return (S32){ cse_inst(b, (Inst){.op=op_sub_S32, .x=x.id, .y=y.id}) };
+    return (S32){ cse(b, (Inst){.op=op_sub_S32, .x=x.id, .y=y.id}) };
 }
 S32 mul_S32(Builder* b, S32 x, S32 y) {
-    return (S32){ cse_inst(b, (Inst){.op=op_mul_S32, .x=x.id, .y=y.id}) };
+    return (S32){ cse(b, (Inst){.op=op_mul_S32, .x=x.id, .y=y.id}) };
 }
 
 void run(const Program* p, int n, void* arg[]) {
