@@ -67,9 +67,26 @@ static double memset32_vm(int k, double *scale, const char* *unit) {
     return elapsed;
 }
 
+static double compilation(int k, double *scale, const char* *unit) {
+    *scale = 1;
+    *unit  = "program";
+
+    double start = now();
+    while (k --> 0) {
+        Builder* b = builder();
+        Ptr buf = arg(b, 4);
+        U32   v = splat_U32(b, 0xffaaccee);
+        st1_U32(b, buf, v);
+        drop(compile(b));
+    }
+
+    return now() - start;
+}
+
 int main(int argc, char** argv) {
     bench(memset32_native);
     bench(memset32_goal);
     bench(memset32_vm);
+    bench(compilation);
     return 0;
 }
