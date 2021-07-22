@@ -8,7 +8,7 @@ typedef struct {
     const char*  key;
 } str_eq_ctx;
 
-static _Bool str_eq(int val, void* vctx) {
+static bool str_eq(int val, void* vctx) {
     const str_eq_ctx* ctx = vctx;
     return 0 == strcmp(ctx->key, ctx->keys[val]);
 }

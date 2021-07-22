@@ -1,7 +1,6 @@
 #include "bench.h"
 #include "expect.h"
 #include "hash.h"
-#include <stdbool.h>
 #include <stdlib.h>
 
 static double bench_insert(int k, double *scale, const char* *unit) {

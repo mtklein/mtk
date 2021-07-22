@@ -1,9 +1,8 @@
 #include "assume.h"
 #include "hash.h"
-#include <stdbool.h>
 #include <stdlib.h>
 
-bool lookup(const Hash* h, int hash, _Bool(*match)(int val, void* ctx), void* ctx, int* val) {
+bool lookup(const Hash* h, int hash, bool(*match)(int val, void* ctx), void* ctx, int* val) {
     if (hash == 0) { hash = 1; }
     int ix = hash & (h->cap-1);
     for (int i = 0; i < h->cap; i++) {

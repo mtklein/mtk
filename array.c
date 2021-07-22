@@ -1,8 +1,9 @@
 #include "array.h"
+#include <stdbool.h>
 #include <stdlib.h>
 
 __attribute__((no_sanitize("unsigned-integer-overflow")))
-static inline _Bool is_pow2_or_zero(size_t n) {
+static inline bool is_pow2_or_zero(size_t n) {
     return (n & (n-1)) == 0;
 }
 

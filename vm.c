@@ -3,6 +3,7 @@
 #include "len.h"
 #include "murmur3.h"
 #include "vm.h"
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -31,7 +32,7 @@ typedef union {
 } Val;
 
 typedef struct Inst {
-    void (*op)(_Bool one, const struct Inst*, Val* v, void* arg[]);
+    void (*op)(bool one, const struct Inst*, Val* v, void* arg[]);
     int x,y,z,w;
     Ptr ptr;
     Imm imm;
@@ -50,7 +51,7 @@ typedef struct {
     const Inst*    inst;
 } inst_eq_ctx;
 
-static _Bool inst_eq(int val, void* vctx) {
+static bool inst_eq(int val, void* vctx) {
     const inst_eq_ctx* ctx = vctx;
     return 0 == memcmp(ctx->inst, ctx->b->inst+val, sizeof(Inst));
 }
@@ -79,7 +80,7 @@ static int cse_inst(Builder* b, Inst inst) {
 }
 
 
-#define op_(name) static void op_##name(_Bool one, const Inst* inst, Val* v, void* arg[])
+#define op_(name) static void op_##name(bool one, const Inst* inst, Val* v, void* arg[])
 #define next inst[1].op(one,inst+1,v+1,arg)
 
 op_(done) {
@@ -240,7 +241,7 @@ void run(const Program* p, int n, void* arg[]) {
     }
 
     const Inst* start = p->inst;
-    void (*op)(_Bool, const Inst*, Val* v, void*[]) = start->op;
+    void (*op)(bool, const Inst*, Val* v, void*[]) = start->op;
 
     for (int i = 0; i < n/N; i++) { op(0,start,v,arg); }
     for (int i = 0; i < n%N; i++) { op(1,start,v,arg); }
