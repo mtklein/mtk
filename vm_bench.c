@@ -67,7 +67,7 @@ static double memset32_vm(int k, double *scale, const char* *unit) {
     return elapsed;
 }
 
-static double compilation(int k, double *scale, const char* *unit) {
+static double compile_memset32(int k, double *scale, const char* *unit) {
     *scale = 1;
     *unit  = "program";
 
@@ -83,10 +83,31 @@ static double compilation(int k, double *scale, const char* *unit) {
     return now() - start;
 }
 
+static double compile_cse(int k, double *scale, const char* *unit) {
+    *scale = 1;
+    *unit  = "program";
+
+    double start = now();
+    while (k --> 0) {
+        Builder* b = builder();
+        Ptr ptr = arg(b,4);
+
+        S32 x =   ld1_S32(b, ptr),
+            y = splat_S32(b, 3),
+            z =   add_S32(b, x,y),
+            w =   add_S32(b, x,y);
+        st1_S32(b, ptr, mul_S32(b, z,w));
+        drop(compile(b));
+    }
+
+    return now() - start;
+}
+
 int main(int argc, char** argv) {
     bench(memset32_native);
     bench(memset32_goal);
     bench(memset32_vm);
-    bench(compilation);
+    bench(compile_memset32);
+    bench(compile_cse);
     return 0;
 }
