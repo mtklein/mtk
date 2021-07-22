@@ -178,3 +178,7 @@ F16 add_F16(Builder*, F16, F16);
 F16 sub_F16(Builder*, F16, F16);
 F16 mul_F16(Builder*, F16, F16);
 F16 div_F16(Builder*, F16, F16);
+
+S32 add_S32(Builder*, S32, S32);
+S32 sub_S32(Builder*, S32, S32);
+S32 mul_S32(Builder*, S32, S32);

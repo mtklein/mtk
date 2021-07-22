@@ -52,8 +52,38 @@ static void test_add_F16() {
     }
 }
 
+static void test_cse() {
+    Program* p;
+    {
+        Builder* b = builder();
+        Ptr ptr = arg(b,4);
+
+        S32 x =   ld1_S32(b, ptr),
+            y = splat_S32(b, 3),
+            z =   add_S32(b, x,y),
+            w =   add_S32(b, x,y);
+        st1_S32(b, ptr, mul_S32(b, z,w));
+
+        // TODO expect_eq(z.id, w.id);
+
+        p = compile(b);
+    }
+
+    int32_t xs[63];
+    for (int i = 0; i < len(xs); i++) {
+        xs[i] = i;
+    }
+
+    run(p,len(xs),(void*[]){xs});
+
+    for (int i = 0; i < len(xs); i++) {
+        expect_eq(xs[i], (i+3)*(i+3));
+    }
+}
+
 int main(void) {
     test_memset32();
     test_add_F16();
+    test_cse();
     return 0;
 }

@@ -127,6 +127,21 @@ F16 ld1_F16(Builder* b, Ptr ptr) {
     return (F16){ push_inst(b, (Inst){.op=op_ld1_16, .ptr=ptr}) };
 }
 
+op_(ld1_32) {
+    one ? memcpy(v, arg[inst->ptr.ix], 1*4)
+        : memcpy(v, arg[inst->ptr.ix], N*4);
+    next;
+}
+U32 ld1_U32(Builder* b, Ptr ptr) {
+    return (U32){ push_inst(b, (Inst){.op=op_ld1_32, .ptr=ptr}) };
+}
+S32 ld1_S32(Builder* b, Ptr ptr) {
+    return (S32){ push_inst(b, (Inst){.op=op_ld1_32, .ptr=ptr}) };
+}
+F32 ld1_F32(Builder* b, Ptr ptr) {
+    return (F32){ push_inst(b, (Inst){.op=op_ld1_32, .ptr=ptr}) };
+}
+
 op_(st1_16) {
     one ? memcpy(arg[inst->ptr.ix], &v[inst->x], 1*2)
         : memcpy(arg[inst->ptr.ix], &v[inst->x], N*2);
@@ -190,6 +205,20 @@ F16 mul_F16(Builder* b, F16 x, F16 y) {
 }
 F16 div_F16(Builder* b, F16 x, F16 y) {
     return (F16){ push_inst(b, (Inst){.op=op_div_F16, .x=x.id-b->insts, .y=y.id-b->insts}) };
+}
+
+op_(add_S32) { v->s32 = v[inst->x].s32 + v[inst->y].s32; next; }
+op_(sub_S32) { v->s32 = v[inst->x].s32 - v[inst->y].s32; next; }
+op_(mul_S32) { v->s32 = v[inst->x].s32 * v[inst->y].s32; next; }
+
+S32 add_S32(Builder* b, S32 x, S32 y) {
+    return (S32){ push_inst(b, (Inst){.op=op_add_S32, .x=x.id-b->insts, .y=y.id-b->insts}) };
+}
+S32 sub_S32(Builder* b, S32 x, S32 y) {
+    return (S32){ push_inst(b, (Inst){.op=op_sub_S32, .x=x.id-b->insts, .y=y.id-b->insts}) };
+}
+S32 mul_S32(Builder* b, S32 x, S32 y) {
+    return (S32){ push_inst(b, (Inst){.op=op_mul_S32, .x=x.id-b->insts, .y=y.id-b->insts}) };
 }
 
 void run(const Program* p, int n, void* arg[]) {
