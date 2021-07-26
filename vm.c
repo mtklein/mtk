@@ -125,7 +125,7 @@ Program* compile(Builder* b) {
     for (int i = 0; i < b->args; i++) {
         push(p->inst,b->insts) = (Inst) {
             .op      = i == b->args-1 ? op_inc_arg_and_done : op_inc_arg,
-            .ptr     = (Ptr){i},
+            .ptr     = (Ptr){i+1},  // pointers are 1-indexed, see arg()
             .imm.s32 = b->stride[i],
         };
     }
@@ -146,7 +146,7 @@ void drop(Program* p) {
 
 Ptr arg(Builder* b, int stride) {
     push(b->stride,b->args) = stride;
-    return (Ptr){b->args-1};
+    return (Ptr){b->args};  // 1-indexed so inst.ptr.ix==0 can signal 'hoistable'
 }
 
 op_(ld1_16) {
@@ -243,8 +243,8 @@ void run(const Program* p, int n, void* arg[]) {
     const Inst* start = p->inst;
     void (*op)(bool, const Inst*, Val* v, void*[]) = start->op;
 
-    for (int i = 0; i < n/N; i++) { op(0,start,v,arg); }
-    for (int i = 0; i < n%N; i++) { op(1,start,v,arg); }
+    for (int i = 0; i < n/N; i++) { op(0,start,v,arg-1); }
+    for (int i = 0; i < n%N; i++) { op(1,start,v,arg-1); }
 
     if (v != scratch) {
         free(v);
