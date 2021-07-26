@@ -51,9 +51,9 @@ typedef struct {
     const Inst*    inst;
 } inst_eq_ctx;
 
-static bool inst_eq(int val, void* vctx) {
+static bool inst_eq(int id, void* vctx) {
     const inst_eq_ctx* ctx = vctx;
-    return 0 == memcmp(ctx->inst, ctx->b->inst+val, sizeof(Inst));
+    return 0 == memcmp(ctx->inst, ctx->b->inst + id-1/*1-indexed, see no_cse()*/, sizeof(Inst));
 }
 
 Builder* builder() {
@@ -63,7 +63,7 @@ Builder* builder() {
 
 static int no_cse(Builder* b, Inst inst) {
     push(b->inst,b->insts) = inst;
-    return b->insts-1;
+    return b->insts;  // 1-indexed so inst.[xyzw]>0 signals that argument is relevant.
 }
 
 static int cse(Builder* b, Inst inst) {
@@ -116,10 +116,13 @@ Program* compile(Builder* b) {
 
     for (int i = 0; i < p->vals; i++) {
         Inst* inst = p->inst+i;
-        inst->x -= i;
-        inst->y -= i;
-        inst->z -= i;
-        inst->w -= i;
+        // If inst->[xyzw] is non-zero, this instruction uses that argument.
+        // -= 1 converts from 1-indexed to 0-indexed, then -= i to relative indexing
+        // where each instruction writes to *v, argument x is at v[x], y is at v[y], etc.
+        if (inst->x) { inst->x -= 1; inst->x -= i; }
+        if (inst->y) { inst->y -= 1; inst->y -= i; }
+        if (inst->z) { inst->z -= 1; inst->z -= i; }
+        if (inst->w) { inst->w -= 1; inst->w -= i; }
     }
 
     for (int i = 0; i < b->args; i++) {
