@@ -32,7 +32,7 @@ rule link
     command = $cc -Wl,-dead_strip $in -o $out
 
 rule run
-    command = ./$in > $out
+    command = env BENCH_SEC=0.001 ./$in > $out
 '''
 
 with open('build.ninja', 'w') as f:
@@ -50,12 +50,13 @@ with open('build.ninja', 'w') as f:
             p('    cc = $cc {flags}')
             p('build {full}_test: link {full}.o {full}_test.o' + objs)
             p('    cc = $cc {flags}')
-            p('build {full}.ok: run {full}_test')
+            p('build {full}_test.ok: run {full}_test')
 
             p('build {full}_bench.o: compile {short}_bench.c')
             p('    cc = $cc {flags}')
             p('build {full}_bench: link {full}.o {full}_bench.o' + objs)
             p('    cc = $cc {flags}')
+            p('build {full}_bench.ok: run {full}_bench')
 
 
 rc = os.system(' '.join(['ninja'] + sys.argv[1:]))
