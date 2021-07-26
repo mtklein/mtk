@@ -89,7 +89,7 @@ op_(done) {
     (void)v;
     (void)arg;
 }
-op_(inc_arg_and_done) {
+op_(inc_arg) {
     (void)v;
 
     int ix     = inst->ptr.ix,
@@ -97,9 +97,6 @@ op_(inc_arg_and_done) {
 
     arg[ix] = (char*)arg[ix] + (one ? 1*stride
                                     : N*stride);
-}
-op_(inc_arg) {
-    op_inc_arg_and_done(one,inst,v,arg);
     next;
 }
 
@@ -126,15 +123,15 @@ Program* compile(Builder* b) {
     }
 
     for (int i = 0; i < b->args; i++) {
-        push(p->inst,b->insts) = (Inst) {
-            .op      = i == b->args-1 ? op_inc_arg_and_done : op_inc_arg,
-            .ptr     = (Ptr){i+1},  // pointers are 1-indexed, see arg()
-            .imm.s32 = b->stride[i],
-        };
+        if (b->stride[i]) {
+            push(p->inst,b->insts) = (Inst) {
+                .op      = op_inc_arg,
+                .ptr     = (Ptr){i+1},  // pointers are 1-indexed, see arg()
+                .imm.s32 = b->stride[i],
+            };
+        }
     }
-    if (b->args == 0) {
-        push(p->inst,b->insts) = (Inst){.op=op_done};
-    }
+    push(p->inst,b->insts) = (Inst){.op=op_done};
 
     free(b->stride);
     free(b->hash.table);
