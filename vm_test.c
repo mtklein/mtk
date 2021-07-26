@@ -1,18 +1,10 @@
 #include "expect.h"
 #include "len.h"
 #include "vm.h"
-#include <string.h>
 
-static int vals(const Program* p) {
-    int v;
-    memcpy(&v, (const char*)p+0, sizeof v);
-    return v;
-}
-static int loop(const Program* p) {
-    int v;
-    memcpy(&v, (const char*)p+4, sizeof v);
-    return v;
-}
+typedef struct { int vals, loop; } ProgramHeader;
+static int vals(const Program* p) { return ((const ProgramHeader*)p)->vals; }
+static int loop(const Program* p) { return ((const ProgramHeader*)p)->loop; }
 
 static void test_memset32() {
     Program* p;
