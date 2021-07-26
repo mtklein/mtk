@@ -3,6 +3,7 @@
 #include "len.h"
 #include "murmur3.h"
 #include "vm.h"
+#include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -107,26 +108,53 @@ struct Program {
 };
 
 Program* compile(Builder* b) {
-    Program* p = calloc(1, sizeof *p);
-    p->inst = b->inst;
-    p->vals = b->insts;
+    typedef struct {
+        int  new_id;
+        bool loop_dependent;
+        bool unused[3];
+    } Meta;
+    Meta* meta = calloc((size_t)b->insts, sizeof *meta);
 
-    // TODO: loop invariant hoisting
-
-    // Convert 1-indexed value and arg pointers back to 0-indexed,
-    // and then also convert absolute value IDs to relative:
-    // each instruction writes to *v, argument x is at v[x], y is at v[y], etc.
-    for (int i = 0; i < p->vals; i++) {
-        Inst* inst = p->inst+i;
-
-        if (inst->ptr.ix) { inst->ptr.ix -= 1; }
-
-        if (inst->x) { inst->x -= 1; inst->x -= i; }
-        if (inst->y) { inst->y -= 1; inst->y -= i; }
-        if (inst->z) { inst->z -= 1; inst->z -= i; }
-        if (inst->w) { inst->w -= 1; inst->w -= i; }
+    // A value is loop-dependent if it uses a varying pointer or another loop-dependent value.
+    for (int i = 0; i < b->insts; i++) {
+        const Inst inst = b->inst[i];
+        meta[i].loop_dependent = (inst.ptr.ix && b->stride[inst.ptr.ix-1])
+                              || (inst.x && meta[inst.x-1].loop_dependent)
+                              || (inst.y && meta[inst.y-1].loop_dependent)
+                              || (inst.z && meta[inst.z-1].loop_dependent)
+                              || (inst.w && meta[inst.w-1].loop_dependent);
     }
 
+    Program* p = calloc(1, sizeof *p);
+
+    // Reorder instructions so all loop-independent instructions come first,
+    // then loop-dependent instructions following from p->inst + p->loop.
+    //
+    // While we're doing that, rewrite ptr and xyzw indices into their final Program conventions:
+    //    - convert 1-indexed pointer indices to 0-indexed;
+    //    - translate 1-indexed absolute xyzw IDs to relative offsets,
+    //      so Program instructions write their value to *v, read x from v[inst.x], etc.
+    for (int loop_dependent = 0; loop_dependent < 2; loop_dependent++) {
+        for (int i = 0; i < b->insts; i++) {
+            if (meta[i].loop_dependent == loop_dependent) {
+                meta[i].new_id = p->vals;
+
+                Inst inst = b->inst[i];
+                if (inst.ptr.ix) { inst.ptr.ix -= 1; }
+                if (inst.x) { inst.x = meta[inst.x-1].new_id; inst.x -= meta[i].new_id; }
+                if (inst.y) { inst.y = meta[inst.y-1].new_id; inst.y -= meta[i].new_id; }
+                if (inst.z) { inst.z = meta[inst.z-1].new_id; inst.z -= meta[i].new_id; }
+                if (inst.w) { inst.w = meta[inst.w-1].new_id; inst.w -= meta[i].new_id; }
+
+                push(p->inst,p->vals) = inst;
+            }
+        }
+        if (!loop_dependent) { p->loop = p->vals; }
+    }
+    assert(p->vals == b->insts);
+    free(meta);
+
+    // Add a few more non-value-producing instructions to increment each argument and wrap up.
     for (int i = 0; i < b->args; i++) {
         if (b->stride[i]) {
             push(p->inst,b->insts) = (Inst) {
@@ -138,6 +166,7 @@ Program* compile(Builder* b) {
     }
     push(p->inst,b->insts) = (Inst){.op=op_done};
 
+    free(b->inst);
     free(b->stride);
     free(b->hash.table);
     free(b);
@@ -260,18 +289,21 @@ S32 mul_S32(Builder* b, S32 x, S32 y) {
 }
 
 void run(const Program* p, int n, void* arg[]) {
-    Val scratch[16], *v = scratch;
+    Val scratch[16], *val = scratch;
     if (len(scratch) < p->vals) {
-        v = malloc((size_t)p->vals * sizeof *v);
+        val = malloc((size_t)p->vals * sizeof *val);
     }
 
     const Inst *start = p->inst,
                *loop  = p->inst + p->loop;
 
-    for (int i = 0; i < n/N; i++) { start->op(0,start,v,arg); start = loop; }
-    for (int i = 0; i < n%N; i++) { start->op(1,start,v,arg); start = loop; }
+    Val *v = val,
+        *l = val + p->loop;
 
-    if (v != scratch) {
-        free(v);
+    for (int i = 0; i < n/N; i++) { start->op(0,start,v,arg); start = loop; v = l; }
+    for (int i = 0; i < n%N; i++) { start->op(1,start,v,arg); start = loop; v = l; }
+
+    if (val != scratch) {
+        free(val);
     }
 }
