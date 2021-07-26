@@ -90,7 +90,7 @@ op_(done) {
     (void)v;
     (void)arg;
 }
-op_(inc_arg) {
+op_(inc_arg_and_done) {
     (void)v;
 
     int ix     = inst->ptr.ix,
@@ -98,6 +98,9 @@ op_(inc_arg) {
 
     arg[ix] = (char*)arg[ix] + (one ? 1*stride
                                     : N*stride);
+}
+op_(inc_arg) {
+    op_inc_arg_and_done(one,inst,v,arg);
     next;
 }
 
@@ -165,7 +168,11 @@ Program* compile(Builder* b) {
             };
         }
     }
-    push(p->inst,b->insts) = (Inst){.op=op_done};
+    if (b->insts > p->vals) {
+        p->inst[b->insts-1].op = op_inc_arg_and_done;
+    } else {
+        push(p->inst,b->insts) = (Inst){.op=op_done};
+    }
 
     free(b->inst);
     free(b->stride);
