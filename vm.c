@@ -63,7 +63,7 @@ Builder* builder() {
 
 static int no_cse(Builder* b, Inst inst) {
     push(b->inst,b->insts) = inst;
-    return b->insts;  // 1-indexed so inst.[xyzw]>0 signals that argument is relevant.
+    return b->insts;  // 1-indexed in Builder, letting !inst.[xyzw] indicate an unused argument.
 }
 
 static int cse(Builder* b, Inst inst) {
@@ -111,11 +111,16 @@ Program* compile(Builder* b) {
     p->inst = b->inst;
     p->vals = b->insts;
 
+    // TODO: loop invariant hoisting
+
+    // Convert 1-indexed value and arg pointers back to 0-indexed,
+    // and then also convert absolute value IDs to relative:
+    // each instruction writes to *v, argument x is at v[x], y is at v[y], etc.
     for (int i = 0; i < p->vals; i++) {
         Inst* inst = p->inst+i;
-        // If inst->[xyzw] is non-zero, this instruction uses that argument.
-        // -= 1 converts from 1-indexed to 0-indexed, then -= i to relative indexing
-        // where each instruction writes to *v, argument x is at v[x], y is at v[y], etc.
+
+        if (inst->ptr.ix) { inst->ptr.ix -= 1; }
+
         if (inst->x) { inst->x -= 1; inst->x -= i; }
         if (inst->y) { inst->y -= 1; inst->y -= i; }
         if (inst->z) { inst->z -= 1; inst->z -= i; }
@@ -126,7 +131,7 @@ Program* compile(Builder* b) {
         if (b->stride[i]) {
             push(p->inst,b->insts) = (Inst) {
                 .op      = op_inc_arg,
-                .ptr     = (Ptr){i+1},  // pointers are 1-indexed, see arg()
+                .ptr     = (Ptr){i},
                 .imm.s32 = b->stride[i],
             };
         }
@@ -146,7 +151,7 @@ void drop(Program* p) {
 
 Ptr arg(Builder* b, int stride) {
     push(b->stride,b->args) = stride;
-    return (Ptr){b->args};  // 1-indexed so inst.ptr.ix==0 can signal 'hoistable'
+    return (Ptr){b->args};  // 1-indexed in Builder, letting !inst.ptr.ix indicate an unused ptr.
 }
 
 op_(ld1_16) {
@@ -261,8 +266,8 @@ void run(const Program* p, int n, void* arg[]) {
     const Inst* start = p->inst;
     void (*op)(bool, const Inst*, Val* v, void*[]) = start->op;
 
-    for (int i = 0; i < n/N; i++) { op(0,start,v,arg-1); }
-    for (int i = 0; i < n%N; i++) { op(1,start,v,arg-1); }
+    for (int i = 0; i < n/N; i++) { op(0,start,v,arg); }
+    for (int i = 0; i < n%N; i++) { op(1,start,v,arg); }
 
     if (v != scratch) {
         free(v);
