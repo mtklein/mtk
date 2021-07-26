@@ -173,8 +173,8 @@ S32 ld1_S32(Builder* b, Ptr ptr) { return (S32){ no_cse(b, (Inst){.op=op_ld1_32,
 F32 ld1_F32(Builder* b, Ptr ptr) { return (F32){ no_cse(b, (Inst){.op=op_ld1_32, .ptr=ptr}) }; }
 
 op_(st1_16) {
-    one ? memcpy(arg[inst->ptr.ix], &v[inst->x], 1*2)
-        : memcpy(arg[inst->ptr.ix], &v[inst->x], N*2);
+    one ? memcpy(arg[inst->ptr.ix], v+inst->x, 1*2)
+        : memcpy(arg[inst->ptr.ix], v+inst->x, N*2);
     next;
 }
 void st1_U16(Builder* b, Ptr ptr, U16 x) { no_cse(b, (Inst){.op=op_st1_16, .ptr=ptr, .x=x.id}); }
@@ -182,8 +182,8 @@ void st1_S16(Builder* b, Ptr ptr, S16 x) { no_cse(b, (Inst){.op=op_st1_16, .ptr=
 void st1_F16(Builder* b, Ptr ptr, F16 x) { no_cse(b, (Inst){.op=op_st1_16, .ptr=ptr, .x=x.id}); }
 
 op_(st1_32) {
-    one ? memcpy(arg[inst->ptr.ix], &v[inst->x], 1*4)
-        : memcpy(arg[inst->ptr.ix], &v[inst->x], N*4);
+    one ? memcpy(arg[inst->ptr.ix], v+inst->x, 1*4)
+        : memcpy(arg[inst->ptr.ix], v+inst->x, N*4);
     next;
 }
 void st1_U32(Builder* b, Ptr ptr, U32 x) { no_cse(b, (Inst){.op=op_st1_32, .ptr=ptr, .x=x.id}); }
@@ -191,9 +191,11 @@ void st1_S32(Builder* b, Ptr ptr, S32 x) { no_cse(b, (Inst){.op=op_st1_32, .ptr=
 void st1_F32(Builder* b, Ptr ptr, F32 x) { no_cse(b, (Inst){.op=op_st1_32, .ptr=ptr, .x=x.id}); }
 
 op_(splat_32) {
-    Val imm = {0};
-    imm.u32 += inst->imm.u32;
-    *v = imm;
+    uint32_t imm = inst->imm.u32;
+
+    Val val = {0};
+    val.u32 += imm;
+    *v = val;
     next;
 }
 U32 splat_U32(Builder* b, uint32_t imm) {
@@ -207,12 +209,12 @@ F32 splat_F32(Builder* b, float imm) {
 }
 
 op_(uniform_32) {
-    uint32_t u;
-    memcpy(&u, (const char*)arg[inst->ptr.ix] + inst->imm.s32, 4);
+    uint32_t uni;
+    memcpy(&uni, (const char*)arg[inst->ptr.ix] + inst->imm.s32, sizeof uni);
 
-    Val uni = {0};
-    uni.u32 += u;
-    *v = uni;
+    Val val = {0};
+    val.u32 += uni;
+    *v = val;
     next;
 }
 U32 uniform_U32(Builder* b, Ptr ptr, int offset) {
