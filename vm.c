@@ -112,10 +112,29 @@ struct Program {
 
 Program* compile(Builder* b) {
     typedef union {
-        bool loop_dependent;
-        int  new_id;
+        struct { bool live, loop_dependent; };
+        int new_id;
     } Meta;
     Meta* meta = calloc((size_t)b->insts, sizeof *meta);
+
+    // A value is live if it has a side-effect or if it's used by another live value.
+    for (int i = b->insts; i --> 0;) {
+        const Inst* inst = b->inst+i;
+
+        // Heuristically, instructions that take a value and a varying pointer have side effects.
+        if (inst->ptr.ix && b->stride[inst->ptr.ix-1]
+                && (inst->x || inst->y || inst->z || inst->w)) {
+            meta[i].live = true;
+        }
+
+        // Anything a live instruction needs is also live.
+        if (meta[i].live) {
+            if (inst->x) { meta[inst->x-1].live = true; }
+            if (inst->y) { meta[inst->y-1].live = true; }
+            if (inst->z) { meta[inst->z-1].live = true; }
+            if (inst->w) { meta[inst->w-1].live = true; }
+        }
+    }
 
     // A value is loop-dependent if it uses a varying pointer or another loop-dependent value.
     for (int i = 0; i < b->insts; i++) {
@@ -127,11 +146,12 @@ Program* compile(Builder* b) {
                               || (inst->w && meta[inst->w-1].loop_dependent);
     }
 
+    // TODO: allocate exactly rather than conservatively like this?
     Program* p = malloc(sizeof *p + sizeof(Inst) * (size_t)(b->insts + b->args + 1));
     p->vals = 0;
 
-    // Reorder instructions so all loop-independent instructions come first,
-    // then loop-dependent instructions following from p->inst + p->loop.
+    // Reorder instructions so all live loop-independent instructions come first,
+    // then live loop-dependent instructions following from p->inst + p->loop.
     //
     // While we're doing that, rewrite ptr and xyzw indices into their final Program conventions:
     //    - 1-indexed pointer indices become 0-indexed;
@@ -142,7 +162,7 @@ Program* compile(Builder* b) {
             p->loop = p->vals;
         }
         for (int i = 0; i < b->insts; i++) {
-            if (meta[i].loop_dependent == loop_dependent) {
+            if (meta[i].live && meta[i].loop_dependent == loop_dependent) {
                 meta[i].new_id = p->vals;
 
                 Inst inst = b->inst[i];
@@ -156,23 +176,23 @@ Program* compile(Builder* b) {
             }
         }
     }
-    assert(p->vals == b->insts);
     free(meta);
 
     // Add a few more non-value-producing instructions to increment each argument and wrap up.
+    int insts = p->vals;
     for (int i = 0; i < b->args; i++) {
         if (b->stride[i]) {
-            p->inst[b->insts++] = (Inst) {
+            p->inst[insts++] = (Inst) {
                 .op      = op_inc_arg,
                 .ptr     = (Ptr){i},
                 .imm.s32 = b->stride[i],
             };
         }
     }
-    if (b->insts > p->vals) {
-        p->inst[b->insts-1].op = op_inc_arg_and_done;
+    if (insts > p->vals) {
+        p->inst[insts-1].op = op_inc_arg_and_done;
     } else {
-        p->inst[b->insts++] = (Inst){.op=op_done};
+        p->inst[insts++] = (Inst){.op=op_done};
     }
 
     free(b->inst);
