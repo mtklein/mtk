@@ -103,7 +103,7 @@ op_(inc_arg) {
 struct Program {
     Inst* inst;
     int   vals;
-    int   unused;
+    int   loop;
 };
 
 Program* compile(Builder* b) {
@@ -265,11 +265,11 @@ void run(const Program* p, int n, void* arg[]) {
         v = malloc((size_t)p->vals * sizeof *v);
     }
 
-    const Inst* start = p->inst;
-    void (*op)(bool, const Inst*, Val* v, void*[]) = start->op;
+    const Inst *start = p->inst,
+               *loop  = p->inst + p->loop;
 
-    for (int i = 0; i < n/N; i++) { op(0,start,v,arg); }
-    for (int i = 0; i < n%N; i++) { op(1,start,v,arg); }
+    for (int i = 0; i < n/N; i++) { start->op(0,start,v,arg); start = loop; }
+    for (int i = 0; i < n%N; i++) { start->op(1,start,v,arg); start = loop; }
 
     if (v != scratch) {
         free(v);
