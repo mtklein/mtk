@@ -105,9 +105,9 @@ op_(inc_arg) {
 }
 
 struct Program {
-    Inst* inst;
-    int   vals;
-    int   loop;
+    int  vals;
+    int  loop;
+    Inst inst[];
 };
 
 Program* compile(Builder* b) {
@@ -127,7 +127,8 @@ Program* compile(Builder* b) {
                               || (inst->w && meta[inst->w-1].loop_dependent);
     }
 
-    Program* p = calloc(1, sizeof *p);
+    Program* p = malloc(sizeof *p + sizeof(Inst) * (size_t)(b->insts + b->args + 1));
+    p->vals = 0;
 
     // Reorder instructions so all loop-independent instructions come first,
     // then loop-dependent instructions following from p->inst + p->loop.
@@ -151,7 +152,7 @@ Program* compile(Builder* b) {
                 if (inst.z) { inst.z = meta[inst.z-1].new_id; inst.z -= meta[i].new_id; }
                 if (inst.w) { inst.w = meta[inst.w-1].new_id; inst.w -= meta[i].new_id; }
 
-                push(p->inst,p->vals) = inst;
+                p->inst[p->vals++] = inst;
             }
         }
     }
@@ -161,7 +162,7 @@ Program* compile(Builder* b) {
     // Add a few more non-value-producing instructions to increment each argument and wrap up.
     for (int i = 0; i < b->args; i++) {
         if (b->stride[i]) {
-            push(p->inst,b->insts) = (Inst) {
+            p->inst[b->insts++] = (Inst) {
                 .op      = op_inc_arg,
                 .ptr     = (Ptr){i},
                 .imm.s32 = b->stride[i],
@@ -171,10 +172,10 @@ Program* compile(Builder* b) {
     if (b->insts > p->vals) {
         p->inst[b->insts-1].op = op_inc_arg_and_done;
     } else {
-        push(p->inst,b->insts) = (Inst){.op=op_done};
+        p->inst[b->insts++] = (Inst){.op=op_done};
     }
 
-    free(b->inst);  // TODO: reorder b->inst in-place instead of regrowing p->inst?
+    free(b->inst);
     free(b->stride);
     free(b->hash.table);
     free(b);
@@ -182,7 +183,6 @@ Program* compile(Builder* b) {
 }
 
 void drop(Program* p) {
-    free(p->inst);
     free(p);
 }
 
