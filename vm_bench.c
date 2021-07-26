@@ -67,6 +67,33 @@ static double memset32_vm(int k, double *scale, const char* *unit) {
     return elapsed;
 }
 
+static double memset32_uniform(int k, double *scale, const char* *unit) {
+    *scale = 1024;
+    *unit  = "px";
+
+    Program* p;
+    {
+        Builder* b = builder();
+        Ptr uni = arg(b, 0),
+            buf = arg(b, 4);
+        U32   v = uniform_U32(b, uni, 3);
+        st1_U32(b, buf, v);
+        p = compile(b);
+    }
+
+    uint8_t uni[] =  { 0,1,2,0xee,0xcc,0xaa,0xff,4 };
+    uint32_t buf[1024];
+
+    double start = now();
+    while (k --> 0) {
+        run(p, len(buf), (void*[]){uni,buf});
+    }
+    double elapsed = now() - start;
+
+    drop(p);
+    return elapsed;
+}
+
 static double compile_memset32(int k, double *scale, const char* *unit) {
     *scale = 1;
     *unit  = "program";
@@ -107,6 +134,7 @@ int main(int argc, char** argv) {
     bench(memset32_native);
     bench(memset32_goal);
     bench(memset32_vm);
+    bench(memset32_uniform);
     bench(compile_memset32);
     bench(compile_cse);
     return 0;

@@ -22,6 +22,28 @@ static void test_memset32() {
     drop(p);
 }
 
+static void test_memset32_uniform() {
+    Program* p;
+    {
+        Builder* b = builder();
+        Ptr uni = arg(b,0),
+            buf = arg(b,4);
+        U32   v = uniform_U32(b, uni, 3);
+        st1_U32(b, buf, v);
+        p = compile(b);
+    }
+
+    uint8_t uni[] =  { 0,1,2,0xee,0xcc,0xaa,0xff,4 };
+    uint32_t buf[63] = {0};
+    run(p, len(buf), (void*[]){uni, buf});
+
+    for (int i = 0; i < len(buf); i++) {
+        expect_eq(buf[i], 0xffaaccee);
+    }
+
+    drop(p);
+}
+
 static void test_add_F16() {
     Program* p;
     {
@@ -83,6 +105,7 @@ static void test_cse() {
 
 int main(void) {
     test_memset32();
+    test_memset32_uniform();
     test_add_F16();
     test_cse();
     return 0;

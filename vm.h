@@ -141,14 +141,21 @@ void st4_F32(Builder*, Ptr, F32x4);
 
 U8  splat_U8 (Builder*, uint8_t);
 S8  splat_S8 (Builder*, int8_t);
-
 U16 splat_U16(Builder*, uint16_t);
 S16 splat_S16(Builder*, int16_t);
 F16 splat_F16(Builder*, _Float16);
-
 U32 splat_U32(Builder*, uint32_t);
 S32 splat_S32(Builder*, int32_t);
 F32 splat_F32(Builder*, float);
+
+U8  uniform_U8 (Builder*, Ptr, int offset);
+S8  uniform_S8 (Builder*, Ptr, int offset);
+U16 uniform_U16(Builder*, Ptr, int offset);
+S16 uniform_S16(Builder*, Ptr, int offset);
+F16 uniform_F16(Builder*, Ptr, int offset);
+U32 uniform_U32(Builder*, Ptr, int offset);
+S32 uniform_S32(Builder*, Ptr, int offset);
+F32 uniform_F32(Builder*, Ptr, int offset);
 
 F16 cast_F16_from_U16(Builder*, U16);
 U16 cast_U16_from_F16(Builder*, F16);

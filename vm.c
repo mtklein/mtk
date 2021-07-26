@@ -204,6 +204,24 @@ F32 splat_F32(Builder* b, float imm) {
     return (F32){ cse(b, (Inst){.op = op_splat_32, .imm.f32 = imm}) };
 }
 
+op_(uniform_32) {
+    uint32_t u;
+    memcpy(&u, (const char*)arg[inst->ptr.ix] + inst->imm.s32, 4);
+
+    Val uni = {0};
+    uni.u32 += u;
+    *v = uni;
+    next;
+}
+U32 uniform_U32(Builder* b, Ptr ptr, int offset) {
+    return (U32){ cse(b, (Inst){.op = op_uniform_32, .ptr = ptr, .imm.s32=offset}) };
+}
+S32 uniform_S32(Builder* b, Ptr ptr, int offset) {
+    return (S32){ cse(b, (Inst){.op = op_uniform_32, .ptr = ptr, .imm.s32=offset}) };
+}
+F32 uniform_F32(Builder* b, Ptr ptr, int offset) {
+    return (F32){ cse(b, (Inst){.op = op_uniform_32, .ptr = ptr, .imm.s32=offset}) };
+}
 
 op_(add_F16) { v->f16 = v[inst->x].f16 + v[inst->y].f16; next; }
 op_(sub_F16) { v->f16 = v[inst->x].f16 - v[inst->y].f16; next; }
