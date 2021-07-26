@@ -179,21 +179,22 @@ Program* compile(Builder* b) {
     free(meta);
 
     // Add a few more non-value-producing instructions to increment each argument and wrap up.
-    int insts = p->vals;
+    Inst* inst = p->inst + p->vals;
     for (int i = 0; i < b->args; i++) {
         if (b->stride[i]) {
-            p->inst[insts++] = (Inst) {
+            *inst++ = (Inst) {
                 .op      = op_inc_arg,
                 .ptr     = (Ptr){i},
                 .imm.s32 = b->stride[i],
             };
         }
     }
-    if (insts > p->vals) {
-        p->inst[insts-1].op = op_inc_arg_and_done;
+    if (inst > p->inst + p->vals) {
+        inst[-1].op = op_inc_arg_and_done;
     } else {
-        p->inst[insts++] = (Inst){.op=op_done};
+        *inst++ = (Inst){.op=op_done};
     }
+    assert(inst <= p->inst + b->insts + b->args + 1);
 
     free(b->inst);
     free(b->stride);
