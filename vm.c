@@ -108,10 +108,9 @@ struct Program {
 };
 
 Program* compile(Builder* b) {
-    typedef struct {
-        int  new_id;
+    typedef union {
         bool loop_dependent;
-        bool unused[3];
+        int  new_id;
     } Meta;
     Meta* meta = calloc((size_t)b->insts, sizeof *meta);
 
