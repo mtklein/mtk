@@ -133,8 +133,8 @@ Program* compile(Builder* b) {
     // then loop-dependent instructions following from p->inst + p->loop.
     //
     // While we're doing that, rewrite ptr and xyzw indices into their final Program conventions:
-    //    - convert 1-indexed pointer indices to 0-indexed;
-    //    - translate 1-indexed absolute xyzw IDs to relative offsets,
+    //    - 1-indexed pointer indices become 0-indexed;
+    //    - 1-indexed xyzw IDs become relative offsets,
     //      so Program instructions write their value to *v, read x from v[inst.x], etc.
     for (int loop_dependent = 0; loop_dependent < 2; loop_dependent++) {
         if (loop_dependent) {
@@ -174,7 +174,7 @@ Program* compile(Builder* b) {
         push(p->inst,b->insts) = (Inst){.op=op_done};
     }
 
-    free(b->inst);
+    free(b->inst);  // TODO: reorder b->inst in-place instead of regrowing p->inst?
     free(b->stride);
     free(b->hash.table);
     free(b);
