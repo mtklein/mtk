@@ -116,12 +116,12 @@ Program* compile(Builder* b) {
 
     // A value is loop-dependent if it uses a varying pointer or another loop-dependent value.
     for (int i = 0; i < b->insts; i++) {
-        const Inst inst = b->inst[i];
-        meta[i].loop_dependent = (inst.ptr.ix && b->stride[inst.ptr.ix-1])
-                              || (inst.x && meta[inst.x-1].loop_dependent)
-                              || (inst.y && meta[inst.y-1].loop_dependent)
-                              || (inst.z && meta[inst.z-1].loop_dependent)
-                              || (inst.w && meta[inst.w-1].loop_dependent);
+        const Inst* inst = b->inst+i;
+        meta[i].loop_dependent = (inst->ptr.ix && b->stride[inst->ptr.ix-1])
+                              || (inst->x && meta[inst->x-1].loop_dependent)
+                              || (inst->y && meta[inst->y-1].loop_dependent)
+                              || (inst->z && meta[inst->z-1].loop_dependent)
+                              || (inst->w && meta[inst->w-1].loop_dependent);
     }
 
     Program* p = calloc(1, sizeof *p);
@@ -134,6 +134,9 @@ Program* compile(Builder* b) {
     //    - translate 1-indexed absolute xyzw IDs to relative offsets,
     //      so Program instructions write their value to *v, read x from v[inst.x], etc.
     for (int loop_dependent = 0; loop_dependent < 2; loop_dependent++) {
+        if (loop_dependent) {
+            p->loop = p->vals;
+        }
         for (int i = 0; i < b->insts; i++) {
             if (meta[i].loop_dependent == loop_dependent) {
                 meta[i].new_id = p->vals;
@@ -148,7 +151,6 @@ Program* compile(Builder* b) {
                 push(p->inst,p->vals) = inst;
             }
         }
-        if (!loop_dependent) { p->loop = p->vals; }
     }
     assert(p->vals == b->insts);
     free(meta);
