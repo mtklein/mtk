@@ -40,11 +40,11 @@ typedef struct Inst {
 } Inst;
 
 struct Builder {
-    Inst*    inst;
-    int*     stride;
-    int      insts;
-    unsigned args;
-    Hash     hash;
+    Inst* inst;
+    int*  stride;
+    int   insts;
+    int   args;
+    Hash  hash;
 };
 
 typedef struct {
@@ -93,8 +93,8 @@ op_(done) {
 op_(inc_arg_and_done) {
     (void)v;
 
-    unsigned ix     = inst->ptr.ix;
-    int      stride = inst->imm.s32;
+    int ix     = inst->ptr.ix,
+        stride = inst->imm.s32;
 
     arg[ix] = (char*)arg[ix] + (n<N ? 1*stride
                                     : N*stride);
@@ -118,6 +118,7 @@ Program* compile(Builder* b) {
     Meta* meta = calloc((size_t)b->insts, sizeof *meta);
 
     // A value is live if it has a side-effect or if it's used by another live value.
+    int live = 0;
     for (int i = b->insts; i --> 0;) {
         const Inst* inst = b->inst+i;
 
@@ -129,6 +130,7 @@ Program* compile(Builder* b) {
 
         // Anything a live instruction needs is also live.
         if (meta[i].live) {
+            live++;
             if (inst->x) { meta[inst->x-1].live = true; }
             if (inst->y) { meta[inst->y-1].live = true; }
             if (inst->z) { meta[inst->z-1].live = true; }
@@ -146,8 +148,16 @@ Program* compile(Builder* b) {
                               || (inst->w && meta[inst->w-1].loop_dependent);
     }
 
-    // TODO: allocate exactly rather than conservatively like this?
-    Program* p = malloc(sizeof *p + sizeof(Inst) * ((size_t)b->insts + b->args + 1));
+    // Count up how many instructions we'll need, including any arguments to increment.
+    int inc_args = 0;
+    for (int ix = 0; ix < b->args; ix++) {
+        if (b->stride[ix]) {
+            inc_args += 1;
+        }
+    }
+    const int insts = live + (inc_args ? inc_args : 1);
+
+    Program* p = malloc(sizeof *p + sizeof(Inst) * (size_t)insts);
     p->vals = 0;
 
     // Reorder instructions so all live loop-independent instructions come first,
@@ -180,7 +190,7 @@ Program* compile(Builder* b) {
 
     // Add a few more non-value-producing instructions to increment each argument and wrap up.
     Inst* inst = p->inst + p->vals;
-    for (unsigned ix = 0; ix < b->args; ix++) {
+    for (int ix = 0; ix < b->args; ix++) {
         if (b->stride[ix]) {
             *inst++ = (Inst) {
                 .op      = op_inc_arg,
@@ -194,7 +204,7 @@ Program* compile(Builder* b) {
     } else {
         *inst++ = (Inst){.op=op_done};
     }
-    assert(inst <= p->inst + b->insts + b->args + 1);
+    assert(inst == p->inst + insts);
 
     free(b->inst);
     free(b->stride);
