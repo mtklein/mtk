@@ -148,14 +148,14 @@ Program* compile(Builder* b) {
                               || (inst->w && meta[inst->w-1].loop_dependent);
     }
 
-    // Count up how many instructions we'll need, including any arguments to increment.
-    int inc_args = 0;
+    // Count up how many instructions we'll need, including one for each argument to increment.
+    int args_to_inc = 0;
     for (int ix = 0; ix < b->args; ix++) {
         if (b->stride[ix]) {
-            inc_args += 1;
+            args_to_inc++;
         }
     }
-    const int insts = live + (inc_args ? inc_args : 1);
+    const int insts = live + (args_to_inc ? args_to_inc : 1/*op_done*/);
 
     Program* p = malloc(sizeof *p + sizeof(Inst) * (size_t)insts);
     p->vals = 0;
@@ -166,7 +166,7 @@ Program* compile(Builder* b) {
     // While we're doing that, rewrite ptr and xyzw indices into their final Program conventions:
     //    - 1-indexed pointer indices become 0-indexed;
     //    - 1-indexed xyzw IDs become relative offsets,
-    //      so Program instructions write their value to *v, read x from v[inst.x], etc.
+    //      so Program instructions write their value to *v, read x from v[inst->x], etc.
     for (int loop_dependent = 0; loop_dependent < 2; loop_dependent++) {
         if (loop_dependent) {
             p->loop = p->vals;
@@ -176,7 +176,7 @@ Program* compile(Builder* b) {
                 meta[i].new_id = p->vals;
 
                 Inst inst = b->inst[i];
-                if (inst.ptr.ix) { inst.ptr.ix -= 1; }
+                if (inst.ptr.ix) { inst.ptr.ix--; }
                 if (inst.x) { inst.x = meta[inst.x-1].new_id; inst.x -= meta[i].new_id; }
                 if (inst.y) { inst.y = meta[inst.y-1].new_id; inst.y -= meta[i].new_id; }
                 if (inst.z) { inst.z = meta[inst.z-1].new_id; inst.z -= meta[i].new_id; }
@@ -193,7 +193,7 @@ Program* compile(Builder* b) {
         if (b->stride[ix]) {
             *inst++ = (Inst) {
                 .op      = op_inc_arg,
-                .ptr     = (Ptr){ix},
+                .ptr.ix  = ix,
                 .imm.s32 = b->stride[ix],
             };
         }
@@ -241,8 +241,8 @@ S32 ld1_S32(Builder* b, Ptr ptr) { return (S32){ no_cse(b, (Inst){.op=op_ld1_32,
 F32 ld1_F32(Builder* b, Ptr ptr) { return (F32){ no_cse(b, (Inst){.op=op_ld1_32, .ptr=ptr}) }; }
 
 op_(st1_16) {
-    n<N ? memcpy(arg[inst->ptr.ix], v+inst->x, 1*2)
-        : memcpy(arg[inst->ptr.ix], v+inst->x, N*2);
+    n<N ? memcpy(arg[inst->ptr.ix], &v[inst->x], 1*2)
+        : memcpy(arg[inst->ptr.ix], &v[inst->x], N*2);
     next;
 }
 void st1_U16(Builder* b, Ptr ptr, U16 x) { no_cse(b, (Inst){.op=op_st1_16, .ptr=ptr, .x=x.id}); }
@@ -250,8 +250,8 @@ void st1_S16(Builder* b, Ptr ptr, S16 x) { no_cse(b, (Inst){.op=op_st1_16, .ptr=
 void st1_F16(Builder* b, Ptr ptr, F16 x) { no_cse(b, (Inst){.op=op_st1_16, .ptr=ptr, .x=x.id}); }
 
 op_(st1_32) {
-    n<N ? memcpy(arg[inst->ptr.ix], v+inst->x, 1*4)
-        : memcpy(arg[inst->ptr.ix], v+inst->x, N*4);
+    n<N ? memcpy(arg[inst->ptr.ix], &v[inst->x], 1*4)
+        : memcpy(arg[inst->ptr.ix], &v[inst->x], N*4);
     next;
 }
 void st1_U32(Builder* b, Ptr ptr, U32 x) { no_cse(b, (Inst){.op=op_st1_32, .ptr=ptr, .x=x.id}); }
