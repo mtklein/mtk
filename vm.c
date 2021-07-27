@@ -33,7 +33,7 @@ typedef union {
 } Val;
 
 typedef struct Inst {
-    void (*op)(bool one, const struct Inst*, Val* v, void* arg[]);
+    void (*op)(int n, const struct Inst*, Val* v, void* arg[]);
     int x,y,z,w;
     Ptr ptr;
     Imm imm;
@@ -81,11 +81,11 @@ static int cse(Builder* b, Inst inst) {
 }
 
 
-#define op_(name) static void op_##name(bool one, const Inst* inst, Val* v, void* arg[])
-#define next inst[1].op(one,inst+1,v+1,arg)
+#define op_(name) static void op_##name(int n, const Inst* inst, Val* v, void* arg[])
+#define next inst[1].op(n,inst+1,v+1,arg)
 
 op_(done) {
-    (void)one;
+    (void)n;
     (void)inst;
     (void)v;
     (void)arg;
@@ -96,11 +96,11 @@ op_(inc_arg_and_done) {
     int ix     = inst->ptr.ix,
         stride = inst->imm.s32;
 
-    arg[ix] = (char*)arg[ix] + (one ? 1*stride
+    arg[ix] = (char*)arg[ix] + (n<N ? 1*stride
                                     : N*stride);
 }
 op_(inc_arg) {
-    op_inc_arg_and_done(one,inst,v,arg);
+    op_inc_arg_and_done(n,inst,v,arg);
     next;
 }
 
@@ -213,7 +213,7 @@ Ptr arg(Builder* b, int stride) {
 }
 
 op_(ld1_16) {
-    one ? memcpy(v, arg[inst->ptr.ix], 1*2)
+    n<N ? memcpy(v, arg[inst->ptr.ix], 1*2)
         : memcpy(v, arg[inst->ptr.ix], N*2);
     next;
 }
@@ -222,7 +222,7 @@ S16 ld1_S16(Builder* b, Ptr ptr) { return (S16){ no_cse(b, (Inst){.op=op_ld1_16,
 F16 ld1_F16(Builder* b, Ptr ptr) { return (F16){ no_cse(b, (Inst){.op=op_ld1_16, .ptr=ptr}) }; }
 
 op_(ld1_32) {
-    one ? memcpy(v, arg[inst->ptr.ix], 1*4)
+    n<N ? memcpy(v, arg[inst->ptr.ix], 1*4)
         : memcpy(v, arg[inst->ptr.ix], N*4);
     next;
 }
@@ -231,7 +231,7 @@ S32 ld1_S32(Builder* b, Ptr ptr) { return (S32){ no_cse(b, (Inst){.op=op_ld1_32,
 F32 ld1_F32(Builder* b, Ptr ptr) { return (F32){ no_cse(b, (Inst){.op=op_ld1_32, .ptr=ptr}) }; }
 
 op_(st1_16) {
-    one ? memcpy(arg[inst->ptr.ix], v+inst->x, 1*2)
+    n<N ? memcpy(arg[inst->ptr.ix], v+inst->x, 1*2)
         : memcpy(arg[inst->ptr.ix], v+inst->x, N*2);
     next;
 }
@@ -240,7 +240,7 @@ void st1_S16(Builder* b, Ptr ptr, S16 x) { no_cse(b, (Inst){.op=op_st1_16, .ptr=
 void st1_F16(Builder* b, Ptr ptr, F16 x) { no_cse(b, (Inst){.op=op_st1_16, .ptr=ptr, .x=x.id}); }
 
 op_(st1_32) {
-    one ? memcpy(arg[inst->ptr.ix], v+inst->x, 1*4)
+    n<N ? memcpy(arg[inst->ptr.ix], v+inst->x, 1*4)
         : memcpy(arg[inst->ptr.ix], v+inst->x, N*4);
     next;
 }
@@ -329,8 +329,11 @@ void run(const Program* p, int n, void* arg[]) {
     Val *v = val,
         *l = val + p->loop;
 
-    for (int i = 0; i < n/N; i++) { start->op(0,start,v,arg); start = loop; v = l; }
-    for (int i = 0; i < n%N; i++) { start->op(1,start,v,arg); start = loop; v = l; }
+    for (; n; n -= (n<N ? 1 : N)) {
+        start->op(n,start,v,arg);
+        start = loop;
+        v     = l;
+    }
 
     if (val != scratch) {
         free(val);
