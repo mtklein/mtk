@@ -186,7 +186,6 @@ Program* compile(Builder* b) {
             }
         }
     }
-    free(meta);
 
     // Add a few more non-value-producing instructions to increment each argument and wrap up.
     Inst* inst = p->inst + p->vals;
@@ -206,6 +205,7 @@ Program* compile(Builder* b) {
     }
     assert(inst == p->inst + insts);
 
+    free(meta);
     free(b->inst);
     free(b->stride);
     free(b->hash.table);
