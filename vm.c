@@ -40,11 +40,11 @@ typedef struct Inst {
 } Inst;
 
 struct Builder {
-    Inst* inst;
-    int*  stride;
-    int   insts;
-    int   args;
-    Hash  hash;
+    Inst*    inst;
+    int*     stride;
+    int      insts;
+    unsigned args;
+    Hash     hash;
 };
 
 typedef struct {
@@ -93,8 +93,8 @@ op_(done) {
 op_(inc_arg_and_done) {
     (void)v;
 
-    int ix     = inst->ptr.ix,
-        stride = inst->imm.s32;
+    unsigned ix     = inst->ptr.ix;
+    int      stride = inst->imm.s32;
 
     arg[ix] = (char*)arg[ix] + (n<N ? 1*stride
                                     : N*stride);
@@ -147,7 +147,7 @@ Program* compile(Builder* b) {
     }
 
     // TODO: allocate exactly rather than conservatively like this?
-    Program* p = malloc(sizeof *p + sizeof(Inst) * (size_t)(b->insts + b->args + 1));
+    Program* p = malloc(sizeof *p + sizeof(Inst) * ((size_t)b->insts + b->args + 1));
     p->vals = 0;
 
     // Reorder instructions so all live loop-independent instructions come first,
@@ -180,12 +180,12 @@ Program* compile(Builder* b) {
 
     // Add a few more non-value-producing instructions to increment each argument and wrap up.
     Inst* inst = p->inst + p->vals;
-    for (int i = 0; i < b->args; i++) {
-        if (b->stride[i]) {
+    for (unsigned ix = 0; ix < b->args; ix++) {
+        if (b->stride[ix]) {
             *inst++ = (Inst) {
                 .op      = op_inc_arg,
-                .ptr     = (Ptr){i},
-                .imm.s32 = b->stride[i],
+                .ptr     = (Ptr){ix},
+                .imm.s32 = b->stride[ix],
             };
         }
     }

@@ -10,7 +10,7 @@ Program* compile(Builder*);
 void     run    (const Program*, int n, void* arg[]);
 void     drop   (Program*);
 
-typedef struct { int ix; } Ptr;
+typedef struct { unsigned ix; } Ptr;
 
 // TODO struct { int id : 30; int sub : 2; } for U??xN support
 
