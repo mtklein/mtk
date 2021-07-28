@@ -179,19 +179,19 @@ Program* compile(Builder* b) {
         }
         for (int i = 0; i < b->insts; i++) {
             if (meta[i].live && meta[i].loop_dependent == loop_dependent) {
-                meta[i].reordered_id = p->vals;
+                meta[i].reordered_id = p->vals++;
 
                 // Update inst with reordered argument IDs and translate to Program convention:
                 //    - 1-indexed ptr ix -> 0-indexed ptr ix
                 //    - relative value arguments, writing to *v and reading v[inst->x], etc.
                 Inst inst = b->inst[i];
                 if (inst.ptr.ix) { inst.ptr.ix--; }
-                if (inst.x) { inst.x = meta[inst.x-1].reordered_id; inst.x -= p->vals; }
-                if (inst.y) { inst.y = meta[inst.y-1].reordered_id; inst.y -= p->vals; }
-                if (inst.z) { inst.z = meta[inst.z-1].reordered_id; inst.z -= p->vals; }
-                if (inst.w) { inst.w = meta[inst.w-1].reordered_id; inst.w -= p->vals; }
+                if (inst.x) { inst.x = meta[inst.x-1].reordered_id - meta[i].reordered_id; }
+                if (inst.y) { inst.y = meta[inst.y-1].reordered_id - meta[i].reordered_id; }
+                if (inst.z) { inst.z = meta[inst.z-1].reordered_id - meta[i].reordered_id; }
+                if (inst.w) { inst.w = meta[inst.w-1].reordered_id - meta[i].reordered_id; }
 
-                p->inst[p->vals++] = inst;
+                p->inst[meta[i].reordered_id] = inst;
             }
         }
     }
