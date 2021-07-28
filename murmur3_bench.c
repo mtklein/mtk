@@ -6,7 +6,7 @@ static uint32_t seed = 0;
 
 static double bench_mix(int k, double *scale, const char* *unit) {
     *scale = sizeof seed;
-    *unit  = "byte";
+    *unit  = "B";
 
     double start = now();
     while (k --> 0) {
@@ -20,7 +20,7 @@ static double bench_murmur3(int k, double *scale, const char* *unit) {
     memcpy(buf, &seed, sizeof seed);
 
     *scale = sizeof buf;
-    *unit  = "byte";
+    *unit  = "B";
 
     double start = now();
     while (k --> 0) {
