@@ -35,7 +35,7 @@ typedef union {
 typedef struct Inst {
     void (*op)(int n, const struct Inst*, Val* v, void* arg[]);
     int x,y,z,w;
-    Ptr ptr;
+    int ptr;
     Imm imm;
 } Inst;
 
@@ -53,7 +53,7 @@ Builder* builder() {
 }
 
 // In Builder convention, pointer arguments (from arg()) and value IDs (from no_cse(), cse())
-// are all 1-indexed.  This allows testing Inst's ptr.ix,x,y,z,w fields' existence with !=0.
+// are all 1-indexed.  This allows testing Inst's ptr,x,y,z,w fields' existence with !=0.
 
 Ptr arg(Builder* b, int stride) {
     push(b->stride,b->args) = stride;
@@ -100,11 +100,11 @@ op_(done) {
 op_(inc_arg_and_done) {
     (void)v;
 
-    int ix     = inst->ptr.ix,
+    int ptr    = inst->ptr,
         stride = inst->imm.s32;
 
-    arg[ix] = (char*)arg[ix] + (n<N ? 1*stride
-                                    : N*stride);
+    arg[ptr] = (char*)arg[ptr] + (n<N ? 1*stride
+                                      : N*stride);
 }
 op_(inc_arg) {
     op_inc_arg_and_done(n,inst,v,arg);
@@ -112,8 +112,8 @@ op_(inc_arg) {
 }
 
 static bool has_varying_pointer(const Builder* b, const Inst* inst) {
-    return inst->ptr.ix
-        && b->stride[inst->ptr.ix-1] != 0;
+    return inst->ptr
+        && b->stride[inst->ptr-1] != 0;
 }
 
 static bool is_store(const Builder* b, const Inst* inst) {
@@ -162,8 +162,8 @@ Program* compile(Builder* b) {
     }
 
     int varying_ptrs = 0;
-    for (int ix = 0; ix < b->args; ix++) {
-        if (b->stride[ix] != 0) {
+    for (int ptr = 0; ptr < b->args; ptr++) {
+        if (b->stride[ptr] != 0) {
             varying_ptrs++;
         }
     }
@@ -182,10 +182,10 @@ Program* compile(Builder* b) {
                 meta[i].reordered_id = p->vals++;
 
                 // Update inst with reordered argument IDs and translate to Program convention:
-                //    - 1-indexed ptr ix -> 0-indexed ptr ix
+                //    - 1-indexed ptr -> 0-indexed ptr
                 //    - relative value arguments, writing to *v and reading v[inst->x], etc.
                 Inst inst = b->inst[i];
-                if (inst.ptr.ix) { inst.ptr.ix--; }
+                if (inst.ptr) { inst.ptr--; }
                 if (inst.x) { inst.x = meta[inst.x-1].reordered_id - meta[i].reordered_id; }
                 if (inst.y) { inst.y = meta[inst.y-1].reordered_id - meta[i].reordered_id; }
                 if (inst.z) { inst.z = meta[inst.z-1].reordered_id - meta[i].reordered_id; }
@@ -198,12 +198,12 @@ Program* compile(Builder* b) {
     assert(p->vals == live_vals);
 
     Inst* inst = p->inst + p->vals;
-    for (int ix = 0; ix < b->args; ix++) {
-        if (b->stride[ix] != 0) {
+    for (int ptr = 0; ptr < b->args; ptr++) {
+        if (b->stride[ptr] != 0) {
             *inst++ = (Inst) {
                 .op      = op_inc_arg,
-                .ptr.ix  = ix,
-                .imm.s32 = b->stride[ix],
+                .ptr     = ptr,
+                .imm.s32 = b->stride[ptr],
             };
         }
     }
@@ -227,40 +227,40 @@ void drop(Program* p) {
 }
 
 op_(ld1_16) {
-    n<N ? memcpy(v, arg[inst->ptr.ix], 1*2)
-        : memcpy(v, arg[inst->ptr.ix], N*2);
+    n<N ? memcpy(v, arg[inst->ptr], 1*2)
+        : memcpy(v, arg[inst->ptr], N*2);
     next;
 }
-U16 ld1_U16(Builder* b, Ptr ptr) { return (U16){ no_cse(b, (Inst){.op=op_ld1_16, .ptr=ptr}) }; }
-S16 ld1_S16(Builder* b, Ptr ptr) { return (S16){ no_cse(b, (Inst){.op=op_ld1_16, .ptr=ptr}) }; }
-F16 ld1_F16(Builder* b, Ptr ptr) { return (F16){ no_cse(b, (Inst){.op=op_ld1_16, .ptr=ptr}) }; }
+U16 ld1_U16(Builder* b, Ptr ptr) { return (U16){ no_cse(b, (Inst){.op=op_ld1_16, .ptr=ptr.ix}) }; }
+S16 ld1_S16(Builder* b, Ptr ptr) { return (S16){ no_cse(b, (Inst){.op=op_ld1_16, .ptr=ptr.ix}) }; }
+F16 ld1_F16(Builder* b, Ptr ptr) { return (F16){ no_cse(b, (Inst){.op=op_ld1_16, .ptr=ptr.ix}) }; }
 
 op_(ld1_32) {
-    n<N ? memcpy(v, arg[inst->ptr.ix], 1*4)
-        : memcpy(v, arg[inst->ptr.ix], N*4);
+    n<N ? memcpy(v, arg[inst->ptr], 1*4)
+        : memcpy(v, arg[inst->ptr], N*4);
     next;
 }
-U32 ld1_U32(Builder* b, Ptr ptr) { return (U32){ no_cse(b, (Inst){.op=op_ld1_32, .ptr=ptr}) }; }
-S32 ld1_S32(Builder* b, Ptr ptr) { return (S32){ no_cse(b, (Inst){.op=op_ld1_32, .ptr=ptr}) }; }
-F32 ld1_F32(Builder* b, Ptr ptr) { return (F32){ no_cse(b, (Inst){.op=op_ld1_32, .ptr=ptr}) }; }
+U32 ld1_U32(Builder* b, Ptr ptr) { return (U32){ no_cse(b, (Inst){.op=op_ld1_32, .ptr=ptr.ix}) }; }
+S32 ld1_S32(Builder* b, Ptr ptr) { return (S32){ no_cse(b, (Inst){.op=op_ld1_32, .ptr=ptr.ix}) }; }
+F32 ld1_F32(Builder* b, Ptr ptr) { return (F32){ no_cse(b, (Inst){.op=op_ld1_32, .ptr=ptr.ix}) }; }
 
 op_(st1_16) {
-    n<N ? memcpy(arg[inst->ptr.ix], &v[inst->x], 1*2)
-        : memcpy(arg[inst->ptr.ix], &v[inst->x], N*2);
+    n<N ? memcpy(arg[inst->ptr], &v[inst->x], 1*2)
+        : memcpy(arg[inst->ptr], &v[inst->x], N*2);
     next;
 }
-void st1_U16(Builder* b, Ptr ptr, U16 x) { no_cse(b, (Inst){.op=op_st1_16, .ptr=ptr, .x=x.id}); }
-void st1_S16(Builder* b, Ptr ptr, S16 x) { no_cse(b, (Inst){.op=op_st1_16, .ptr=ptr, .x=x.id}); }
-void st1_F16(Builder* b, Ptr ptr, F16 x) { no_cse(b, (Inst){.op=op_st1_16, .ptr=ptr, .x=x.id}); }
+void st1_U16(Builder* b, Ptr ptr, U16 x) { no_cse(b, (Inst){.op=op_st1_16, .ptr=ptr.ix, .x=x.id}); }
+void st1_S16(Builder* b, Ptr ptr, S16 x) { no_cse(b, (Inst){.op=op_st1_16, .ptr=ptr.ix, .x=x.id}); }
+void st1_F16(Builder* b, Ptr ptr, F16 x) { no_cse(b, (Inst){.op=op_st1_16, .ptr=ptr.ix, .x=x.id}); }
 
 op_(st1_32) {
-    n<N ? memcpy(arg[inst->ptr.ix], &v[inst->x], 1*4)
-        : memcpy(arg[inst->ptr.ix], &v[inst->x], N*4);
+    n<N ? memcpy(arg[inst->ptr], &v[inst->x], 1*4)
+        : memcpy(arg[inst->ptr], &v[inst->x], N*4);
     next;
 }
-void st1_U32(Builder* b, Ptr ptr, U32 x) { no_cse(b, (Inst){.op=op_st1_32, .ptr=ptr, .x=x.id}); }
-void st1_S32(Builder* b, Ptr ptr, S32 x) { no_cse(b, (Inst){.op=op_st1_32, .ptr=ptr, .x=x.id}); }
-void st1_F32(Builder* b, Ptr ptr, F32 x) { no_cse(b, (Inst){.op=op_st1_32, .ptr=ptr, .x=x.id}); }
+void st1_U32(Builder* b, Ptr ptr, U32 x) { no_cse(b, (Inst){.op=op_st1_32, .ptr=ptr.ix, .x=x.id}); }
+void st1_S32(Builder* b, Ptr ptr, S32 x) { no_cse(b, (Inst){.op=op_st1_32, .ptr=ptr.ix, .x=x.id}); }
+void st1_F32(Builder* b, Ptr ptr, F32 x) { no_cse(b, (Inst){.op=op_st1_32, .ptr=ptr.ix, .x=x.id}); }
 
 op_(splat_32) {
     uint32_t imm = inst->imm.u32;
@@ -282,7 +282,7 @@ F32 splat_F32(Builder* b, float imm) {
 
 op_(uniform_32) {
     uint32_t uni;
-    memcpy(&uni, (const char*)arg[inst->ptr.ix] + inst->imm.s32, sizeof uni);
+    memcpy(&uni, (const char*)arg[inst->ptr] + inst->imm.s32, sizeof uni);
 
     Val val = {0};
     val.u32 += uni;
@@ -290,13 +290,13 @@ op_(uniform_32) {
     next;
 }
 U32 uniform_U32(Builder* b, Ptr ptr, int offset) {
-    return (U32){ cse(b, (Inst){.op = op_uniform_32, .ptr = ptr, .imm.s32=offset}) };
+    return (U32){ cse(b, (Inst){.op = op_uniform_32, .ptr=ptr.ix, .imm.s32=offset}) };
 }
 S32 uniform_S32(Builder* b, Ptr ptr, int offset) {
-    return (S32){ cse(b, (Inst){.op = op_uniform_32, .ptr = ptr, .imm.s32=offset}) };
+    return (S32){ cse(b, (Inst){.op = op_uniform_32, .ptr=ptr.ix, .imm.s32=offset}) };
 }
 F32 uniform_F32(Builder* b, Ptr ptr, int offset) {
-    return (F32){ cse(b, (Inst){.op = op_uniform_32, .ptr = ptr, .imm.s32=offset}) };
+    return (F32){ cse(b, (Inst){.op = op_uniform_32, .ptr=ptr.ix, .imm.s32=offset}) };
 }
 
 op_(add_F16) { v->f16 = v[inst->x].f16 + v[inst->y].f16; next; }
