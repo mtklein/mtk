@@ -1,7 +1,7 @@
 #include "array.h"
+#include "checksum.h"
 #include "hash.h"
 #include "len.h"
-#include "murmur3.h"
 #include "vm.h"
 #include <assert.h>
 #include <stdbool.h>

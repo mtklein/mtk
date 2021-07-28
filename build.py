@@ -4,11 +4,11 @@ import os
 import sys
 
 deps = {
-    'array':   [],
-    'hash':    [],
-    'gfx':     [],
-    'murmur3': [],
-    'vm':      ['array', 'hash', 'murmur3'],
+    'array':    [],
+    'checksum': [],
+    'hash':     [],
+    'gfx':      [],
+    'vm':       ['array', 'checksum', 'hash'],
 }
 
 modes = {

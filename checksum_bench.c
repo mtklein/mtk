@@ -1,6 +1,6 @@
 #include "bench.h"
+#include "checksum.h"
 #include "expect.h"
-#include "murmur3.h"
 
 static uint32_t seed = 0;
 

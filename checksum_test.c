@@ -1,7 +1,7 @@
+#include "checksum.h"
 #include "expect.h"
-#include "murmur3.h"
 
-int main(void) {
+static void test_murmur3() {
     expect_eq(murmur3(         0, NULL,0), 0);
     expect_eq(murmur3(         1, NULL,0), 0x514e28b7);
     expect_eq(murmur3(0xffffffff, NULL,0), 0x81f16f39);
@@ -17,5 +17,9 @@ int main(void) {
     expect_eq(murmur3(0, &x,3), 0x7e4a8634);
     expect_eq(murmur3(0, &x,2), 0xa0f7b07a);
     expect_eq(murmur3(0, &x,1), 0x72661cf4);
+}
+
+int main(void) {
+    test_murmur3();
     return 0;
 }

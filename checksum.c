@@ -1,4 +1,4 @@
-#include "murmur3.h"
+#include "checksum.h"
 #include <string.h>
 
 #pragma clang attribute push(__attribute__((no_sanitize("unsigned-integer-overflow"))), \
