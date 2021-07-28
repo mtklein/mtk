@@ -47,6 +47,24 @@ struct Builder {
     Hash  hash;
 };
 
+Builder* builder() {
+    Builder* b = calloc(1, sizeof *b);
+    return b;
+}
+
+// In Builder convention, pointer arguments (from arg()) and value IDs (from no_cse(), cse())
+// are all 1-indexed.  This allows testing Inst's ptr.ix,x,y,z,w fields' existence with !=0.
+
+Ptr arg(Builder* b, int stride) {
+    push(b->stride,b->args) = stride;
+    return (Ptr){b->args};  // 1-indexed
+}
+
+static int no_cse(Builder* b, Inst inst) {
+    push(b->inst,b->insts) = inst;
+    return b->insts;  // 1-indexed
+}
+
 typedef struct {
     const Builder* b;
     const Inst*    inst;
@@ -54,17 +72,7 @@ typedef struct {
 
 static bool inst_eq(int id, void* vctx) {
     const inst_eq_ctx* ctx = vctx;
-    return 0 == memcmp(ctx->inst, ctx->b->inst + id-1/*1-indexed, see no_cse()*/, sizeof(Inst));
-}
-
-Builder* builder() {
-    Builder* b = calloc(1, sizeof *b);
-    return b;
-}
-
-static int no_cse(Builder* b, Inst inst) {
-    push(b->inst,b->insts) = inst;
-    return b->insts;  // 1-indexed in Builder, letting !inst.[xyzw] indicate an unused argument.
+    return 0 == memcmp(ctx->inst, ctx->b->inst + id-1/*1-indexed*/, sizeof(Inst));
 }
 
 static int cse(Builder* b, Inst inst) {
@@ -79,7 +87,6 @@ static int cse(Builder* b, Inst inst) {
     insert(&b->hash,h,id);
     return id;
 }
-
 
 #define op_(name) static void op_##name(int n, const Inst* inst, Val* v, void* arg[])
 #define next inst[1].op(n,inst+1,v+1,arg)
@@ -104,6 +111,20 @@ op_(inc_arg) {
     next;
 }
 
+static bool has_varying_pointer(const Builder* b, const Inst* inst) {
+    return inst->ptr.ix
+        && b->stride[inst->ptr.ix-1] != 0;
+}
+
+static bool is_store(const Builder* b, const Inst* inst) {
+    return has_varying_pointer(b,inst)
+        && (inst->x || inst->y || inst->z || inst->w);
+}
+
+static bool has_side_effect(const Builder* b, const Inst* inst) {
+    return is_store(b,inst);
+}
+
 struct Program {
     int  vals;
     int  loop;
@@ -111,86 +132,74 @@ struct Program {
 };
 
 Program* compile(Builder* b) {
-    typedef union {
+    union {
         struct { bool live, loop_dependent; };
-        int new_id;
-    } Meta;
-    Meta* meta = calloc((size_t)b->insts, sizeof *meta);
+        int reordered_id;
+    } *meta = calloc((size_t)b->insts, sizeof *meta);
 
-    // A value is live if it has a side-effect or if it's used by another live value.
-    int live = 0;
+    int live_vals = 0;
     for (int i = b->insts; i --> 0;) {
         const Inst* inst = b->inst+i;
-
-        // Heuristically, instructions that take a value and a varying pointer have side effects.
-        if (inst->ptr.ix && b->stride[inst->ptr.ix-1]
-                && (inst->x || inst->y || inst->z || inst->w)) {
+        if (has_side_effect(b,inst)) {
             meta[i].live = true;
         }
-
-        // Anything a live instruction needs is also live.
         if (meta[i].live) {
-            live++;
             if (inst->x) { meta[inst->x-1].live = true; }
             if (inst->y) { meta[inst->y-1].live = true; }
             if (inst->z) { meta[inst->z-1].live = true; }
             if (inst->w) { meta[inst->w-1].live = true; }
+            live_vals++;
         }
     }
 
-    // A value is loop-dependent if it uses a varying pointer or another loop-dependent value.
     for (int i = 0; i < b->insts; i++) {
         const Inst* inst = b->inst+i;
-        meta[i].loop_dependent = (inst->ptr.ix && b->stride[inst->ptr.ix-1])
+        meta[i].loop_dependent = has_varying_pointer(b,inst)
                               || (inst->x && meta[inst->x-1].loop_dependent)
                               || (inst->y && meta[inst->y-1].loop_dependent)
                               || (inst->z && meta[inst->z-1].loop_dependent)
                               || (inst->w && meta[inst->w-1].loop_dependent);
     }
 
-    // Count up how many instructions we'll need, including one for each argument to increment.
-    int args_to_inc = 0;
+    int varying_ptrs = 0;
     for (int ix = 0; ix < b->args; ix++) {
-        if (b->stride[ix]) {
-            args_to_inc++;
+        if (b->stride[ix] != 0) {
+            varying_ptrs++;
         }
     }
-    const int insts = live + (args_to_inc ? args_to_inc : 1/*op_done*/);
+    const int insts = live_vals
+                    + (varying_ptrs ? varying_ptrs : 1/*op_done*/);
 
     Program* p = malloc(sizeof *p + sizeof(Inst) * (size_t)insts);
     p->vals = 0;
 
-    // Reorder instructions so all live loop-independent instructions come first,
-    // then live loop-dependent instructions following from p->inst + p->loop.
-    //
-    // While we're doing that, rewrite ptr and xyzw indices into their final Program conventions:
-    //    - 1-indexed pointer indices become 0-indexed;
-    //    - 1-indexed xyzw IDs become relative offsets,
-    //      so Program instructions write their value to *v, read x from v[inst->x], etc.
     for (int loop_dependent = 0; loop_dependent < 2; loop_dependent++) {
         if (loop_dependent) {
             p->loop = p->vals;
         }
         for (int i = 0; i < b->insts; i++) {
             if (meta[i].live && meta[i].loop_dependent == loop_dependent) {
-                meta[i].new_id = p->vals;
+                meta[i].reordered_id = p->vals;
 
+                // Update inst with reordered argument IDs and translate to Program convention:
+                //    - 1-indexed ptr ix -> 0-indexed ptr ix
+                //    - relative value arguments, writing to *v and reading v[inst->x], etc.
                 Inst inst = b->inst[i];
                 if (inst.ptr.ix) { inst.ptr.ix--; }
-                if (inst.x) { inst.x = meta[inst.x-1].new_id; inst.x -= meta[i].new_id; }
-                if (inst.y) { inst.y = meta[inst.y-1].new_id; inst.y -= meta[i].new_id; }
-                if (inst.z) { inst.z = meta[inst.z-1].new_id; inst.z -= meta[i].new_id; }
-                if (inst.w) { inst.w = meta[inst.w-1].new_id; inst.w -= meta[i].new_id; }
+                if (inst.x) { inst.x = meta[inst.x-1].reordered_id; inst.x -= p->vals; }
+                if (inst.y) { inst.y = meta[inst.y-1].reordered_id; inst.y -= p->vals; }
+                if (inst.z) { inst.z = meta[inst.z-1].reordered_id; inst.z -= p->vals; }
+                if (inst.w) { inst.w = meta[inst.w-1].reordered_id; inst.w -= p->vals; }
 
                 p->inst[p->vals++] = inst;
             }
         }
     }
+    assert(p->vals == live_vals);
 
-    // Add a few more non-value-producing instructions to increment each argument and wrap up.
     Inst* inst = p->inst + p->vals;
     for (int ix = 0; ix < b->args; ix++) {
-        if (b->stride[ix]) {
+        if (b->stride[ix] != 0) {
             *inst++ = (Inst) {
                 .op      = op_inc_arg,
                 .ptr.ix  = ix,
@@ -215,11 +224,6 @@ Program* compile(Builder* b) {
 
 void drop(Program* p) {
     free(p);
-}
-
-Ptr arg(Builder* b, int stride) {
-    push(b->stride,b->args) = stride;
-    return (Ptr){b->args};  // 1-indexed in Builder, letting !inst.ptr.ix indicate an unused ptr.
 }
 
 op_(ld1_16) {
