@@ -137,11 +137,32 @@ static void test_dce() {
     }
 
     int32_t xs[63];
-
     run(p,len(xs),(void*[]){xs});
-
     for (int i = 0; i < len(xs); i++) {
         expect_eq(xs[i], K-1);
+    }
+}
+
+static void test_dead_load() {
+    Program* p;
+    {
+        Builder* b = builder();
+        Ptr ptr = arg(b,4);
+
+        S32 x = ld1_S32(b,ptr);
+        x = splat_S32(b, 0x42);
+        st1_S32(b, ptr, x);
+
+        p = compile(b);
+
+        expect_eq(vals(p), 2);
+        expect_eq(loop(p), 1);
+    }
+
+    int32_t xs[63];
+    run(p,len(xs),(void*[]){xs});
+    for (int i = 0; i < len(xs); i++) {
+        expect_eq(xs[i], 0x42);
     }
 }
 
@@ -151,5 +172,6 @@ int main(void) {
     test_add_F16();
     test_cse();
     test_dce();
+    test_dead_load();
     return 0;
 }
