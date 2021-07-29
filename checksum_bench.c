@@ -13,7 +13,7 @@ static double bench_crc32(int k, double *scale, const char* *unit) {
 
     double start = now();
     while (k --> 0) {
-        expect_eq(0, crc32(0, buf,sizeof buf));
+        expect_eq(0xefb5af2e, crc32(buf,sizeof buf));
     }
     return now() - start;
 }

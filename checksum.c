@@ -46,7 +46,8 @@
 #pragma clang attribute push(__attribute__((no_sanitize("unsigned-integer-overflow"))), \
                              apply_to=function)
 
-uint32_t crc32(uint32_t hash, const void* vptr, size_t len) {
+uint32_t crc32(const void* vptr, size_t len) {
+    uint32_t hash = 0xffffffff;
     const uint8_t* ptr = vptr;
 #if defined(__aarch64__)
     for (uint64_t v; len >= sizeof v; len -= sizeof v, ptr += sizeof v) {
@@ -58,13 +59,13 @@ uint32_t crc32(uint32_t hash, const void* vptr, size_t len) {
         memcpy(&v, ptr, sizeof v);
         hash = __crc32b(hash,v);
     }
-    return hash;
+    return ~hash;
 }
 
 uint32_t fnv1a(const void* vptr, size_t len) {
     uint32_t hash = 0x811c9dc5;
-    for (const uint8_t *ptr = vptr, *end = ptr+len; ptr != end; ptr++) {
-        hash ^= *ptr;
+    for (const uint8_t* ptr = vptr; len --> 0;) {
+        hash ^= *ptr++;
         hash *= 0x01000193;
     }
     return hash;
