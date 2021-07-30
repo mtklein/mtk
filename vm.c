@@ -9,6 +9,21 @@
 #include <string.h>
 
 #define N 16
+#define LD4_0  0,4, 8,12, 16,20,24,28, 32,36,40,44, 48,52,56,60
+#define LD4_1  1,5, 9,13, 17,21,25,29, 33,37,41,45, 49,53,57,61
+#define LD4_2  2,6,10,14, 18,22,26,30, 34,38,42,46, 50,54,58,62
+#define LD4_3  3,7,11,15, 19,23,27,31, 35,39,43,47, 51,55,59,63
+
+#define CONCAT 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15, \
+              16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31
+
+#define ST4 0,16,32,48,  1,17,33,49,  2,18,34,50,  3,19,35,51, \
+            4,20,36,52,  5,21,37,53,  6,22,38,54,  7,23,39,55, \
+            8,24,40,56,  9,25,41,57, 10,26,42,58, 11,27,43,59, \
+           12,28,44,60, 13,29,45,61, 14,30,46,62, 15,31,47,63
+
+
+#define shuffle __builtin_shufflevector
 
 typedef union {
     uint8_t  u8;
@@ -261,6 +276,52 @@ op_(st1_32) {
 void st1_U32(Builder* b, Ptr ptr, U32 x) { no_cse(b, (Inst){.op=op_st1_32, .ptr=ptr.ix, .x=x.id}); }
 void st1_S32(Builder* b, Ptr ptr, S32 x) { no_cse(b, (Inst){.op=op_st1_32, .ptr=ptr.ix, .x=x.id}); }
 void st1_F32(Builder* b, Ptr ptr, F32 x) { no_cse(b, (Inst){.op=op_st1_32, .ptr=ptr.ix, .x=x.id}); }
+
+op_(ld4_8) {
+    if (n<N) {
+        memcpy(&v[0], (const char*)arg[inst->ptr]+0, 1);
+        memcpy(&v[1], (const char*)arg[inst->ptr]+1, 1);
+        memcpy(&v[2], (const char*)arg[inst->ptr]+2, 1);
+        memcpy(&v[3], (const char*)arg[inst->ptr]+3, 1);
+    } else {
+        uint8_t __attribute__((vector_size(1*N*4), aligned(1))) s;
+        memcpy(&s, arg[inst->ptr], sizeof s);
+        v[0].u8 = shuffle(s,s, LD4_0);
+        v[1].u8 = shuffle(s,s, LD4_1);
+        v[2].u8 = shuffle(s,s, LD4_2);
+        v[3].u8 = shuffle(s,s, LD4_3);
+    }
+    inst += 3;
+    v    += 3;
+    next;
+}
+U8x4 ld4_U8(Builder* b, Ptr ptr) {
+    int id = no_cse(b, (Inst){.op=op_ld4_8, .ptr=ptr.ix});
+    return (U8x4) {
+        .r.id = id,
+        .g.id = no_cse(b, (Inst){.x=id}),
+        .b.id = no_cse(b, (Inst){.x=id}),
+        .a.id = no_cse(b, (Inst){.x=id}),
+    };
+}
+
+op_(st4_8) {
+    if (n<N) {
+        memcpy((char*)arg[inst->ptr]+0, &v[inst->x], 1);
+        memcpy((char*)arg[inst->ptr]+1, &v[inst->y], 1);
+        memcpy((char*)arg[inst->ptr]+2, &v[inst->z], 1);
+        memcpy((char*)arg[inst->ptr]+3, &v[inst->w], 1);
+    } else {
+        uint8_t __attribute__((vector_size(1*N*4), aligned(1))) s;
+        s = shuffle(shuffle(v[inst->x].u8, v[inst->y].u8, CONCAT),
+                    shuffle(v[inst->z].u8, v[inst->w].u8, CONCAT), ST4);
+        memcpy(arg[inst->ptr], &s, sizeof s);
+    }
+    next;
+}
+void st4_U8(Builder* b, Ptr ptr, U8x4 s) {
+    no_cse(b, (Inst){.op=op_st4_8, .ptr=ptr.ix, .x=s.r.id, .y=s.g.id, .z=s.b.id, .w=s.a.id});
+}
 
 op_(splat_32) {
     uint32_t imm = inst->imm.u32;

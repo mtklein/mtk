@@ -166,6 +166,41 @@ static void test_dead_load() {
     }
 }
 
+static void test_structs() {
+    Program* p;
+    {
+        Builder* b = builder();
+        Ptr ptr = arg(b,4);
+
+        U8x4 rgba = ld4_U8(b,ptr);
+
+        U8 tmp = rgba.r;
+        rgba.r = rgba.b;
+        rgba.b = tmp;
+
+        st4_U8(b,ptr,rgba);
+
+        p = compile(b);
+        expect_eq(vals(p), 5);  // 4 from ld4_U8, plus "1" from st4_U8
+        expect_eq(loop(p), 0);
+    }
+
+    uint32_t px[63];
+    for (int i = 0; i < len(px); i++) {
+        px[i] = (uint32_t)((i+0) <<  0)
+              | (uint32_t)((i+1) <<  8)
+              | (uint32_t)((i+2) << 16)
+              | (uint32_t)((i+3) << 24);
+    }
+    run(p,len(px),(void*[]){px});
+    for (int i = 0; i < len(px); i++) {
+        expect_eq(px[i], (uint32_t)((i+2) <<  0)
+                       | (uint32_t)((i+1) <<  8)
+                       | (uint32_t)((i+0) << 16)
+                       | (uint32_t)((i+3) << 24));
+    }
+}
+
 int main(void) {
     test_memset32();
     test_memset32_uniform();
@@ -173,5 +208,6 @@ int main(void) {
     test_cse();
     test_dce();
     test_dead_load();
+    test_structs();
     return 0;
 }
