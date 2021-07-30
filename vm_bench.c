@@ -94,6 +94,38 @@ static double memset32_uniform(int k, double *scale, const char* *unit) {
     return elapsed;
 }
 
+static double swap_rb(int k, double *scale, const char* *unit) {
+    *scale = 1024;
+    *unit  = "px";
+
+    Program* p;
+    {
+        Builder* b = builder();
+        Ptr ptr = arg(b,4);
+
+        U8x4 rgba = ld4_U8(b,ptr);
+
+        U8 tmp = rgba.r;
+        rgba.r = rgba.b;
+        rgba.b = tmp;
+
+        st4_U8(b,ptr,rgba);
+
+        p = compile(b);
+    }
+
+    uint32_t buf[1024];
+
+    double start = now();
+    while (k --> 0) {
+        run(p, len(buf), (void*[]){buf});
+    }
+    double elapsed = now() - start;
+
+    drop(p);
+    return elapsed;
+}
+
 static double compile_memset32(int k, double *scale, const char* *unit) {
     *scale = 1;
     *unit  = "program";
@@ -135,6 +167,7 @@ int main(int argc, char** argv) {
     bench(memset32_goal);
     bench(memset32_vm);
     bench(memset32_uniform);
+    bench(swap_rb);
     bench(compile_memset32);
     bench(compile_cse);
     return 0;
