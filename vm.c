@@ -17,10 +17,16 @@
 #define CONCAT 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15, \
               16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31
 
-#define ST4 0,16,32,48,  1,17,33,49,  2,18,34,50,  3,19,35,51, \
-            4,20,36,52,  5,21,37,53,  6,22,38,54,  7,23,39,55, \
-            8,24,40,56,  9,25,41,57, 10,26,42,58, 11,27,43,59, \
-           12,28,44,60, 13,29,45,61, 14,30,46,62, 15,31,47,63
+#define ST4_1 0,16,32,48
+#define ST4   0,16,32,48,  1,17,33,49,  2,18,34,50,  3,19,35,51, \
+              4,20,36,52,  5,21,37,53,  6,22,38,54,  7,23,39,55, \
+              8,24,40,56,  9,25,41,57, 10,26,42,58, 11,27,43,59, \
+             12,28,44,60, 13,29,45,61, 14,30,46,62, 15,31,47,63
+
+#define SPLAT_0 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0
+#define SPLAT_1 1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1
+#define SPLAT_2 2,2,2,2, 2,2,2,2, 2,2,2,2, 2,2,2,2
+#define SPLAT_3 3,3,3,3, 3,3,3,3, 3,3,3,3, 3,3,3,3
 
 
 #define shuffle __builtin_shufflevector
@@ -279,10 +285,12 @@ void st1_F32(Builder* b, Ptr ptr, F32 x) { no_cse(b, (Inst){.op=op_st1_32, .ptr=
 
 op_(ld4_8) {
     if (n<N) {
-        memcpy(&v[0], (const char*)arg[inst->ptr]+0, 1);
-        memcpy(&v[1], (const char*)arg[inst->ptr]+1, 1);
-        memcpy(&v[2], (const char*)arg[inst->ptr]+2, 1);
-        memcpy(&v[3], (const char*)arg[inst->ptr]+3, 1);
+        uint8_t __attribute__((vector_size(1*4), aligned(1))) s;
+        memcpy(&s, arg[inst->ptr], sizeof s);
+        v[0].u8 = shuffle(s,s, SPLAT_0);
+        v[1].u8 = shuffle(s,s, SPLAT_1);
+        v[2].u8 = shuffle(s,s, SPLAT_2);
+        v[3].u8 = shuffle(s,s, SPLAT_3);
     } else {
         uint8_t __attribute__((vector_size(1*N*4), aligned(1))) s;
         memcpy(&s, arg[inst->ptr], sizeof s);
@@ -307,14 +315,13 @@ U8x4 ld4_U8(Builder* b, Ptr ptr) {
 
 op_(st4_8) {
     if (n<N) {
-        memcpy((char*)arg[inst->ptr]+0, &v[inst->x], 1);
-        memcpy((char*)arg[inst->ptr]+1, &v[inst->y], 1);
-        memcpy((char*)arg[inst->ptr]+2, &v[inst->z], 1);
-        memcpy((char*)arg[inst->ptr]+3, &v[inst->w], 1);
+        typedef uint8_t __attribute__((vector_size(1*4), aligned(1))) S1;
+        *(S1*)arg[inst->ptr] = shuffle(shuffle(v[inst->x].u8, v[inst->y].u8, CONCAT),
+                                       shuffle(v[inst->z].u8, v[inst->w].u8, CONCAT), ST4_1);
     } else {
-        typedef uint8_t __attribute__((vector_size(1*N*4), aligned(1))) S;
-        *(S*)arg[inst->ptr] = shuffle(shuffle(v[inst->x].u8, v[inst->y].u8, CONCAT),
-                                      shuffle(v[inst->z].u8, v[inst->w].u8, CONCAT), ST4);
+        typedef uint8_t __attribute__((vector_size(1*N*4), aligned(1))) SN;
+        *(SN*)arg[inst->ptr] = shuffle(shuffle(v[inst->x].u8, v[inst->y].u8, CONCAT),
+                                       shuffle(v[inst->z].u8, v[inst->w].u8, CONCAT), ST4);
     }
     next;
 }
