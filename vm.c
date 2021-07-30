@@ -312,10 +312,9 @@ op_(st4_8) {
         memcpy((char*)arg[inst->ptr]+2, &v[inst->z], 1);
         memcpy((char*)arg[inst->ptr]+3, &v[inst->w], 1);
     } else {
-        uint8_t __attribute__((vector_size(1*N*4), aligned(1))) s;
-        s = shuffle(shuffle(v[inst->x].u8, v[inst->y].u8, CONCAT),
-                    shuffle(v[inst->z].u8, v[inst->w].u8, CONCAT), ST4);
-        memcpy(arg[inst->ptr], &s, sizeof s);
+        typedef uint8_t __attribute__((vector_size(1*N*4), aligned(1))) S;
+        *(S*)arg[inst->ptr] = shuffle(shuffle(v[inst->x].u8, v[inst->y].u8, CONCAT),
+                                      shuffle(v[inst->z].u8, v[inst->w].u8, CONCAT), ST4);
     }
     next;
 }
