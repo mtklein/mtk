@@ -1,10 +1,7 @@
 #include "expect.h"
 #include "len.h"
 #include "vm.h"
-
-typedef struct { int vals, loop; } ProgramHeader;
-static int vals(const Program* p) { return ((const ProgramHeader*)p)->vals; }
-static int loop(const Program* p) { return ((const ProgramHeader*)p)->loop; }
+#include <sys/mman.h>
 
 static void test_memset32() {
     Program* p;
@@ -15,8 +12,6 @@ static void test_memset32() {
         st1_U32(b, buf, v);
 
         p = compile(b);
-        expect_eq(vals(p), 2);
-        expect_eq(loop(p), 1);
     }
 
     uint32_t buf[63] = {0};
@@ -39,8 +34,6 @@ static void test_memset32_uniform() {
         st1_U32(b, buf, v);
 
         p = compile(b);
-        expect_eq(vals(p), 2);
-        expect_eq(loop(p), 1);
     }
 
     uint8_t uni[] =  { 0,1,2,0xee,0xcc,0xaa,0xff,4 };
@@ -67,8 +60,6 @@ static void test_add_F16() {
         st1_F16(b, xp, z);
 
         p = compile(b);
-        expect_eq(vals(p), 4);
-        expect_eq(loop(p), 0);
     }
 
     _Float16 x[63],
@@ -101,8 +92,6 @@ static void test_cse() {
         expect_eq(z.id, w.id);
 
         p = compile(b);
-        expect_eq(vals(p), 5);
-        expect_eq(loop(p), 1);
     }
 
     int32_t xs[63];
@@ -118,52 +107,29 @@ static void test_cse() {
 }
 
 static void test_dce() {
-    const int K = 17;
     Program* p;
     {
         Builder* b = builder();
-        Ptr ptr = arg(b,4);
+        Ptr t = arg(b,0),
+            d = arg(b,4);
 
-        S32 x = {0};
-        for (int i = 0; i < K; i++) {
-            x = splat_S32(b, i);
-        }
-        st1_S32(b, ptr, x);
-
-        p = compile(b);
-
-        expect_eq(vals(p), 2);
-        expect_eq(loop(p), 1);
-    }
-
-    int32_t xs[63];
-    run(p,len(xs),(void*[]){xs});
-    for (int i = 0; i < len(xs); i++) {
-        expect_eq(xs[i], K-1);
-    }
-}
-
-static void test_dead_load() {
-    Program* p;
-    {
-        Builder* b = builder();
-        Ptr ptr = arg(b,4);
-
-        S32 x = ld1_S32(b,ptr);
+        S32 x = ld1_S32(b,t);
         x = splat_S32(b, 0x42);
-        st1_S32(b, ptr, x);
+        st1_S32(b, d, x);
 
         p = compile(b);
-
-        expect_eq(vals(p), 2);
-        expect_eq(loop(p), 1);
     }
 
+    void* trap = mmap(NULL,4096, PROT_NONE,MAP_ANONYMOUS|MAP_PRIVATE,-1,0);
+    expect(trap != (void*)-1);
+
     int32_t xs[63];
-    run(p,len(xs),(void*[]){xs});
+    run(p,len(xs),(void*[]){trap,xs});
     for (int i = 0; i < len(xs); i++) {
         expect_eq(xs[i], 0x42);
     }
+
+    munmap(trap,4096);
 }
 
 static void test_structs() {
@@ -181,8 +147,6 @@ static void test_structs() {
         st4_U8(b,ptr,rgba);
 
         p = compile(b);
-        expect_eq(vals(p), 5);  // 4 from ld4_U8, plus "1" from st4_U8
-        expect_eq(loop(p), 0);
     }
 
     uint32_t px[63];
@@ -207,7 +171,6 @@ int main(void) {
     test_add_F16();
     test_cse();
     test_dce();
-    test_dead_load();
     test_structs();
     return 0;
 }
