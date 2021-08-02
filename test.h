@@ -2,6 +2,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <time.h>
 
 static void pretty_int   (int      x) { fprintf(stderr, "%d\n"    , x); }
 static void pretty_u32   (uint32_t x) { fprintf(stderr, "0x%08x\n", x); }
@@ -26,3 +28,41 @@ static void pretty_double(double   x) { fprintf(stderr, "%g\n"    , x); }
 #define expect_eq(x,y)     expect_(x,==,y)
 #define expect_lt(x,y)     expect_(x, <,y)
 #define expect_in(x,lo,hi) expect_(lo,<=,x); expect_(x,<=,hi)
+
+static inline double now() {
+    return clock() * (1.0 / CLOCKS_PER_SEC);
+}
+
+static void print_rate(double rate) {
+    const char* units[] = { "", "k", "M", "G", "T" };
+    const char* *unit = units;
+    while (rate > 1000) {
+        rate /= 1000;
+        unit++;
+    }
+    printf("%.3g%s", rate, *unit);
+}
+
+static inline void bench_(const char* name, double(*fn)(int, double*, const char**)) {
+    double      scale = 1.0;
+    const char* unit  = "";
+
+    double limit = 0.125;
+    for (const char* BENCH_SEC = getenv("BENCH_SEC"); BENCH_SEC;) {
+        limit = atof(BENCH_SEC);
+        break;
+    }
+
+    int k = 1;
+    double elapsed = 0;
+    while (elapsed < limit) {
+        k *= 2;
+        elapsed = fn(k, &scale,&unit);
+    }
+
+    printf("%-30s", name);
+    print_rate(k/elapsed * scale);
+    printf("%s\n", unit);
+}
+
+#define bench(fn) if (argc == 1 || 0 == strcmp(argv[1], #fn)) bench_(#fn,fn)

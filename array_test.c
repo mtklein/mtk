@@ -1,6 +1,5 @@
 #include "array.h"
-#include "bench.h"
-#include "expect.h"
+#include "test.h"
 
 static void test_array() {
     float* fs = NULL;

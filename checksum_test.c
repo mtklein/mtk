@@ -1,6 +1,5 @@
-#include "bench.h"
 #include "checksum.h"
-#include "expect.h"
+#include "test.h"
 
 static void test_crc32() {
     expect_eq(0x00000000, crc32(NULL,0));

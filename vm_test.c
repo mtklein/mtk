@@ -1,6 +1,5 @@
-#include "bench.h"
-#include "expect.h"
 #include "len.h"
+#include "test.h"
 #include "vm.h"
 #include <string.h>
 #include <sys/mman.h>

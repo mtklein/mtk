@@ -1,7 +1,6 @@
-#include "bench.h"
-#include "expect.h"
 #include "gfx.h"
 #include "len.h"
+#include "test.h"
 #include <math.h>
 #include <stdint.h>
 #include <string.h>

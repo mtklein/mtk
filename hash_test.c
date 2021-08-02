@@ -1,6 +1,5 @@
-#include "bench.h"
-#include "expect.h"
 #include "hash.h"
+#include "test.h"
 #include <stdlib.h>
 #include <string.h>
 

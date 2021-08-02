@@ -1,5 +1,5 @@
 #include "asm.h"
-#include "expect.h"
+#include "test.h"
 
 // $ echo "fmul v4.8h, v3.8h, v1.8h" | brew/opt/llvm/bin/llvm-mc -show-encoding -mattr=+fullfp16
 
