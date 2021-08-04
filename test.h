@@ -30,7 +30,9 @@ static void pretty_double(double   x) { fprintf(stderr, "%g\n"    , x); }
 #define expect_in(x,lo,hi) expect_(lo,<=,x); expect_(x,<=,hi)
 
 static inline double now() {
-    return clock() * (1.0 / CLOCKS_PER_SEC);
+    struct timespec ts;
+    expect_eq(0, clock_gettime(CLOCK_MONOTONIC, &ts));
+    return ts.tv_sec + 1e-9 * ts.tv_nsec;
 }
 
 static inline void bench_(const char* name, double(*fn)(int, double*, const char**)) {
