@@ -98,35 +98,33 @@ static void test_clamp_01() {
     expect_eq(src.a[1], (half)0.0);
 }
 
-#if defined(__FLT16_MIN__)
-    static void test_load_rgba_f16() {
-        _Float16 px[4*N] = { 0.0, 0.25, 0.5, 0.75, 1.0 };
-        RGBA s = load_rgba_f16(px,zero);
+static void test_load_rgba_f16() {
+    __fp16 px[4*N] = { 0.0, 0.25, 0.5, 0.75, 1.0 };
+    RGBA s = load_rgba_f16(px,zero);
 
-        expect_eq(s.r[0], (half)0.00);
-        expect_eq(s.g[0], (half)0.25);
-        expect_eq(s.b[0], (half)0.50);
-        expect_eq(s.a[0], (half)0.75);
-        expect_eq(s.r[1], (half)1.00);
-    }
+    expect_eq(s.r[0], (half)0.00);
+    expect_eq(s.g[0], (half)0.25);
+    expect_eq(s.b[0], (half)0.50);
+    expect_eq(s.a[0], (half)0.75);
+    expect_eq(s.r[1], (half)1.00);
+}
 
-    static void test_store_rgba_f16() {
-        RGBA src = {
-            {0.00, 1.0},
-            {0.25},
-            {0.50},
-            {0.75},
-        };
+static void test_store_rgba_f16() {
+    RGBA src = {
+        {0.00, 1.0},
+        {0.25},
+        {0.50},
+        {0.75},
+    };
 
-        _Float16 px[4*N] = {0};
-        store_rgba_f16(px,src);
-        expect_eq(px[0], 0.00f16);
-        expect_eq(px[1], 0.25f16);
-        expect_eq(px[2], 0.50f16);
-        expect_eq(px[3], 0.75f16);
-        expect_eq(px[4], 1.00f16);
-    }
-#endif
+    __fp16 px[4*N] = {0};
+    store_rgba_f16(px,src);
+    expect_eq((float)px[0], 0.00f);
+    expect_eq((float)px[1], 0.25f);
+    expect_eq((float)px[2], 0.50f);
+    expect_eq((float)px[3], 0.75f);
+    expect_eq((float)px[4], 1.00f);
+}
 
 static void test_load_rgb_unorm8() {
     uint8_t px[3*N] = { 0x00, 0x55, 0xaa, 0xfe, 0xff };
@@ -439,22 +437,19 @@ int main(int argc, char** argv) {
     test_drive_N();
     test_drive_Np1();
     test_drive_rgb_unorm8();
-    test_drive_rgba_unorm8();
     test_drive_rgba_unorm16();
+    test_drive_rgba_unorm8();
     test_load_rgb_unorm8();
+    test_load_rgba_f16();
     test_load_rgba_unorm16();
     test_load_rgba_unorm8();
     test_matrix_2x3();
     test_matrix_3x3();
     test_seed_xy();
     test_store_rgb_unorm8();
+    test_store_rgba_f16();
     test_store_rgba_unorm16();
     test_store_rgba_unorm8();
-
-#if defined(__FLT16_MIN__)
-    test_load_rgba_f16();
-    test_store_rgba_f16();
-#endif  // TODO: re-enable with portable implementations
 
     bench( rgb_unorm8);
     bench(rgba_unorm8);

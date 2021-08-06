@@ -56,6 +56,9 @@ typedef uint16_t __attribute__((ext_vector_type(N*4), aligned(2))) U16x4;
 #if defined(__FLT16_MIN__)
     typedef _Float16 __attribute__((ext_vector_type(N  )            )) F16;
     typedef _Float16 __attribute__((ext_vector_type(N*4), aligned(2))) F16x4;
+#else
+    typedef __fp16 __attribute__((ext_vector_type(N  )            )) F16;
+    typedef __fp16 __attribute__((ext_vector_type(N*4), aligned(2))) F16x4;
 #endif
 
 static Half select(Cond cond, Half t, Half f) { return (Half)( ( cond & (Cond)t)
@@ -178,27 +181,47 @@ RGBA store(Step step[], size_t p, RGBA src, Cold* cold) {
     return step->effect(step+1,p,src,cold);
 }
 
+RGBA load_rgba_f16(void* ptr, RGBA src) {
+    F16x4 v;
+    memcpy(&v, ptr, sizeof v);
+    F16 r = shuffle(v,v, LD4_0),
+        g = shuffle(v,v, LD4_1),
+        b = shuffle(v,v, LD4_2),
+        a = shuffle(v,v, LD4_3);
 #if defined(__FLT16_MIN__)
-    RGBA load_rgba_f16(void* ptr, RGBA src) {
-        F16x4 v;
-        memcpy(&v, ptr, sizeof v);
-        src.r = cast(shuffle(v,v, LD4_0), Half);
-        src.g = cast(shuffle(v,v, LD4_1), Half);
-        src.b = cast(shuffle(v,v, LD4_2), Half);
-        src.a = cast(shuffle(v,v, LD4_3), Half);
-        return src;
+    src.r = cast(r, Half);
+    src.g = cast(g, Half);
+    src.b = cast(b, Half);
+    src.a = cast(a, Half);
+#else
+    for (int i = 0; i < N; i++) {
+        src.r[i] = (half)r[i];
+        src.g[i] = (half)g[i];
+        src.b[i] = (half)b[i];
+        src.a[i] = (half)a[i];
     }
-
-    RGBA store_rgba_f16(void* ptr, RGBA src) {
-        F16 r = cast(src.r, F16),
-            g = cast(src.g, F16),
-            b = cast(src.b, F16),
-            a = cast(src.a, F16);
-        *(F16x4*)ptr = shuffle(shuffle(r, g, CONCAT),
-                               shuffle(b, a, CONCAT), ST4);
-        return src;
+#endif
+    return src;
+}
+RGBA store_rgba_f16(void* ptr, RGBA src) {
+#if defined(__FLT16_MIN__)
+    F16 r = cast(src.r, F16),
+        g = cast(src.g, F16),
+        b = cast(src.b, F16),
+        a = cast(src.a, F16);
+#else
+    F16 r,g,b,a;
+    for (int i = 0; i < N; i++) {
+        r[i] = (__fp16)src.r[i];
+        g[i] = (__fp16)src.g[i];
+        b[i] = (__fp16)src.b[i];
+        a[i] = (__fp16)src.a[i];
     }
-#endif // TODO: portable F16 impl?
+#endif
+    *(F16x4*)ptr = shuffle(shuffle(r, g, CONCAT),
+                           shuffle(b, a, CONCAT), ST4);
+    return src;
+}
 
 RGBA load_rgb_unorm8(void* ptr, RGBA src) {
     U8x3 v;
