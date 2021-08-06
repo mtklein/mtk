@@ -29,11 +29,8 @@ builddir = out
 clang = clang -fcolor-diagnostics -Weverything -Xclang -nostdsysteminc
 zigcc = zig cc -fcolor-diagnostics
 
-native_ldflags = -Wl,-dead_strip
-native_runtime = env BENCH_SEC=0.001
-
-wasm_ldflags =
-wasm_runtime = wasmtime --env BENCH_SEC=0.001
+runtime_native = env BENCH_SEC=0.001
+runtime_wasm   = wasmtime --env BENCH_SEC=0.001
 
 rule compile
     command = $cc -Werror -std=c11 -g -ffp-contract=fast -MD -MF $out.d -c $in -o $out
@@ -41,7 +38,7 @@ rule compile
     deps    = gcc
 
 rule link
-    command = $cc $ldflags $in -o $out && touch $out
+    command = $cc $in -o $out && touch $out
 
 rule run
     command = $runtime ./$in > $out
@@ -64,9 +61,8 @@ with open('build.ninja', 'w') as f:
             p('    cc      = {cc}')
             p('build {full}_test: link {full}.o {full}_test.o' + objs)
             p('    cc      = {cc}')
-            p('    ldflags = ${arch}_ldflags')
             p('build {full}_test.ok: run {full}_test')
-            p('    runtime = ${arch}_runtime')
+            p('    runtime = $runtime_{arch}')
 
 
 rc = os.system(' '.join(['ninja'] + sys.argv[1:]))
