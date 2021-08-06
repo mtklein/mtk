@@ -402,19 +402,19 @@ F32 uniform_F32(Builder* b, Ptr ptr, int offset) {
     }
     op_(sub_F16) {
         for (int i = 0; i < N; i++) {
-            v->f16[i] = (__fp16)( (float)v[inst->x].f16[i] + (float)v[inst->y].f16[i] );
+            v->f16[i] = (__fp16)( (float)v[inst->x].f16[i] - (float)v[inst->y].f16[i] );
         }
         next;
     }
     op_(mul_F16) {
         for (int i = 0; i < N; i++) {
-            v->f16[i] = (__fp16)( (float)v[inst->x].f16[i] + (float)v[inst->y].f16[i] );
+            v->f16[i] = (__fp16)( (float)v[inst->x].f16[i] * (float)v[inst->y].f16[i] );
         }
         next;
     }
     op_(div_F16) {
         for (int i = 0; i < N; i++) {
-            v->f16[i] = (__fp16)( (float)v[inst->x].f16[i] + (float)v[inst->y].f16[i] );
+            v->f16[i] = (__fp16)( (float)v[inst->x].f16[i] / (float)v[inst->y].f16[i] );
         }
         next;
     }

@@ -47,7 +47,7 @@ static void test_memset32_uniform() {
     drop(p);
 }
 
-static void test_add_F16() {
+static void test_F16() {
     Program* p;
     {
         Builder* b = builder();
@@ -55,10 +55,14 @@ static void test_add_F16() {
             yp = arg(b,2);
 
         F16 x = ld1_F16(b,xp),
-            y = ld1_F16(b,yp),
-            z = add_F16(b, x,y),
-            w = add_F16(b, z, splat_F16(b, 0.125f));
-        st1_F16(b, xp, w);
+            y = ld1_F16(b,yp);
+
+        F16 v;
+        v = add_F16(b, x,y);
+        v = mul_F16(b, v,splat_F16(b, 2.0f));
+        v = sub_F16(b, v,splat_F16(b, 0.125f));
+        v = div_F16(b, v,splat_F16(b, 2.0f));
+        st1_F16(b, xp, v);
 
         p = compile(b);
     }
@@ -73,8 +77,8 @@ static void test_add_F16() {
 
     run(p,len(x), (void*[]){x,y});
     for (int i = 0; i < len(x); i++) {
-        expect_eq((float)x[i], 0.500f);
-        expect_eq((float)y[i], 0.250f);
+        expect_eq((float)x[i], 0.3125f);
+        expect_eq((float)y[i], 0.2500f);
     }
 }
 
@@ -310,7 +314,7 @@ static double compile_cse(int k, double *scale, const char* *unit) {
 int main(int argc, char** argv) {
     test_memset32();
     test_memset32_uniform();
-    test_add_F16();
+    test_F16();
     test_cse();
     test_dce();
     test_structs();
