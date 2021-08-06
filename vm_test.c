@@ -3,10 +3,6 @@
 #include "vm.h"
 #include <string.h>
 
-#if !defined(__wasm__)
-    #include <sys/mman.h>
-#endif
-
 static void test_memset32() {
     Program* p;
     {
@@ -126,22 +122,11 @@ static void test_dce() {
         p = compile(b);
     }
 
-#if defined(__wasm__)
-    void* trap = NULL;
-#else
-    void* trap = mmap(NULL,4096, PROT_NONE,MAP_ANONYMOUS|MAP_PRIVATE,-1,0);
-    expect(trap != (void*)-1);
-#endif
-
     int32_t xs[63];
-    run(p,len(xs),(void*[]){trap,xs});
+    run(p,len(xs),(void*[]){NULL,xs});
     for (int i = 0; i < len(xs); i++) {
         expect_eq(xs[i], 0x42);
     }
-
-#if !defined(__wasm__)
-    munmap(trap,4096);
-#endif
 }
 
 static void test_structs() {
