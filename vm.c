@@ -38,9 +38,7 @@ typedef union {
      int8_t  s8;
      int16_t s16;
      int32_t s32;
-#if defined(__FLT16_MIN__)
-    _Float16 f16;
-#endif
+    __fp16   f16;
     float    f32;
 } Imm;
 
@@ -330,6 +328,24 @@ op_(st4_8) {
 }
 void st4_U8(Builder* b, Ptr ptr, U8x4 s) {
     no_cse(b, (Inst){.op=op_st4_8, .ptr=ptr.ix, .x=s.r.id, .y=s.g.id, .z=s.b.id, .w=s.a.id});
+}
+
+op_(splat_16) {
+    uint16_t imm = inst->imm.u16;
+
+    Val val = {0};
+    val.u16 += imm;
+    *v = val;
+    next;
+}
+U16 splat_U16(Builder* b, uint16_t imm) {
+    return (U16){ cse(b, (Inst){.op = op_splat_16, .imm.u16 = imm}) };
+}
+S16 splat_S16(Builder* b, int16_t imm) {
+    return (S16){ cse(b, (Inst){.op = op_splat_16, .imm.s16 = imm}) };
+}
+F16 splat_F16(Builder* b, float imm) {
+    return (F16){ cse(b, (Inst){.op = op_splat_16, .imm.f16 = (__fp16)imm}) };
 }
 
 op_(splat_32) {

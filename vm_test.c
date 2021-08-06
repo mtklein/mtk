@@ -57,8 +57,9 @@ static void test_memset32_uniform() {
 
             F16 x = ld1_F16(b,xp),
                 y = ld1_F16(b,yp),
-                z = add_F16(b, x,y);
-            st1_F16(b, xp, z);
+                z = add_F16(b, x,y),
+                w = add_F16(b, z, splat_F16(b, 0.125f));
+            st1_F16(b, xp, w);
 
             p = compile(b);
         }
@@ -73,7 +74,7 @@ static void test_memset32_uniform() {
 
         run(p,len(x), (void*[]){x,y});
         for (int i = 0; i < len(x); i++) {
-            expect_eq(x[i], 0.375f16);
+            expect_eq(x[i], 0.500f16);
             expect_eq(y[i], 0.250f16);
         }
     }
