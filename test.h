@@ -31,7 +31,7 @@ static void pretty_double(double   x) { fprintf(stderr, "%g\n"    , x); }
 
 static inline double now() {
     struct timespec ts;
-    expect_eq(0, clock_gettime(CLOCK_MONOTONIC, &ts));
+    expect_eq(TIME_UTC, timespec_get(&ts, TIME_UTC));
     return ts.tv_sec + 1e-9 * ts.tv_nsec;
 }
 

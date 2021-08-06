@@ -38,7 +38,9 @@ typedef union {
      int8_t  s8;
      int16_t s16;
      int32_t s32;
+#if defined(__FLT16_MIN__)
     _Float16 f16;
+#endif
     float    f32;
 } Imm;
 
@@ -49,7 +51,9 @@ typedef union {
      int8_t  __attribute__((vector_size(1*N))) s8;
      int16_t __attribute__((vector_size(2*N))) s16;
      int32_t __attribute__((vector_size(4*N))) s32;
+#if defined(__FLT16_MIN__)
     _Float16 __attribute__((vector_size(2*N))) f16;
+#endif
     float    __attribute__((vector_size(4*N))) f32;
 } Val;
 
@@ -365,23 +369,25 @@ F32 uniform_F32(Builder* b, Ptr ptr, int offset) {
     return (F32){ cse(b, (Inst){.op = op_uniform_32, .ptr=ptr.ix, .imm.s32=offset}) };
 }
 
-op_(add_F16) { v->f16 = v[inst->x].f16 + v[inst->y].f16; next; }
-op_(sub_F16) { v->f16 = v[inst->x].f16 - v[inst->y].f16; next; }
-op_(mul_F16) { v->f16 = v[inst->x].f16 * v[inst->y].f16; next; }
-op_(div_F16) { v->f16 = v[inst->x].f16 / v[inst->y].f16; next; }
+#if defined(__FLT16_MIN__)
+    op_(add_F16) { v->f16 = v[inst->x].f16 + v[inst->y].f16; next; }
+    op_(sub_F16) { v->f16 = v[inst->x].f16 - v[inst->y].f16; next; }
+    op_(mul_F16) { v->f16 = v[inst->x].f16 * v[inst->y].f16; next; }
+    op_(div_F16) { v->f16 = v[inst->x].f16 / v[inst->y].f16; next; }
 
-F16 add_F16(Builder* b, F16 x, F16 y) {
-    return (F16){ cse(b, (Inst){.op=op_add_F16, .x=x.id, .y=y.id}) };
-}
-F16 sub_F16(Builder* b, F16 x, F16 y) {
-    return (F16){ cse(b, (Inst){.op=op_sub_F16, .x=x.id, .y=y.id}) };
-}
-F16 mul_F16(Builder* b, F16 x, F16 y) {
-    return (F16){ cse(b, (Inst){.op=op_mul_F16, .x=x.id, .y=y.id}) };
-}
-F16 div_F16(Builder* b, F16 x, F16 y) {
-    return (F16){ cse(b, (Inst){.op=op_div_F16, .x=x.id, .y=y.id}) };
-}
+    F16 add_F16(Builder* b, F16 x, F16 y) {
+        return (F16){ cse(b, (Inst){.op=op_add_F16, .x=x.id, .y=y.id}) };
+    }
+    F16 sub_F16(Builder* b, F16 x, F16 y) {
+        return (F16){ cse(b, (Inst){.op=op_sub_F16, .x=x.id, .y=y.id}) };
+    }
+    F16 mul_F16(Builder* b, F16 x, F16 y) {
+        return (F16){ cse(b, (Inst){.op=op_mul_F16, .x=x.id, .y=y.id}) };
+    }
+    F16 div_F16(Builder* b, F16 x, F16 y) {
+        return (F16){ cse(b, (Inst){.op=op_div_F16, .x=x.id, .y=y.id}) };
+    }
+#endif
 
 op_(add_S32) { v->s32 = v[inst->x].s32 + v[inst->y].s32; next; }
 op_(sub_S32) { v->s32 = v[inst->x].s32 - v[inst->y].s32; next; }

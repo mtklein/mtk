@@ -98,33 +98,35 @@ static void test_clamp_01() {
     expect_eq(src.a[1], (half)0.0);
 }
 
-static void test_load_rgba_f16() {
-    _Float16 px[4*N] = { 0.0, 0.25, 0.5, 0.75, 1.0 };
-    RGBA s = load_rgba_f16(px,zero);
+#if defined(__FLT16_MIN__)
+    static void test_load_rgba_f16() {
+        _Float16 px[4*N] = { 0.0, 0.25, 0.5, 0.75, 1.0 };
+        RGBA s = load_rgba_f16(px,zero);
 
-    expect_eq(s.r[0], (half)0.00);
-    expect_eq(s.g[0], (half)0.25);
-    expect_eq(s.b[0], (half)0.50);
-    expect_eq(s.a[0], (half)0.75);
-    expect_eq(s.r[1], (half)1.00);
-}
+        expect_eq(s.r[0], (half)0.00);
+        expect_eq(s.g[0], (half)0.25);
+        expect_eq(s.b[0], (half)0.50);
+        expect_eq(s.a[0], (half)0.75);
+        expect_eq(s.r[1], (half)1.00);
+    }
 
-static void test_store_rgba_f16() {
-    RGBA src = {
-        {0.00, 1.0},
-        {0.25},
-        {0.50},
-        {0.75},
-    };
+    static void test_store_rgba_f16() {
+        RGBA src = {
+            {0.00, 1.0},
+            {0.25},
+            {0.50},
+            {0.75},
+        };
 
-    _Float16 px[4*N] = {0};
-    store_rgba_f16(px,src);
-    expect_eq(px[0], 0.00f16);
-    expect_eq(px[1], 0.25f16);
-    expect_eq(px[2], 0.50f16);
-    expect_eq(px[3], 0.75f16);
-    expect_eq(px[4], 1.00f16);
-}
+        _Float16 px[4*N] = {0};
+        store_rgba_f16(px,src);
+        expect_eq(px[0], 0.00f16);
+        expect_eq(px[1], 0.25f16);
+        expect_eq(px[2], 0.50f16);
+        expect_eq(px[3], 0.75f16);
+        expect_eq(px[4], 1.00f16);
+    }
+#endif
 
 static void test_load_rgb_unorm8() {
     uint8_t px[3*N] = { 0x00, 0x55, 0xaa, 0xfe, 0xff };
@@ -211,69 +213,69 @@ static void test_store_rgba_unorm16() {
 }
 
 static void test_drive_1() {
-    _Float16 dst[4] = {0};
+    uint8_t dst[4] = {0};
 
     float rgba[] = { 0.333f, 0.5f, 0.666f, 1.0f };
 
 
     Step step[] = {
-        {.effect=load}, {.memfn=load_rgba_f16}, {.bpp=8}, {.ptr=dst},
+        {.effect=load}, {.memfn=load_rgba_unorm8}, {.bpp=4}, {.ptr=dst},
         {.effect=shade_rgba_f32}, {.ptr=rgba},
         {.effect=blend_srcover},
-        {.effect=store}, {.memfn=store_rgba_f16}, {.bpp=8}, {.ptr=dst},
+        {.effect=store}, {.memfn=store_rgba_unorm8}, {.bpp=4}, {.ptr=dst},
         {.effect=done},
     };
     drive(step,len(dst)/4);
 
     for (int i = 0; i < len(dst)/4; i++) {
-        expect_in(dst[4*i+0], 0.333f16, 0.334f16);
-        expect_eq(dst[4*i+1], 0.5f16);
-        expect_in(dst[4*i+2], 0.666f16, 0.667f16);
-        expect_eq(dst[4*i+3], 1.0f16);
+        expect_eq(dst[4*i+0], 0x55);
+        expect_eq(dst[4*i+1], 0x80);
+        expect_eq(dst[4*i+2], 0xaa);
+        expect_eq(dst[4*i+3], 0xff);
     }
 }
 
 static void test_drive_N() {
-    _Float16 dst[N*4] = {0};
+    uint8_t dst[N*4] = {0};
 
     float rgba[] = { 0.333f, 0.5f, 0.666f, 1.0f };
 
     Step step[] = {
-        {.effect=load}, {.memfn=load_rgba_f16}, {.bpp=8}, {.ptr=dst},
+        {.effect=load}, {.memfn=load_rgba_unorm8}, {.bpp=4}, {.ptr=dst},
         {.effect=shade_rgba_f32}, {.ptr=rgba},
         {.effect=blend_srcover},
-        {.effect=store}, {.memfn=store_rgba_f16}, {.bpp=8}, {.ptr=dst},
+        {.effect=store}, {.memfn=store_rgba_unorm8}, {.bpp=4}, {.ptr=dst},
         {.effect=done},
     };
     drive(step,len(dst)/4);
 
     for (int i = 0; i < len(dst)/4; i++) {
-        expect_in(dst[4*i+0], 0.333f16, 0.334f16);
-        expect_eq(dst[4*i+1], 0.5f16);
-        expect_in(dst[4*i+2], 0.666f16, 0.667f16);
-        expect_eq(dst[4*i+3], 1.0f16);
+        expect_eq(dst[4*i+0], 0x55);
+        expect_eq(dst[4*i+1], 0x80);
+        expect_eq(dst[4*i+2], 0xaa);
+        expect_eq(dst[4*i+3], 0xff);
     }
 }
 
 static void test_drive_Np1() {
-    _Float16 dst[(N+1)*4] = {0};
+    uint8_t dst[(N+1)*4] = {0};
 
     float rgba[] = { 0.333f, 0.5f, 0.666f, 1.0f };
 
     Step step[] = {
-        {.effect=load}, {.memfn=load_rgba_f16}, {.bpp=8}, {.ptr=dst},
+        {.effect=load}, {.memfn=load_rgba_unorm8}, {.bpp=4}, {.ptr=dst},
         {.effect=shade_rgba_f32}, {.ptr=rgba},
         {.effect=blend_srcover},
-        {.effect=store}, {.memfn=store_rgba_f16}, {.bpp=8}, {.ptr=dst},
+        {.effect=store}, {.memfn=store_rgba_unorm8}, {.bpp=4}, {.ptr=dst},
         {.effect=done},
     };
     drive(step,len(dst)/4);
 
     for (int i = 0; i < len(dst)/4; i++) {
-        expect_in(dst[4*i+0], 0.333f16, 0.334f16);
-        expect_eq(dst[4*i+1], 0.5f16);
-        expect_in(dst[4*i+2], 0.666f16, 0.667f16);
-        expect_eq(dst[4*i+3], 1.0f16);
+        expect_eq(dst[4*i+0], 0x55);
+        expect_eq(dst[4*i+1], 0x80);
+        expect_eq(dst[4*i+2], 0xaa);
+        expect_eq(dst[4*i+3], 0xff);
     }
 }
 
@@ -342,19 +344,6 @@ static void test_drive_rgba_unorm16() {
     }
 }
 
-
-static double memset32(int k, double *scale, const char* *unit) {
-    *scale = 1024;
-    *unit  = "px";
-
-    double start = now();
-    uint32_t buf[1024];
-    while (k --> 0) {
-        uint32_t p = 0xffaaccee;
-        memset_pattern4(buf, &p, sizeof buf);
-    }
-    return now() - start;
-}
 
 static double rgb_unorm8(int k, double *scale, const char* *unit) {
     *scale = 63;
@@ -433,18 +422,20 @@ int main(int argc, char** argv) {
     test_drive_rgba_unorm8();
     test_drive_rgba_unorm16();
     test_load_rgb_unorm8();
-    test_load_rgba_f16();
     test_load_rgba_unorm16();
     test_load_rgba_unorm8();
     test_matrix_2x3();
     test_matrix_3x3();
     test_seed_xy();
     test_store_rgb_unorm8();
-    test_store_rgba_f16();
     test_store_rgba_unorm16();
     test_store_rgba_unorm8();
 
-    bench(   memset32);
+#if defined(__FLT16_MIN__)
+    test_load_rgba_f16();
+    test_store_rgba_f16();
+#endif  // TODO: re-enable with portable implementations
+
     bench( rgb_unorm8);
     bench(rgba_unorm8);
     bench(rgba_unorm16);

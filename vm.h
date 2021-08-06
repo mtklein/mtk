@@ -141,7 +141,7 @@ U8  splat_U8 (Builder*, uint8_t);
 S8  splat_S8 (Builder*, int8_t);
 U16 splat_U16(Builder*, uint16_t);
 S16 splat_S16(Builder*, int16_t);
-F16 splat_F16(Builder*, _Float16);
+F16 splat_F16(Builder*, float);
 U32 splat_U32(Builder*, uint32_t);
 S32 splat_S32(Builder*, int32_t);
 F32 splat_F32(Builder*, float);

@@ -2,7 +2,10 @@
 #include "test.h"
 #include "vm.h"
 #include <string.h>
-#include <sys/mman.h>
+
+#if !defined(__wasm__)
+    #include <sys/mman.h>
+#endif
 
 static void test_memset32() {
     Program* p;
@@ -48,35 +51,37 @@ static void test_memset32_uniform() {
     drop(p);
 }
 
-static void test_add_F16() {
-    Program* p;
-    {
-        Builder* b = builder();
-        Ptr xp = arg(b,2),
-            yp = arg(b,2);
+#if defined(__FLT16_MIN__)
+    static void test_add_F16() {
+        Program* p;
+        {
+            Builder* b = builder();
+            Ptr xp = arg(b,2),
+                yp = arg(b,2);
 
-        F16 x = ld1_F16(b,xp),
-            y = ld1_F16(b,yp),
-            z = add_F16(b, x,y);
-        st1_F16(b, xp, z);
+            F16 x = ld1_F16(b,xp),
+                y = ld1_F16(b,yp),
+                z = add_F16(b, x,y);
+            st1_F16(b, xp, z);
 
-        p = compile(b);
+            p = compile(b);
+        }
+
+        _Float16 x[63],
+                 y[len(x)];
+
+        for (int i = 0; i < len(x); i++) {
+            x[i] = 0.125f16;
+            y[i] = 0.250f16;
+        }
+
+        run(p,len(x), (void*[]){x,y});
+        for (int i = 0; i < len(x); i++) {
+            expect_eq(x[i], 0.375f16);
+            expect_eq(y[i], 0.250f16);
+        }
     }
-
-    _Float16 x[63],
-             y[len(x)];
-
-    for (int i = 0; i < len(x); i++) {
-        x[i] = 0.125f16;
-        y[i] = 0.250f16;
-    }
-
-    run(p,len(x), (void*[]){x,y});
-    for (int i = 0; i < len(x); i++) {
-        expect_eq(x[i], 0.375f16);
-        expect_eq(y[i], 0.250f16);
-    }
-}
+#endif
 
 static void test_cse() {
     Program* p;
@@ -121,8 +126,12 @@ static void test_dce() {
         p = compile(b);
     }
 
+#if defined(__wasm__)
+    void* trap = NULL;
+#else
     void* trap = mmap(NULL,4096, PROT_NONE,MAP_ANONYMOUS|MAP_PRIVATE,-1,0);
     expect(trap != (void*)-1);
+#endif
 
     int32_t xs[63];
     run(p,len(xs),(void*[]){trap,xs});
@@ -130,7 +139,9 @@ static void test_dce() {
         expect_eq(xs[i], 0x42);
     }
 
+#if !defined(__wasm__)
     munmap(trap,4096);
+#endif
 }
 
 static void test_structs() {
@@ -180,20 +191,6 @@ void approx_jit(uint32_t dst[], uint32_t val, int n) {
     while (n --> 0) {
         *dst++ = val;
     }
-}
-
-
-static double memset32_native(int k, double *scale, const char* *unit) {
-    *scale = 1024;
-    *unit  = "px";
-
-    double start = now();
-    uint32_t buf[1024];
-    while (k --> 0) {
-        uint32_t p = 0xffaaccee;
-        memset_pattern4(buf, &p, sizeof buf);
-    }
-    return now() - start;
 }
 
 static double memset32_goal(int k, double *scale, const char* *unit) {
@@ -329,12 +326,14 @@ static double compile_cse(int k, double *scale, const char* *unit) {
 int main(int argc, char** argv) {
     test_memset32();
     test_memset32_uniform();
-    test_add_F16();
     test_cse();
     test_dce();
     test_structs();
 
-    bench(memset32_native);
+#if defined(__FLT16_MIN__)
+    test_add_F16();
+#endif
+
     bench(memset32_goal);
     bench(memset32_vm);
     bench(memset32_uniform);

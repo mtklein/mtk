@@ -12,17 +12,28 @@ deps = {
     'vm':       ['array', 'checksum', 'hash'],
 }
 
-modes = {
-    '':       '-Os',
-    'lto':    '-Os -flto',
-    'san':    '-O0 -fsanitize=address,integer,undefined -fno-sanitize-recover=all',
-    'x86_64': '-Os -arch x86_64 -arch x86_64h -momit-leaf-frame-pointer',
+native_modes = {
+    '':       '$clang -Os',
+    'lto':    '$clang -Os -flto',
+    'san':    '$clang -O0 -fsanitize=address,integer,undefined -fno-sanitize-recover=all',
+    'x86_64': '$clang -Os -arch x86_64 -arch x86_64h -momit-leaf-frame-pointer',
+}
+
+wasm_modes = {
+    'wasm':   '$zigcc -Os -target wasm32-wasi',
 }
 
 header = '''
 builddir = out
 
-cc = clang -fcolor-diagnostics -Weverything -Xclang -nostdsysteminc
+clang = clang -fcolor-diagnostics -Weverything -Xclang -nostdsysteminc
+zigcc = zig cc -fcolor-diagnostics
+
+native_ldflags = -Wl,-dead_strip
+native_runtime = env BENCH_SEC=0.001
+
+wasm_ldflags =
+wasm_runtime = wasmtime --env BENCH_SEC=0.001
 
 rule compile
     command = $cc -Werror -std=c11 -g -ffp-contract=fast -MD -MF $out.d -c $in -o $out
@@ -30,28 +41,32 @@ rule compile
     deps    = gcc
 
 rule link
-    command = $cc -Wl,-dead_strip $in -o $out
+    command = $cc $ldflags $in -o $out && touch $out
 
 rule run
-    command = env BENCH_SEC=0.001 ./$in > $out
+    command = $runtime ./$in > $out
 '''
 
 with open('build.ninja', 'w') as f:
     print(header, file=f)
+    modes = native_modes | wasm_modes
     for target in deps:
         for mode in modes:
+            arch = 'native' if mode in native_modes else 'wasm'
             objs = ''.join(' out/{}/{}.o'.format(mode,dep) for dep in deps[target])
-            p = lambda s: print(s.format(short=target,
-                                         full='out/{}/{}'.format(mode,target),
-                                         flags=modes[mode]), file=f)
+            p = lambda s: print(s.format(short = target,
+                                         full  = 'out/{}/{}'.format(mode,target),
+                                         cc    = modes[mode],
+                                         arch  = arch), file=f)
             p('build {full}.o: compile {short}.c')
-            p('    cc = $cc {flags}')
-
+            p('    cc      = {cc}')
             p('build {full}_test.o: compile {short}_test.c')
-            p('    cc = $cc {flags}')
+            p('    cc      = {cc}')
             p('build {full}_test: link {full}.o {full}_test.o' + objs)
-            p('    cc = $cc {flags}')
+            p('    cc      = {cc}')
+            p('    ldflags = ${arch}_ldflags')
             p('build {full}_test.ok: run {full}_test')
+            p('    runtime = ${arch}_runtime')
 
 
 rc = os.system(' '.join(['ninja'] + sys.argv[1:]))
