@@ -411,6 +411,26 @@ static double rgba_unorm16(int k, double *scale, const char* *unit) {
     return now() - start;
 }
 
+static double memset32(int k, double *scale, const char* *unit) {
+    *scale = 1024;
+    *unit  = "px";
+
+    float rgba[] = {0.93333f, 0.8f, 0.66666f, 1.0f};
+    uint32_t buf[1024];
+
+    Step step[] = {
+        {.effect=shade_rgba_f32}, {.ptr=rgba},
+        {.effect=store}, {.memfn=store_rgba_unorm8}, {.bpp=4}, {.ptr=buf},
+        {.effect=done},
+    };
+
+    double start = now();
+    while (k --> 0) {
+        drive(step,len(buf));
+    }
+    return now() - start;
+}
+
 int main(int argc, char** argv) {
     (void)trace;
 
@@ -439,5 +459,6 @@ int main(int argc, char** argv) {
     bench( rgb_unorm8);
     bench(rgba_unorm8);
     bench(rgba_unorm16);
+    bench(memset32);
     return 0;
 }
