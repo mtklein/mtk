@@ -86,8 +86,8 @@ RGBA done(Step step[], size_t p, RGBA src, Cold* cold) {
 RGBA seed_xy(Step step[], size_t p, RGBA src, Cold* cold) {
     // In any given call to drive(), x marches along one at a time, while y remains constant.
     const int* xy = (step++)->ptr;
-    cold->x = xy[0] + (int)(p/N*N) + iota + 0.5f;
-    cold->y = xy[1]                       + 0.5f;
+    cold->x = (float)(xy[0] + (int)(p/N*N)) + iota + 0.5f;
+    cold->y = (float)(xy[1]               )        + 0.5f;
     return step->effect(step+1,p,src,cold);
 }
 

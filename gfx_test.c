@@ -8,27 +8,27 @@
 #pragma GCC diagnostic ignored "-Wfloat-equal"
 
 ABI static RGBA trace(Step step[], size_t p, RGBA src, Cold* cold) {
-    fprintf(stderr, "p=%zu\nsrc.r={ ", p);
-    for (int i = 0; i < N; i++) { fprintf(stderr, "%g ", (double)src.r[i]); }
-    fprintf(stderr, "}\nsrc.g={ ");
-    for (int i = 0; i < N; i++) { fprintf(stderr, "%g ", (double)src.g[i]); }
-    fprintf(stderr, "}\nsrc.b={ ");
-    for (int i = 0; i < N; i++) { fprintf(stderr, "%g ", (double)src.b[i]); }
-    fprintf(stderr, "}\nsrc.a={ ");
-    for (int i = 0; i < N; i++) { fprintf(stderr, "%g ", (double)src.a[i]); }
-    fprintf(stderr, "}\ndst.r={ ");
-    for (int i = 0; i < N; i++) { fprintf(stderr, "%g ", (double)cold->dst.r[i]); }
-    fprintf(stderr, "}\ndst.g={ ");
-    for (int i = 0; i < N; i++) { fprintf(stderr, "%g ", (double)cold->dst.g[i]); }
-    fprintf(stderr, "}\ndst.b={ ");
-    for (int i = 0; i < N; i++) { fprintf(stderr, "%g ", (double)cold->dst.b[i]); }
-    fprintf(stderr, "}\ndst.a={ ");
-    for (int i = 0; i < N; i++) { fprintf(stderr, "%g ", (double)cold->dst.a[i]); }
-    fprintf(stderr, "}\nx={ ");
-    for (int i = 0; i < N; i++) { fprintf(stderr, "%g ", (double)cold->x[i]); }
-    fprintf(stderr, "}\ny={ ");
-    for (int i = 0; i < N; i++) { fprintf(stderr, "%g ", (double)cold->y[i]); }
-    fprintf(stderr, "}\n");
+    dprintf(2, "p=%zu\nsrc.r={ ", p);
+    for (int i = 0; i < N; i++) { dprintf(2, "%g ", (double)src.r[i]); }
+    dprintf(2, "}\nsrc.g={ ");
+    for (int i = 0; i < N; i++) { dprintf(2, "%g ", (double)src.g[i]); }
+    dprintf(2, "}\nsrc.b={ ");
+    for (int i = 0; i < N; i++) { dprintf(2, "%g ", (double)src.b[i]); }
+    dprintf(2, "}\nsrc.a={ ");
+    for (int i = 0; i < N; i++) { dprintf(2, "%g ", (double)src.a[i]); }
+    dprintf(2, "}\ndst.r={ ");
+    for (int i = 0; i < N; i++) { dprintf(2, "%g ", (double)cold->dst.r[i]); }
+    dprintf(2, "}\ndst.g={ ");
+    for (int i = 0; i < N; i++) { dprintf(2, "%g ", (double)cold->dst.g[i]); }
+    dprintf(2, "}\ndst.b={ ");
+    for (int i = 0; i < N; i++) { dprintf(2, "%g ", (double)cold->dst.b[i]); }
+    dprintf(2, "}\ndst.a={ ");
+    for (int i = 0; i < N; i++) { dprintf(2, "%g ", (double)cold->dst.a[i]); }
+    dprintf(2, "}\nx={ ");
+    for (int i = 0; i < N; i++) { dprintf(2, "%g ", (double)cold->x[i]); }
+    dprintf(2, "}\ny={ ");
+    for (int i = 0; i < N; i++) { dprintf(2, "%g ", (double)cold->y[i]); }
+    dprintf(2, "}\n");
 
     return step->effect(step+1,p,src,cold);
 }

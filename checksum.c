@@ -99,8 +99,8 @@ uint32_t murmur3(uint32_t hash, const void* vptr, const size_t bytes) {
 
     uint32_t v = 0;
     switch (len) {
-        case 3: v |= (uint32_t)ptr[2] << 16;
-        case 2: v |= (uint32_t)ptr[1] <<  8;
+        case 3: v |= (uint32_t)ptr[2] << 16;  __attribute__((fallthrough));
+        case 2: v |= (uint32_t)ptr[1] <<  8;  __attribute__((fallthrough));
         case 1: v |= (uint32_t)ptr[0] <<  0;
                 v *= 0xcc9e2d51;
                 v = (v<<15) | (v>>17);

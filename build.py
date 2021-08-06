@@ -20,14 +20,14 @@ native_modes = {
 }
 
 wasm_modes = {
-    'wasm':   '$zigcc -Os -target wasm32-wasi',
+    'wasm':   '$zigcc -Os -target wasm32-wasi -D_POSIX_SOURCE',
 }
 
 header = '''
 builddir = out
 
 clang = clang -fcolor-diagnostics -Weverything -Xclang -nostdsysteminc
-zigcc = zig cc -fcolor-diagnostics
+zigcc = zig cc -fcolor-diagnostics -Weverything
 
 runtime_native = env BENCH_SEC=0.001
 runtime_wasm   = wasmtime --env BENCH_SEC=0.001
