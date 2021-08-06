@@ -47,38 +47,36 @@ static void test_memset32_uniform() {
     drop(p);
 }
 
-#if defined(__FLT16_MIN__)
-    static void test_add_F16() {
-        Program* p;
-        {
-            Builder* b = builder();
-            Ptr xp = arg(b,2),
-                yp = arg(b,2);
+static void test_add_F16() {
+    Program* p;
+    {
+        Builder* b = builder();
+        Ptr xp = arg(b,2),
+            yp = arg(b,2);
 
-            F16 x = ld1_F16(b,xp),
-                y = ld1_F16(b,yp),
-                z = add_F16(b, x,y),
-                w = add_F16(b, z, splat_F16(b, 0.125f));
-            st1_F16(b, xp, w);
+        F16 x = ld1_F16(b,xp),
+            y = ld1_F16(b,yp),
+            z = add_F16(b, x,y),
+            w = add_F16(b, z, splat_F16(b, 0.125f));
+        st1_F16(b, xp, w);
 
-            p = compile(b);
-        }
-
-        _Float16 x[63],
-                 y[len(x)];
-
-        for (int i = 0; i < len(x); i++) {
-            x[i] = 0.125f16;
-            y[i] = 0.250f16;
-        }
-
-        run(p,len(x), (void*[]){x,y});
-        for (int i = 0; i < len(x); i++) {
-            expect_eq(x[i], 0.500f16);
-            expect_eq(y[i], 0.250f16);
-        }
+        p = compile(b);
     }
-#endif
+
+    __fp16 x[63],
+           y[len(x)];
+
+    for (int i = 0; i < len(x); i++) {
+        x[i] = 0.125f;
+        y[i] = 0.250f;
+    }
+
+    run(p,len(x), (void*[]){x,y});
+    for (int i = 0; i < len(x); i++) {
+        expect_eq((float)x[i], 0.500f);
+        expect_eq((float)y[i], 0.250f);
+    }
+}
 
 static void test_cse() {
     Program* p;
@@ -312,13 +310,10 @@ static double compile_cse(int k, double *scale, const char* *unit) {
 int main(int argc, char** argv) {
     test_memset32();
     test_memset32_uniform();
+    test_add_F16();
     test_cse();
     test_dce();
     test_structs();
-
-#if defined(__FLT16_MIN__)
-    test_add_F16();
-#endif
 
     bench(memset32_goal);
     bench(memset32_vm);
