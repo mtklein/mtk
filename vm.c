@@ -93,22 +93,27 @@ static int no_cse(Builder* b, Inst inst) {
 typedef struct {
     const Builder* b;
     const Inst*    inst;
+    int            id;
+    int            unused;
 } inst_eq_ctx;
 
 static bool inst_eq(int id, void* vctx) {
-    const inst_eq_ctx* ctx = vctx;
-    return 0 == memcmp(ctx->inst, ctx->b->inst + id-1/*1-indexed*/, sizeof(Inst));
+    inst_eq_ctx* ctx = vctx;
+    if (0 == memcmp(ctx->inst, ctx->b->inst + id-1/*1-indexed*/, sizeof(Inst))) {
+        ctx->id = id;
+        return true;
+    }
+    return false;
 }
 
 static int cse(Builder* b, Inst inst) {
     int h = (int)murmur3(0, &inst,sizeof inst);
 
-    int id;
-    for (inst_eq_ctx ctx={b,&inst}; lookup(&b->hash,h, inst_eq,&ctx, &id);) {
-        return id;
+    for (inst_eq_ctx ctx={.b=b,.inst=&inst}; lookup(&b->hash,h, inst_eq,&ctx);) {
+        return ctx.id;
     }
 
-    id = no_cse(b,inst);
+    int id = no_cse(b,inst);
     insert(&b->hash,h,id);
     return id;
 }

@@ -7,5 +7,5 @@ typedef struct {
     int len,cap;
 } Hash;
 
-bool lookup(const Hash*, int hash, bool(*match)(int val, void* ctx), void* ctx, int* val);
+bool lookup(const Hash*, int hash, bool(*match)(int val, void* ctx), void* ctx);
 void insert(      Hash*, int hash, int val);

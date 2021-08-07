@@ -2,7 +2,7 @@
 #include "hash.h"
 #include <stdlib.h>
 
-bool lookup(const Hash* h, int hash, bool(*match)(int val, void* ctx), void* ctx, int* val) {
+bool lookup(const Hash* h, int hash, bool(*match)(int val, void* ctx), void* ctx) {
     if (hash == 0) { hash = 1; }
     int ix = hash & (h->cap-1);
     for (int i = 0; i < h->cap; i++) {
@@ -10,7 +10,6 @@ bool lookup(const Hash* h, int hash, bool(*match)(int val, void* ctx), void* ctx
             return false;
         }
         if (h->table[ix].hash == hash && match(h->table[ix].val, ctx)) {
-            *val = h->table[ix].val;
             return true;
         }
         ix = (ix+1) & (h->cap-1);
