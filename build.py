@@ -20,7 +20,7 @@ native_modes = {
 }
 
 wasm_modes = {
-    'wasm':   '$zigcc -Os -target wasm32-wasi -D_POSIX_SOURCE',
+    'wasm':   '$zigcc -Os -target wasm32-wasi -D_POSIX_SOURCE -Xclang -fnative-half-type',
 }
 
 header = '''

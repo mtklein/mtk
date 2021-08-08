@@ -392,38 +392,10 @@ F32 uniform_F32(Builder* b, Ptr ptr, int offset) {
     return (F32){ cse(b, (Inst){.op = op_uniform_32, .ptr=ptr.ix, .imm.s32=offset}) };
 }
 
-#if defined(__FLT16_MIN__)
-    op_(add_F16) { v->f16 = v[inst->x].f16 + v[inst->y].f16; next; }
-    op_(sub_F16) { v->f16 = v[inst->x].f16 - v[inst->y].f16; next; }
-    op_(mul_F16) { v->f16 = v[inst->x].f16 * v[inst->y].f16; next; }
-    op_(div_F16) { v->f16 = v[inst->x].f16 / v[inst->y].f16; next; }
-#else
-    // TODO: why doesn't the version above work here too?  and why do we need to scalarize?
-    op_(add_F16) {
-        for (int i = 0; i < N; i++) {
-            v->f16[i] = (__fp16)( (float)v[inst->x].f16[i] + (float)v[inst->y].f16[i] );
-        }
-        next;
-    }
-    op_(sub_F16) {
-        for (int i = 0; i < N; i++) {
-            v->f16[i] = (__fp16)( (float)v[inst->x].f16[i] - (float)v[inst->y].f16[i] );
-        }
-        next;
-    }
-    op_(mul_F16) {
-        for (int i = 0; i < N; i++) {
-            v->f16[i] = (__fp16)( (float)v[inst->x].f16[i] * (float)v[inst->y].f16[i] );
-        }
-        next;
-    }
-    op_(div_F16) {
-        for (int i = 0; i < N; i++) {
-            v->f16[i] = (__fp16)( (float)v[inst->x].f16[i] / (float)v[inst->y].f16[i] );
-        }
-        next;
-    }
-#endif
+op_(add_F16) { v->f16 = v[inst->x].f16 + v[inst->y].f16; next; }
+op_(sub_F16) { v->f16 = v[inst->x].f16 - v[inst->y].f16; next; }
+op_(mul_F16) { v->f16 = v[inst->x].f16 * v[inst->y].f16; next; }
+op_(div_F16) { v->f16 = v[inst->x].f16 / v[inst->y].f16; next; }
 
 F16 add_F16(Builder* b, F16 x, F16 y) {
     return (F16){ cse(b, (Inst){.op=op_add_F16, .x=x.id, .y=y.id}) };
