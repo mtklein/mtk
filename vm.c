@@ -29,28 +29,32 @@
 #define SPLAT_3 3,3,3,3, 3,3,3,3, 3,3,3,3, 3,3,3,3
 
 
+#define cast    __builtin_convertvector
 #define shuffle __builtin_shufflevector
 
 typedef union {
     uint8_t  u8;
     uint16_t u16;
     uint32_t u32;
-     int8_t  s8;
-     int16_t s16;
-     int32_t s32;
+    int8_t   s8;
+    int16_t  s16;
+    int32_t  s32;
     __fp16   f16;
     float    f32;
 } Imm;
+
+typedef __fp16 __attribute__((vector_size(2*N))) f16;
+typedef float  __attribute__((vector_size(4*N))) f32;
 
 typedef union {
     uint8_t  __attribute__((vector_size(1*N))) u8;
     uint16_t __attribute__((vector_size(2*N))) u16;
     uint32_t __attribute__((vector_size(4*N))) u32;
-     int8_t  __attribute__((vector_size(1*N))) s8;
-     int16_t __attribute__((vector_size(2*N))) s16;
-     int32_t __attribute__((vector_size(4*N))) s32;
-    __fp16   __attribute__((vector_size(2*N))) f16;
-    float    __attribute__((vector_size(4*N))) f32;
+    int8_t   __attribute__((vector_size(1*N))) s8;
+    int16_t  __attribute__((vector_size(2*N))) s16;
+    int32_t  __attribute__((vector_size(4*N))) s32;
+    f16                                        f16;
+    f32                                        f32;
 } Val;
 
 typedef struct Inst {
@@ -388,16 +392,10 @@ F32 uniform_F32(Builder* b, Ptr ptr, int offset) {
     return (F32){ cse(b, (Inst){.op = op_uniform_32, .ptr=ptr.ix, .imm.s32=offset}) };
 }
 
-// The notional conversions between __fp16 and float can be optimized away;
-// we'll still get the desired ffoo.8h instructions on ARMv8.2.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdouble-promotion"
-#pragma GCC diagnostic ignored "-Wimplicit-float-conversion"
-op_(add_F16) { v->f16 = v[inst->x].f16 + v[inst->y].f16; next; }
-op_(sub_F16) { v->f16 = v[inst->x].f16 - v[inst->y].f16; next; }
-op_(mul_F16) { v->f16 = v[inst->x].f16 * v[inst->y].f16; next; }
-op_(div_F16) { v->f16 = v[inst->x].f16 / v[inst->y].f16; next; }
-#pragma GCC diagnostic pop
+op_(add_F16) { v->f16 = cast(cast(v[inst->x].f16,f32) + cast(v[inst->y].f16,f32), f16); next; }
+op_(sub_F16) { v->f16 = cast(cast(v[inst->x].f16,f32) - cast(v[inst->y].f16,f32), f16); next; }
+op_(mul_F16) { v->f16 = cast(cast(v[inst->x].f16,f32) * cast(v[inst->y].f16,f32), f16); next; }
+op_(div_F16) { v->f16 = cast(cast(v[inst->x].f16,f32) / cast(v[inst->y].f16,f32), f16); next; }
 
 F16 add_F16(Builder* b, F16 x, F16 y) {
     return (F16){ cse(b, (Inst){.op=op_add_F16, .x=x.id, .y=y.id}) };
