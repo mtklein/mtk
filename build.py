@@ -42,6 +42,9 @@ rule link
 
 rule run
     command = $runtime ./$in > $out
+
+rule disasm
+    command = otool -tvdX $in > $out
 '''
 
 with open('build.ninja', 'w') as f:
@@ -51,19 +54,20 @@ with open('build.ninja', 'w') as f:
         for mode in modes:
             arch = 'native' if mode in native_modes else 'wasm'
             objs = ''.join(' out/{}/{}.o'.format(mode,dep) for dep in deps[target])
-            p = lambda s: print(s.format(short = target,
-                                         full  = 'out/{}/{}'.format(mode,target),
-                                         cc    = modes[mode],
-                                         arch  = arch), file=f)
-            p('build {full}.o: compile {short}.c')
+            p = lambda s: print(s.format(target = target,
+                                         full   = 'out/{}/{}'.format(mode,target),
+                                         cc     = modes[mode],
+                                         arch   = arch), file=f)
+            p('build {full}.o: compile {target}.c')
             p('    cc      = {cc}')
-            p('build {full}_test.o: compile {short}_test.c')
+            p('build {full}_test.o: compile {target}_test.c')
             p('    cc      = {cc}')
             p('build {full}_test: link {full}.o {full}_test.o' + objs)
             p('    cc      = {cc}')
             p('build {full}_test.ok: run {full}_test')
             p('    runtime = $runtime_{arch}')
-
+            if mode == '':
+                p('build asm/{target}.S: disasm {full}.o')
 
 rc = os.system(' '.join(['ninja'] + sys.argv[1:]))
 os.remove('build.ninja')
