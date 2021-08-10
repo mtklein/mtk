@@ -8,8 +8,8 @@ static void test_memset32() {
     {
         Builder* b = builder();
         Ptr buf = arg(b, 4);
-        U32   v = splat_U32(b, 0xffaaccee);
-        st1_U32(b, buf, v);
+        V32   v = splat_32(b, (int)0xffaaccee);
+        st1_32(b, buf, v);
 
         p = compile(b);
     }
@@ -30,8 +30,8 @@ static void test_memset32_uniform() {
         Builder* b = builder();
         Ptr uni = arg(b,0),
             buf = arg(b,4);
-        U32   v = uniform_U32(b, uni, 3);
-        st1_U32(b, buf, v);
+        V32   v = uniform_32(b, uni, 3);
+        st1_32(b, buf, v);
 
         p = compile(b);
     }
@@ -48,21 +48,26 @@ static void test_memset32_uniform() {
 }
 
 static void test_F16() {
+    typedef union {
+        __fp16  f;
+        int16_t bits;
+    } Pun;
+
     Program* p;
     {
         Builder* b = builder();
         Ptr xp = arg(b,2),
             yp = arg(b,2);
 
-        F16 x = ld1_F16(b,xp),
-            y = ld1_F16(b,yp);
+        V16 x = ld1_16(b,xp),
+            y = ld1_16(b,yp);
 
-        F16 v;
+        V16 v;
         v = add_F16(b, x,y);
-        v = mul_F16(b, v,splat_F16(b, 2.0f));
-        v = sub_F16(b, v,splat_F16(b, 0.125f));
-        v = div_F16(b, v,splat_F16(b, 2.0f));
-        st1_F16(b, xp, v);
+        v = mul_F16(b, v,splat_16(b, (Pun){.f=2.000f}.bits));
+        v = sub_F16(b, v,splat_16(b, (Pun){.f=0.125f}.bits));
+        v = div_F16(b, v,splat_16(b, (Pun){.f=2.000f}.bits));
+        st1_16(b, xp, v);
 
         p = compile(b);
     }
@@ -88,11 +93,11 @@ static void test_cse() {
         Builder* b = builder();
         Ptr ptr = arg(b,4);
 
-        S32 x =   ld1_S32(b, ptr),
-            y = splat_S32(b, 3),
-            z =   add_S32(b, x,y),
-            w =   add_S32(b, x,y);
-        st1_S32(b, ptr, mul_S32(b, z,w));
+        V32 x =   ld1_32(b, ptr),
+            y = splat_32(b, 3),
+            z =  add_I32(b, x,y),
+            w =  add_I32(b, x,y);
+        st1_32(b, ptr, mul_I32(b, z,w));
 
         expect_eq(z.id, w.id);
 
@@ -115,12 +120,12 @@ static void test_dce() {
     Program* p;
     {
         Builder* b = builder();
-        Ptr t = arg(b,0),
-            d = arg(b,4);
+        Ptr trap = arg(b,0),
+            dst  = arg(b,4);
 
-        S32 x = ld1_S32(b,t);
-        x = splat_S32(b, 0x42);
-        st1_S32(b, d, x);
+        V32 x = ld1_32(b, trap);
+        x = splat_32(b, 0x42);
+        st1_32(b, dst, x);
 
         p = compile(b);
     }
@@ -138,13 +143,8 @@ static void test_structs() {
         Builder* b = builder();
         Ptr ptr = arg(b,4);
 
-        U8x4 rgba = ld4_U8(b,ptr);
-
-        U8 tmp = rgba.r;
-        rgba.r = rgba.b;
-        rgba.b = tmp;
-
-        st4_U8(b,ptr,rgba);
+        struct V8x4 px = ld4_8(b,ptr);
+        st4_8(b,ptr, px.b, px.g, px.r, px.a);
 
         p = compile(b);
     }
@@ -201,8 +201,8 @@ static double memset32_vm(int k, double *scale, const char* *unit) {
     {
         Builder* b = builder();
         Ptr buf = arg(b, 4);
-        U32   v = splat_U32(b, 0xffaaccee);
-        st1_U32(b, buf, v);
+        V32   v = splat_32(b, (int)0xffaaccee);
+        st1_32(b, buf, v);
         p = compile(b);
     }
 
@@ -225,8 +225,8 @@ static double memset32_uniform(int k, double *scale, const char* *unit) {
         Builder* b = builder();
         Ptr uni = arg(b, 0),
             buf = arg(b, 4);
-        U32   v = uniform_U32(b, uni, 3);
-        st1_U32(b, buf, v);
+        V32   v = uniform_32(b, uni, 3);
+        st1_32(b, buf, v);
         p = compile(b);
     }
 
@@ -252,13 +252,8 @@ static double swap_rb(int k, double *scale, const char* *unit) {
         Builder* b = builder();
         Ptr ptr = arg(b,4);
 
-        U8x4 rgba = ld4_U8(b,ptr);
-
-        U8 tmp = rgba.r;
-        rgba.r = rgba.b;
-        rgba.b = tmp;
-
-        st4_U8(b,ptr,rgba);
+        struct V8x4 px = ld4_8(b,ptr);
+        st4_8(b,ptr, px.b, px.g, px.r, px.a);
 
         p = compile(b);
     }
@@ -283,8 +278,8 @@ static double compile_memset32(int k, double *scale, const char* *unit) {
     while (k --> 0) {
         Builder* b = builder();
         Ptr buf = arg(b, 4);
-        U32   v = splat_U32(b, 0xffaaccee);
-        st1_U32(b, buf, v);
+        V32   v = splat_32(b, (int)0xffaaccee);
+        st1_32(b, buf, v);
         drop(compile(b));
     }
 
@@ -300,11 +295,11 @@ static double compile_cse(int k, double *scale, const char* *unit) {
         Builder* b = builder();
         Ptr ptr = arg(b,4);
 
-        S32 x =   ld1_S32(b, ptr),
-            y = splat_S32(b, 3),
-            z =   add_S32(b, x,y),
-            w =   add_S32(b, x,y);
-        st1_S32(b, ptr, mul_S32(b, z,w));
+        V32 x =   ld1_32(b, ptr),
+            y = splat_32(b, 3),
+            z =  add_I32(b, x,y),
+            w =  add_I32(b, x,y);
+        st1_32(b, ptr, mul_I32(b, z,w));
         drop(compile(b));
     }
 

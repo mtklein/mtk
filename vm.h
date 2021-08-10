@@ -1,7 +1,5 @@
 #pragma once
 
-#include <stdint.h>
-
 typedef struct Builder Builder;
 typedef struct Program Program;
 
@@ -11,179 +9,79 @@ void     run    (const Program*, int n, void* arg[]);
 void     drop   (Program*);
 
 typedef struct { int ix; } Ptr;
-
-typedef struct { int id; } U8;
-typedef struct { int id; } S8;
-
-typedef struct { int id; } U16;
-typedef struct { int id; } S16;
-typedef struct { int id; } F16;
-
-typedef struct { int id; } U32;
-typedef struct { int id; } S32;
-typedef struct { int id; } F32;
-
-typedef struct { U8 r,g;     } U8x2;
-typedef struct { U8 r,g,b;   } U8x3;
-typedef struct { U8 r,g,b,a; } U8x4;
-
-typedef struct { S8 r,g;     } S8x2;
-typedef struct { S8 r,g,b;   } S8x3;
-typedef struct { S8 r,g,b,a; } S8x4;
-
-typedef struct { U16 r,g;     } U16x2;
-typedef struct { U16 r,g,b;   } U16x3;
-typedef struct { U16 r,g,b,a; } U16x4;
-
-typedef struct { S16 r,g;     } S16x2;
-typedef struct { S16 r,g,b;   } S16x3;
-typedef struct { S16 r,g,b,a; } S16x4;
-
-typedef struct { F16 r,g;     } F16x2;
-typedef struct { F16 r,g,b;   } F16x3;
-typedef struct { F16 r,g,b,a; } F16x4;
-
-typedef struct { U32 r,g;     } U32x2;
-typedef struct { U32 r,g,b;   } U32x3;
-typedef struct { U32 r,g,b,a; } U32x4;
-
-typedef struct { S32 r,g;     } S32x2;
-typedef struct { S32 r,g,b;   } S32x3;
-typedef struct { S32 r,g,b,a; } S32x4;
-
-typedef struct { F32 r,g;     } F32x2;
-typedef struct { F32 r,g,b;   } F32x3;
-typedef struct { F32 r,g,b,a; } F32x4;
-
 Ptr arg(Builder*, int stride);
 
-U8   ld1_U8(Builder*, Ptr);
-U8x2 ld2_U8(Builder*, Ptr);
-U8x3 ld3_U8(Builder*, Ptr);
-U8x4 ld4_U8(Builder*, Ptr);
+typedef struct { int id; } V8;
+typedef struct { int id; } V16;
+typedef struct { int id; } V32;
 
-S8   ld1_S8(Builder*, Ptr);
-S8x2 ld2_S8(Builder*, Ptr);
-S8x3 ld3_S8(Builder*, Ptr);
-S8x4 ld4_S8(Builder*, Ptr);
+V8                          ld1_8(Builder*, Ptr);
+struct V8x2 { V8 r,g    ; } ld2_8(Builder*, Ptr);
+struct V8x3 { V8 r,g,b  ; } ld3_8(Builder*, Ptr);
+struct V8x4 { V8 r,g,b,a; } ld4_8(Builder*, Ptr);
 
-U16   ld1_U16(Builder*, Ptr);
-U16x2 ld2_U16(Builder*, Ptr);
-U16x3 ld3_U16(Builder*, Ptr);
-U16x4 ld4_U16(Builder*, Ptr);
+V16                           ld1_16(Builder*, Ptr);
+struct V16x2 { V16 r,g    ; } ld2_16(Builder*, Ptr);
+struct V16x3 { V16 r,g,b  ; } ld3_16(Builder*, Ptr);
+struct V16x4 { V16 r,g,b,a; } ld4_16(Builder*, Ptr);
 
-S16   ld1_S16(Builder*, Ptr);
-S16x2 ld2_S16(Builder*, Ptr);
-S16x3 ld3_S16(Builder*, Ptr);
-S16x4 ld4_S16(Builder*, Ptr);
+V32                           ld1_32(Builder*, Ptr);
+struct V32x2 { V32 r,g    ; } ld2_32(Builder*, Ptr);
+struct V32x3 { V32 r,g,b  ; } ld3_32(Builder*, Ptr);
+struct V32x4 { V32 r,g,b,a; } ld4_32(Builder*, Ptr);
 
-F16   ld1_F16(Builder*, Ptr);
-F16x2 ld2_F16(Builder*, Ptr);
-F16x3 ld3_F16(Builder*, Ptr);
-F16x4 ld4_F16(Builder*, Ptr);
+void st1_8(Builder*, Ptr, V8);
+void st2_8(Builder*, Ptr, V8,V8);
+void st3_8(Builder*, Ptr, V8,V8,V8);
+void st4_8(Builder*, Ptr, V8,V8,V8,V8);
 
-U32   ld1_U32(Builder*, Ptr);
-U32x2 ld2_U32(Builder*, Ptr);
-U32x3 ld3_U32(Builder*, Ptr);
-U32x4 ld4_U32(Builder*, Ptr);
+void st1_16(Builder*, Ptr, V16);
+void st2_16(Builder*, Ptr, V16,V16);
+void st3_16(Builder*, Ptr, V16,V16,V16);
+void st4_16(Builder*, Ptr, V16,V16,V16,V16);
 
-S32   ld1_S32(Builder*, Ptr);
-S32x2 ld2_S32(Builder*, Ptr);
-S32x3 ld3_S32(Builder*, Ptr);
-S32x4 ld4_S32(Builder*, Ptr);
+void st1_32(Builder*, Ptr, V32);
+void st2_32(Builder*, Ptr, V32,V32);
+void st3_32(Builder*, Ptr, V32,V32,V32);
+void st4_32(Builder*, Ptr, V32,V32,V32,V32);
 
-F32   ld1_F32(Builder*, Ptr);
-F32x2 ld2_F32(Builder*, Ptr);
-F32x3 ld3_F32(Builder*, Ptr);
-F32x4 ld4_F32(Builder*, Ptr);
+V8  splat_8 (Builder*, int);
+V16 splat_16(Builder*, int);
+V32 splat_32(Builder*, int);
 
-void st1_U8(Builder*, Ptr, U8);
-void st2_U8(Builder*, Ptr, U8x2);
-void st3_U8(Builder*, Ptr, U8x3);
-void st4_U8(Builder*, Ptr, U8x4);
+V8  uniform_8 (Builder*, Ptr, int offset);
+V16 uniform_16(Builder*, Ptr, int offset);
+V32 uniform_32(Builder*, Ptr, int offset);
 
-void st1_S8(Builder*, Ptr, S8);
-void st2_S8(Builder*, Ptr, S8x2);
-void st3_S8(Builder*, Ptr, S8x3);
-void st4_S8(Builder*, Ptr, S8x4);
+V16 cast_F16_to_S16(Builder*, V16);
+V16 cast_F16_to_U16(Builder*, V16);
+V16 cast_S16_to_F16(Builder*, V16);
+V16 cast_U16_to_F16(Builder*, V16);
 
-void st1_U16(Builder*, Ptr, U16);
-void st2_U16(Builder*, Ptr, U16x2);
-void st3_U16(Builder*, Ptr, U16x3);
-void st4_U16(Builder*, Ptr, U16x4);
+V32 cast_F32_to_S32(Builder*, V32);
+V32 cast_F32_to_U32(Builder*, V32);
+V32 cast_S32_to_F32(Builder*, V32);
+V32 cast_U32_to_F32(Builder*, V32);
 
-void st1_S16(Builder*, Ptr, S16);
-void st2_S16(Builder*, Ptr, S16x2);
-void st3_S16(Builder*, Ptr, S16x3);
-void st4_S16(Builder*, Ptr, S16x4);
+V16 widen_S8 (Builder*, V8);
+V16 widen_U8 (Builder*, V8);
+V32 widen_F16(Builder*, V16);
+V32 widen_S16(Builder*, V16);
+V32 widen_U16(Builder*, V16);
 
-void st1_F16(Builder*, Ptr, F16);
-void st2_F16(Builder*, Ptr, F16x2);
-void st3_F16(Builder*, Ptr, F16x3);
-void st4_F16(Builder*, Ptr, F16x4);
+V16 narrow_F32(Builder*, V32);
+V16 narrow_I32(Builder*, V32);
+V8  narrow_I16(Builder*, V16);
 
-void st1_U32(Builder*, Ptr, U32);
-void st2_U32(Builder*, Ptr, U32x2);
-void st3_U32(Builder*, Ptr, U32x3);
-void st4_U32(Builder*, Ptr, U32x4);
+V16 add_F16(Builder*, V16, V16);
+V16 div_F16(Builder*, V16, V16);
+V16 mul_F16(Builder*, V16, V16);
+V16 sub_F16(Builder*, V16, V16);
 
-void st1_S32(Builder*, Ptr, S32);
-void st2_S32(Builder*, Ptr, S32x2);
-void st3_S32(Builder*, Ptr, S32x3);
-void st4_S32(Builder*, Ptr, S32x4);
+V32 add_I32(Builder*, V32, V32);
+V32 mul_I32(Builder*, V32, V32);
+V32 sub_I32(Builder*, V32, V32);
 
-void st1_F32(Builder*, Ptr, F32);
-void st2_F32(Builder*, Ptr, F32x2);
-void st3_F32(Builder*, Ptr, F32x3);
-void st4_F32(Builder*, Ptr, F32x4);
-
-U8  splat_U8 (Builder*, uint8_t);
-S8  splat_S8 (Builder*, int8_t);
-U16 splat_U16(Builder*, uint16_t);
-S16 splat_S16(Builder*, int16_t);
-F16 splat_F16(Builder*, float);
-U32 splat_U32(Builder*, uint32_t);
-S32 splat_S32(Builder*, int32_t);
-F32 splat_F32(Builder*, float);
-
-U8  uniform_U8 (Builder*, Ptr, int offset);
-S8  uniform_S8 (Builder*, Ptr, int offset);
-U16 uniform_U16(Builder*, Ptr, int offset);
-S16 uniform_S16(Builder*, Ptr, int offset);
-F16 uniform_F16(Builder*, Ptr, int offset);
-U32 uniform_U32(Builder*, Ptr, int offset);
-S32 uniform_S32(Builder*, Ptr, int offset);
-F32 uniform_F32(Builder*, Ptr, int offset);
-
-F16 cast_F16_from_U16(Builder*, U16);
-U16 cast_U16_from_F16(Builder*, F16);
-
-F16 cast_F16_from_S16(Builder*, S16);
-S16 cast_S16_from_F16(Builder*, F16);
-
-F32 cast_F32_from_U32(Builder*, U32);
-U32 cast_U32_from_F32(Builder*, F32);
-
-F32 cast_F32_from_S32(Builder*, S32);
-S32 cast_S32_from_F32(Builder*, F32);
-
-U16 widen_U8 (Builder*, U8);
-S16 widen_S8 (Builder*, S8);
-U32 widen_U16(Builder*, U16);
-S32 widen_S16(Builder*, S16);
-F32 widen_F16(Builder*, F16);
-
-U8  narrow_U16(Builder*, U16);
-S8  narrow_S16(Builder*, S16);
-U16 narrow_U32(Builder*, U32);
-S16 narrow_S32(Builder*, S32);
-F16 narrow_F32(Builder*, F32);
-
-F16 add_F16(Builder*, F16, F16);
-F16 sub_F16(Builder*, F16, F16);
-F16 mul_F16(Builder*, F16, F16);
-F16 div_F16(Builder*, F16, F16);
-
-S32 add_S32(Builder*, S32, S32);
-S32 sub_S32(Builder*, S32, S32);
-S32 mul_S32(Builder*, S32, S32);
+V32 shl_I32(Builder*, V32, int);
+V32 shr_S32(Builder*, V32, int);
+V32 shr_U32(Builder*, V32, int);
