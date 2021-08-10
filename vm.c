@@ -32,17 +32,6 @@
 #define cast    __builtin_convertvector
 #define shuffle __builtin_shufflevector
 
-typedef union {
-    uint8_t  u8;
-    uint16_t u16;
-    uint32_t u32;
-    int8_t   s8;
-    int16_t  s16;
-    int32_t  s32;
-    __fp16   f16;
-    float    f32;
-} Imm;
-
 typedef __fp16 __attribute__((vector_size(2*N))) f16;
 typedef float  __attribute__((vector_size(4*N))) f32;
 
@@ -61,7 +50,7 @@ typedef struct Inst {
     void (*op)(int n, const struct Inst*, Val* v, void* arg[]);
     int x,y,z,w;
     int ptr;
-    Imm imm;
+    int imm;
 } Inst;
 
 struct Builder {
@@ -131,7 +120,7 @@ op_(inc_arg_and_done) {
     (void)v;
 
     int ptr    = inst->ptr,
-        stride = inst->imm.s32;
+        stride = inst->imm;
 
     arg[ptr] = (char*)arg[ptr] + (n<N ? 1*stride
                                       : N*stride);
@@ -231,9 +220,9 @@ Program* compile(Builder* b) {
     for (int ptr = 0; ptr < b->args; ptr++) {
         if (b->stride[ptr] != 0) {
             *inst++ = (Inst) {
-                .op      = op_inc_arg,
-                .ptr     = ptr,
-                .imm.s32 = b->stride[ptr],
+                .op  = op_inc_arg,
+                .ptr = ptr,
+                .imm = b->stride[ptr],
             };
         }
     }
@@ -340,42 +329,30 @@ void st4_8(Builder* b, Ptr ptr, V8 x, V8 y, V8 z, V8 w) {
 }
 
 op_(splat_8) {
-    uint8_t imm = inst->imm.u8;
-
     Val val = {0};
-    val.u8 += imm;
+    val.u8 += (uint8_t)inst->imm;
     *v = val;
     next;
 }
 op_(splat_16) {
-    uint16_t imm = inst->imm.u16;
-
     Val val = {0};
-    val.u16 += imm;
+    val.u16 += (uint16_t)inst->imm;
     *v = val;
     next;
 }
 op_(splat_32) {
-    uint32_t imm = inst->imm.u32;
-
     Val val = {0};
-    val.u32 += imm;
+    val.u32 += (uint32_t)inst->imm;
     *v = val;
     next;
 }
-V8 splat_8(Builder* b, int imm) {
-    return (V8 ){ cse(b, (Inst){.op = op_splat_8 , .imm.s32 = imm}) };
-}
-V16 splat_16(Builder* b, int imm) {
-    return (V16){ cse(b, (Inst){.op = op_splat_16, .imm.s32 = imm}) };
-}
-V32 splat_32(Builder* b, int imm) {
-    return (V32){ cse(b, (Inst){.op = op_splat_32, .imm.s32 = imm}) };
-}
+V8  splat_8 (Builder* b, int imm) { return (V8 ){ cse(b, (Inst){.op=op_splat_8 , .imm=imm}) }; }
+V16 splat_16(Builder* b, int imm) { return (V16){ cse(b, (Inst){.op=op_splat_16, .imm=imm}) }; }
+V32 splat_32(Builder* b, int imm) { return (V32){ cse(b, (Inst){.op=op_splat_32, .imm=imm}) }; }
 
 op_(uniform_32) {
     uint32_t uni;
-    memcpy(&uni, (const char*)arg[inst->ptr] + inst->imm.s32, sizeof uni);
+    memcpy(&uni, (const char*)arg[inst->ptr] + inst->imm, sizeof uni);
 
     Val val = {0};
     val.u32 += uni;
@@ -383,7 +360,7 @@ op_(uniform_32) {
     next;
 }
 V32 uniform_32(Builder* b, Ptr ptr, int offset) {
-    return (V32){ cse(b, (Inst){.op = op_uniform_32, .ptr=ptr.ix, .imm.s32=offset}) };
+    return (V32){ cse(b, (Inst){.op = op_uniform_32, .ptr=ptr.ix, .imm=offset}) };
 }
 
 op_(add_F16) { v->f16 = cast(cast(v[inst->x].f16,f32) + cast(v[inst->y].f16,f32), f16); next; }
@@ -418,18 +395,18 @@ V32 mul_I32(Builder* b, V32 x, V32 y) {
     return (V32){ cse(b, (Inst){.op=op_mul_I32, .x=x.id, .y=y.id}) };
 }
 
-op_(shl_I32) { v->u32 = v[inst->x].u32 << inst->imm.s32; next; }
-op_(shr_S32) { v->s32 = v[inst->x].s32 >> inst->imm.s32; next; }
-op_(shr_U32) { v->u32 = v[inst->x].u32 >> inst->imm.s32; next; }
+op_(shl_I32) { v->u32 = v[inst->x].u32 << inst->imm; next; }
+op_(shr_S32) { v->s32 = v[inst->x].s32 >> inst->imm; next; }
+op_(shr_U32) { v->u32 = v[inst->x].u32 >> inst->imm; next; }
 
 V32 shl_I32(Builder* b, V32 x, int bits) {
-    return (V32){ cse(b, (Inst){.op=op_shl_I32, .x=x.id, .imm.s32=bits}) };
+    return (V32){ cse(b, (Inst){.op=op_shl_I32, .x=x.id, .imm=bits}) };
 }
 V32 shr_S32(Builder* b, V32 x, int bits) {
-    return (V32){ cse(b, (Inst){.op=op_shr_S32, .x=x.id, .imm.s32=bits}) };
+    return (V32){ cse(b, (Inst){.op=op_shr_S32, .x=x.id, .imm=bits}) };
 }
 V32 shr_U32(Builder* b, V32 x, int bits) {
-    return (V32){ cse(b, (Inst){.op=op_shr_U32, .x=x.id, .imm.s32=bits}) };
+    return (V32){ cse(b, (Inst){.op=op_shr_U32, .x=x.id, .imm=bits}) };
 }
 
 void run(const Program* p, int n, void* arg[]) {
