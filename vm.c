@@ -256,34 +256,46 @@ void drop(Program* p) {
     free(p);
 }
 
+op_(ld1_8) {
+    n<N ? memcpy(v, arg[inst->ptr], 1*1)
+        : memcpy(v, arg[inst->ptr], 1*N);
+    next;
+}
 op_(ld1_16) {
-    n<N ? memcpy(v, arg[inst->ptr], 1*2)
-        : memcpy(v, arg[inst->ptr], N*2);
+    n<N ? memcpy(v, arg[inst->ptr], 2*1)
+        : memcpy(v, arg[inst->ptr], 2*N);
     next;
 }
 op_(ld1_32) {
-    n<N ? memcpy(v, arg[inst->ptr], 1*4)
-        : memcpy(v, arg[inst->ptr], N*4);
+    n<N ? memcpy(v, arg[inst->ptr], 4*1)
+        : memcpy(v, arg[inst->ptr], 4*N);
     next;
 }
+V8  ld1_8 (Builder* b, Ptr ptr) { return (V8 ){ no_cse(b, (Inst){.op=op_ld1_8 , .ptr=ptr.ix}) }; }
 V16 ld1_16(Builder* b, Ptr ptr) { return (V16){ no_cse(b, (Inst){.op=op_ld1_16, .ptr=ptr.ix}) }; }
 V32 ld1_32(Builder* b, Ptr ptr) { return (V32){ no_cse(b, (Inst){.op=op_ld1_32, .ptr=ptr.ix}) }; }
 
+op_(st1_8) {
+    n<N ? memcpy(arg[inst->ptr], &v[inst->x], 1*1)
+        : memcpy(arg[inst->ptr], &v[inst->x], 1*N);
+    next;
+}
 op_(st1_16) {
-    n<N ? memcpy(arg[inst->ptr], &v[inst->x], 1*2)
-        : memcpy(arg[inst->ptr], &v[inst->x], N*2);
+    n<N ? memcpy(arg[inst->ptr], &v[inst->x], 2*1)
+        : memcpy(arg[inst->ptr], &v[inst->x], 2*N);
     next;
 }
 op_(st1_32) {
-    n<N ? memcpy(arg[inst->ptr], &v[inst->x], 1*4)
-        : memcpy(arg[inst->ptr], &v[inst->x], N*4);
+    n<N ? memcpy(arg[inst->ptr], &v[inst->x], 4*1)
+        : memcpy(arg[inst->ptr], &v[inst->x], 4*N);
     next;
 }
+void st1_8 (Builder* b, Ptr ptr, V8  x) { no_cse(b, (Inst){.op=op_st1_8 , .ptr=ptr.ix, .x=x.id}); }
 void st1_16(Builder* b, Ptr ptr, V16 x) { no_cse(b, (Inst){.op=op_st1_16, .ptr=ptr.ix, .x=x.id}); }
 void st1_32(Builder* b, Ptr ptr, V32 x) { no_cse(b, (Inst){.op=op_st1_32, .ptr=ptr.ix, .x=x.id}); }
 
 op_(ld4_8) {
-    uint8_t __attribute__((vector_size(4*N), aligned(1))) s;
+    uint8_t __attribute__((vector_size(4*1*N), aligned(1))) s;
     if (n<N) {
         memcpy(&s, arg[inst->ptr], 4);
         v[0].u8 = shuffle(s,s, SPLAT_0);
@@ -312,8 +324,8 @@ struct V8x4 ld4_8(Builder* b, Ptr ptr) {
 }
 
 op_(st4_8) {
-    typedef uint8_t __attribute__((vector_size(4  ), aligned(1))) S1;
-    typedef uint8_t __attribute__((vector_size(4*N), aligned(1))) SN;
+    typedef uint8_t __attribute__((vector_size(4*1  ), aligned(1))) S1;
+    typedef uint8_t __attribute__((vector_size(4*1*N), aligned(1))) SN;
     if (n<N) {
         *(S1*)arg[inst->ptr] = shuffle(shuffle(v[inst->x].u8, v[inst->y].u8, CONCAT),
                                        shuffle(v[inst->z].u8, v[inst->w].u8, CONCAT), ST4_1);
@@ -327,6 +339,14 @@ void st4_8(Builder* b, Ptr ptr, V8 x, V8 y, V8 z, V8 w) {
     no_cse(b, (Inst){.op=op_st4_8, .ptr=ptr.ix, .x=x.id, .y=y.id, .z=z.id, .w=w.id});
 }
 
+op_(splat_8) {
+    uint8_t imm = inst->imm.u8;
+
+    Val val = {0};
+    val.u8 += imm;
+    *v = val;
+    next;
+}
 op_(splat_16) {
     uint16_t imm = inst->imm.u16;
 
@@ -343,8 +363,11 @@ op_(splat_32) {
     *v = val;
     next;
 }
+V8 splat_8(Builder* b, int imm) {
+    return (V8 ){ cse(b, (Inst){.op = op_splat_8 , .imm.s32 = imm}) };
+}
 V16 splat_16(Builder* b, int imm) {
-    return (V16){ cse(b, (Inst){.op = op_splat_16, .imm.u16 = (uint16_t)imm}) };
+    return (V16){ cse(b, (Inst){.op = op_splat_16, .imm.s32 = imm}) };
 }
 V32 splat_32(Builder* b, int imm) {
     return (V32){ cse(b, (Inst){.op = op_splat_32, .imm.s32 = imm}) };
