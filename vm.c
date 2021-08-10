@@ -42,14 +42,9 @@ typedef __fp16   __attribute__((vector_size(2*N))) f16;
 typedef float    __attribute__((vector_size(4*N))) f32;
 
 typedef union {
-    s8  s8;
-    s16 s16;
-    s32 s32;
-    u8  u8;
-    u16 u16;
-    u32 u32;
-    f16 f16;
-    f32 f32;
+    s8 s8; s16 s16; s32 s32;
+    u8 u8; u16 u16; u32 u32;
+           f16 f16; f32 f32;
 } Val;
 
 typedef struct Inst {
@@ -207,19 +202,19 @@ Program* compile(Builder* b) {
         }
         for (int i = 0; i < b->insts; i++) {
             if (meta[i].live && meta[i].loop_dependent == loop_dependent) {
-                meta[i].reordered_id = p->vals++;
+                Inst* inst = p->inst + p->vals;
+                *inst = b->inst[i];
 
                 // Update inst with reordered argument IDs and translate to Program convention:
-                //    - 1-indexed ptr -> 0-indexed ptr
                 //    - relative value arguments, writing to *v and reading v[inst->x], etc.
-                Inst inst = b->inst[i];
-                if (inst.ptr) { inst.ptr--; }
-                if (inst.x) { inst.x = meta[inst.x-1].reordered_id - meta[i].reordered_id; }
-                if (inst.y) { inst.y = meta[inst.y-1].reordered_id - meta[i].reordered_id; }
-                if (inst.z) { inst.z = meta[inst.z-1].reordered_id - meta[i].reordered_id; }
-                if (inst.w) { inst.w = meta[inst.w-1].reordered_id - meta[i].reordered_id; }
+                //    - 1-indexed ptr -> 0-indexed ptr
+                if (inst->x  ) { inst->x = meta[inst->x-1].reordered_id - p->vals; }
+                if (inst->y  ) { inst->y = meta[inst->y-1].reordered_id - p->vals; }
+                if (inst->z  ) { inst->z = meta[inst->z-1].reordered_id - p->vals; }
+                if (inst->w  ) { inst->w = meta[inst->w-1].reordered_id - p->vals; }
+                if (inst->ptr) { inst->ptr--; }
 
-                p->inst[meta[i].reordered_id] = inst;
+                meta[i].reordered_id = p->vals++;
             }
         }
     }
