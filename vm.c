@@ -249,38 +249,27 @@ void drop(Program* p) {
     free(p);
 }
 
-op_(ld1_8) {
-    n<N ? memcpy(v, arg[inst->ptr], 1*1)
-        : memcpy(v, arg[inst->ptr], 1*N);
-    next;
-}
-op_(ld1_16) {
-    n<N ? memcpy(v, arg[inst->ptr], 2*1)
-        : memcpy(v, arg[inst->ptr], 2*N);
-    next;
-}
-op_(ld1_32) {
-    n<N ? memcpy(v, arg[inst->ptr], 4*1)
-        : memcpy(v, arg[inst->ptr], 4*N);
-    next;
-}
+op_(ld1_8 ) { n<N ? memcpy(v, arg[inst->ptr], 1<<0) : memcpy(v, arg[inst->ptr], N<<0); next; }
+op_(ld1_16) { n<N ? memcpy(v, arg[inst->ptr], 1<<1) : memcpy(v, arg[inst->ptr], N<<1); next; }
+op_(ld1_32) { n<N ? memcpy(v, arg[inst->ptr], 1<<2) : memcpy(v, arg[inst->ptr], N<<2); next; }
+
 V8  ld1_8 (Builder* b, Ptr ptr) { return no_cse(V8 , b, op_ld1_8 , .ptr=ptr.ix); }
 V16 ld1_16(Builder* b, Ptr ptr) { return no_cse(V16, b, op_ld1_16, .ptr=ptr.ix); }
 V32 ld1_32(Builder* b, Ptr ptr) { return no_cse(V32, b, op_ld1_32, .ptr=ptr.ix); }
 
 op_(st1_8) {
-    n<N ? memcpy(arg[inst->ptr], &v[inst->x], 1*1)
-        : memcpy(arg[inst->ptr], &v[inst->x], 1*N);
+    n<N ? memcpy(arg[inst->ptr], &v[inst->x], 1<<0)
+        : memcpy(arg[inst->ptr], &v[inst->x], N<<0);
     next;
 }
 op_(st1_16) {
-    n<N ? memcpy(arg[inst->ptr], &v[inst->x], 2*1)
-        : memcpy(arg[inst->ptr], &v[inst->x], 2*N);
+    n<N ? memcpy(arg[inst->ptr], &v[inst->x], 1<<1)
+        : memcpy(arg[inst->ptr], &v[inst->x], N<<1);
     next;
 }
 op_(st1_32) {
-    n<N ? memcpy(arg[inst->ptr], &v[inst->x], 4*1)
-        : memcpy(arg[inst->ptr], &v[inst->x], 4*N);
+    n<N ? memcpy(arg[inst->ptr], &v[inst->x], 1<<2)
+        : memcpy(arg[inst->ptr], &v[inst->x], N<<2);
     next;
 }
 void st1_8 (Builder* b, Ptr ptr, V8  x) { no_cse(V8 , b, op_st1_8 , .ptr=ptr.ix, .x=x.id); }
@@ -288,7 +277,7 @@ void st1_16(Builder* b, Ptr ptr, V16 x) { no_cse(V16, b, op_st1_16, .ptr=ptr.ix,
 void st1_32(Builder* b, Ptr ptr, V32 x) { no_cse(V32, b, op_st1_32, .ptr=ptr.ix, .x=x.id); }
 
 op_(ld4_8) {
-    uint8_t __attribute__((vector_size(4*1*N), aligned(1))) s;
+    uint8_t __attribute__((vector_size(4*N<<0), aligned(1))) s;
     if (n<N) {
         memcpy(&s, arg[inst->ptr], 4);
         v[0].u8 = shuffle(s,s, SPLAT_0);
@@ -317,8 +306,8 @@ struct V8x4 ld4_8(Builder* b, Ptr ptr) {
 }
 
 op_(st4_8) {
-    typedef uint8_t __attribute__((vector_size(4*1  ), aligned(1))) S1;
-    typedef uint8_t __attribute__((vector_size(4*1*N), aligned(1))) SN;
+    typedef uint8_t __attribute__((vector_size(4*1<<0), aligned(1))) S1;
+    typedef uint8_t __attribute__((vector_size(4*N<<0), aligned(1))) SN;
     if (n<N) {
         *(S1*)arg[inst->ptr] = shuffle(shuffle(v[inst->x].u8, v[inst->y].u8, CONCAT),
                                        shuffle(v[inst->z].u8, v[inst->w].u8, CONCAT), ST4_1);
