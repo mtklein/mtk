@@ -32,18 +32,24 @@
 #define cast    __builtin_convertvector
 #define shuffle __builtin_shufflevector
 
-typedef __fp16 __attribute__((vector_size(2*N))) f16;
-typedef float  __attribute__((vector_size(4*N))) f32;
+typedef int8_t   __attribute__((vector_size(1*N))) s8;
+typedef int16_t  __attribute__((vector_size(2*N))) s16;
+typedef int32_t  __attribute__((vector_size(4*N))) s32;
+typedef uint8_t  __attribute__((vector_size(1*N))) u8;
+typedef uint16_t __attribute__((vector_size(2*N))) u16;
+typedef uint32_t __attribute__((vector_size(4*N))) u32;
+typedef __fp16   __attribute__((vector_size(2*N))) f16;
+typedef float    __attribute__((vector_size(4*N))) f32;
 
 typedef union {
-    uint8_t  __attribute__((vector_size(1*N))) u8;
-    uint16_t __attribute__((vector_size(2*N))) u16;
-    uint32_t __attribute__((vector_size(4*N))) u32;
-    int8_t   __attribute__((vector_size(1*N))) s8;
-    int16_t  __attribute__((vector_size(2*N))) s16;
-    int32_t  __attribute__((vector_size(4*N))) s32;
-    f16                                        f16;
-    f32                                        f32;
+    s8  s8;
+    s16 s16;
+    s32 s32;
+    u8  u8;
+    u16 u16;
+    u32 u32;
+    f16 f16;
+    f32 f32;
 } Val;
 
 typedef struct Inst {
@@ -350,6 +356,24 @@ V8  splat_8 (Builder* b, int imm) { return (V8 ){ cse(b, (Inst){.op=op_splat_8 ,
 V16 splat_16(Builder* b, int imm) { return (V16){ cse(b, (Inst){.op=op_splat_16, .imm=imm}) }; }
 V32 splat_32(Builder* b, int imm) { return (V32){ cse(b, (Inst){.op=op_splat_32, .imm=imm}) }; }
 
+op_(uniform_8) {
+    uint8_t uni;
+    memcpy(&uni, (const char*)arg[inst->ptr] + inst->imm, sizeof uni);
+
+    Val val = {0};
+    val.u8 += uni;
+    *v = val;
+    next;
+}
+op_(uniform_16) {
+    uint16_t uni;
+    memcpy(&uni, (const char*)arg[inst->ptr] + inst->imm, sizeof uni);
+
+    Val val = {0};
+    val.u16 += uni;
+    *v = val;
+    next;
+}
 op_(uniform_32) {
     uint32_t uni;
     memcpy(&uni, (const char*)arg[inst->ptr] + inst->imm, sizeof uni);
@@ -359,9 +383,73 @@ op_(uniform_32) {
     *v = val;
     next;
 }
-V32 uniform_32(Builder* b, Ptr ptr, int offset) {
-    return (V32){ cse(b, (Inst){.op = op_uniform_32, .ptr=ptr.ix, .imm=offset}) };
+V8 uniform_8(Builder* b, Ptr ptr, int offset) {
+    return (V8){ cse(b, (Inst){.op=op_uniform_8, .ptr=ptr.ix, .imm=offset}) };
 }
+V16 uniform_16(Builder* b, Ptr ptr, int offset) {
+    return (V16){ cse(b, (Inst){.op=op_uniform_16, .ptr=ptr.ix, .imm=offset}) };
+}
+V32 uniform_32(Builder* b, Ptr ptr, int offset) {
+    return (V32){ cse(b, (Inst){.op=op_uniform_32, .ptr=ptr.ix, .imm=offset}) };
+}
+
+op_(cast_F16_to_S16) { v->s16 = cast(v[inst->x].f16, s16); next; }
+op_(cast_F16_to_U16) { v->u16 = cast(v[inst->x].f16, u16); next; }
+op_(cast_S16_to_F16) { v->f16 = cast(v[inst->x].s16, f16); next; }
+op_(cast_U16_to_F16) { v->f16 = cast(v[inst->x].u16, f16); next; }
+
+V16 cast_F16_to_S16(Builder* b, V16 x) {
+    return (V16){ cse(b, (Inst){.op=op_cast_F16_to_S16, .x=x.id}) };
+}
+V16 cast_F16_to_U16(Builder* b, V16 x) {
+    return (V16){ cse(b, (Inst){.op=op_cast_F16_to_U16, .x=x.id}) };
+}
+V16 cast_S16_to_F16(Builder* b, V16 x) {
+    return (V16){ cse(b, (Inst){.op=op_cast_S16_to_F16, .x=x.id}) };
+}
+V16 cast_U16_to_F16(Builder* b, V16 x) {
+    return (V16){ cse(b, (Inst){.op=op_cast_U16_to_F16, .x=x.id}) };
+}
+
+op_(cast_F32_to_S32) { v->s32 = cast(v[inst->x].f32, s32); next; }
+op_(cast_F32_to_U32) { v->u32 = cast(v[inst->x].f32, u32); next; }
+op_(cast_S32_to_F32) { v->f32 = cast(v[inst->x].s32, f32); next; }
+op_(cast_U32_to_F32) { v->f32 = cast(v[inst->x].u32, f32); next; }
+
+V32 cast_F32_to_S32(Builder* b, V32 x) {
+    return (V32){ cse(b, (Inst){.op=op_cast_F32_to_S32, .x=x.id}) };
+}
+V32 cast_F32_to_U32(Builder* b, V32 x) {
+    return (V32){ cse(b, (Inst){.op=op_cast_F32_to_U32, .x=x.id}) };
+}
+V32 cast_S32_to_F32(Builder* b, V32 x) {
+    return (V32){ cse(b, (Inst){.op=op_cast_S32_to_F32, .x=x.id}) };
+}
+V32 cast_U32_to_F32(Builder* b, V32 x) {
+    return (V32){ cse(b, (Inst){.op=op_cast_U32_to_F32, .x=x.id}) };
+}
+
+op_(widen_S8)  { v->s16 = cast(v->s8,  s16); next; }
+op_(widen_U8)  { v->u16 = cast(v->u8,  u16); next; }
+op_(widen_F16) { v->f32 = cast(v->f16, f32); next; }
+op_(widen_S16) { v->s32 = cast(v->s16, s32); next; }
+op_(widen_U16) { v->u32 = cast(v->u16, u32); next; }
+
+V16 widen_S8 (Builder* b, V8  x) { return (V16){ cse(b, (Inst){.op=op_widen_S8 , .x=x.id}) }; }
+V16 widen_U8 (Builder* b, V8  x) { return (V16){ cse(b, (Inst){.op=op_widen_U8 , .x=x.id}) }; }
+V32 widen_F16(Builder* b, V16 x) { return (V32){ cse(b, (Inst){.op=op_widen_F16, .x=x.id}) }; }
+V32 widen_S16(Builder* b, V16 x) { return (V32){ cse(b, (Inst){.op=op_widen_S16, .x=x.id}) }; }
+V32 widen_U16(Builder* b, V16 x) { return (V32){ cse(b, (Inst){.op=op_widen_U16, .x=x.id}) }; }
+
+
+op_(narrow_F32) { v->f16 = cast(v->f32, f16); next; }
+op_(narrow_I32) { v->u16 = cast(v->u32, u16); next; }
+op_(narrow_I16) { v->u8  = cast(v->u16,  u8); next; }
+
+V16 narrow_F32(Builder* b, V32 x) { return (V16){ cse(b, (Inst){.op=op_narrow_F32, .x=x.id}) }; }
+V16 narrow_I32(Builder* b, V32 x) { return (V16){ cse(b, (Inst){.op=op_narrow_I32, .x=x.id}) }; }
+V8  narrow_I16(Builder* b, V16 x) { return (V8 ){ cse(b, (Inst){.op=op_narrow_I16, .x=x.id}) }; }
+
 
 op_(add_F16) { v->f16 = cast(cast(v[inst->x].f16,f32) + cast(v[inst->y].f16,f32), f16); next; }
 op_(sub_F16) { v->f16 = cast(cast(v[inst->x].f16,f32) - cast(v[inst->y].f16,f32), f16); next; }
