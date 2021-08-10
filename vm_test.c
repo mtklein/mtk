@@ -165,6 +165,29 @@ static void test_structs() {
     }
 }
 
+static void test_constant_prop() {
+    Program* p;
+    {
+        Builder* b = builder();
+        Ptr ptr = arg(b,4);
+
+        V32 x = splat_32(b, 42),
+            y = splat_32(b, 47),
+            z =  add_I32(b,x,y),
+            w = splat_32(b, 89);
+        st1_32(b, ptr, z);
+
+        expect_eq(z.id, w.id);
+
+        p = compile(b);
+    }
+
+    int32_t xs[63];
+    run(p,len(xs),(void*[]){xs});
+    for (int i = 0; i < len(xs); i++) {
+        expect_eq(xs[i], 42+47);
+    }
+}
 
 void approx_jit(uint32_t dst[], uint32_t val, int n);
 
@@ -313,6 +336,7 @@ int main(int argc, char** argv) {
     test_cse();
     test_dce();
     test_structs();
+    test_constant_prop();
 
     bench(memset32_goal);
     bench(memset32_vm);

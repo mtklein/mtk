@@ -1,9 +1,9 @@
 #include "array.h"
+#include "assume.h"
 #include "checksum.h"
 #include "hash.h"
 #include "len.h"
 #include "vm.h"
-#include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,9 +28,11 @@
 #define SPLAT_2 2,2,2,2, 2,2,2,2, 2,2,2,2, 2,2,2,2
 #define SPLAT_3 3,3,3,3, 3,3,3,3, 3,3,3,3, 3,3,3,3
 
-
 #define cast    __builtin_convertvector
 #define shuffle __builtin_shufflevector
+
+#define op_(name) static void op_##name(int n, const Inst* inst, Val* v, void* arg[])
+#define next inst[1].op(n,inst+1,v+1,arg)
 
 typedef int8_t   __attribute__((vector_size(1*N))) s8;
 typedef int16_t  __attribute__((vector_size(2*N))) s16;
@@ -76,11 +78,35 @@ Ptr arg(Builder* b, int stride) {
 }
 
 #define no_cse(size,b,...) (V##size){no_cse_(b, (Inst){__VA_ARGS__})}
-#define    cse(size,b,...) (V##size){   cse_(b, (Inst){__VA_ARGS__})}
-
 static int no_cse_(Builder* b, Inst inst) {
     push(b->inst,b->insts) = inst;
     return b->insts;  // 1-indexed
+}
+
+
+op_(splat_8) {
+    Val val = {0};
+    val.u8 += (uint8_t)inst->imm;
+    *v = val;
+    next;
+}
+op_(splat_16) {
+    Val val = {0};
+    val.u16 += (uint16_t)inst->imm;
+    *v = val;
+    next;
+}
+op_(splat_32) {
+    Val val = {0};
+    val.u32 += (uint32_t)inst->imm;
+    *v = val;
+    next;
+}
+op_(done) {
+    (void)n;
+    (void)inst;
+    (void)v;
+    (void)arg;
 }
 
 typedef struct {
@@ -99,11 +125,51 @@ static bool inst_eq(int id, void* vctx) {
     return false;
 }
 
-static int cse_(Builder* b, Inst inst) {
+static bool is_splat(Inst inst) {
+    return inst.op == op_splat_8
+        || inst.op == op_splat_16
+        || inst.op == op_splat_32;
+}
+
+#define cse(size,b,...) (V##size){cse_(size, b, (Inst){__VA_ARGS__})}
+static int cse_(int size, Builder* b, Inst inst) {
     int h = (int)murmur3(0, &inst,sizeof inst);
 
     for (inst_eq_ctx ctx={.b=b,.inst=&inst}; lookup(&b->hash,h, inst_eq,&ctx);) {
         return ctx.id;
+    }
+
+    if (!is_splat(inst)
+            && !inst.ptr
+            && (!inst.x || is_splat(b->inst[inst.x-1]))
+            && (!inst.y || is_splat(b->inst[inst.y-1]))
+            && (!inst.z || is_splat(b->inst[inst.z-1]))
+            && (!inst.w || is_splat(b->inst[inst.w-1]))) {
+
+        Inst program[6], *p=program;
+        if (inst.x) { *p++ = b->inst[inst.x-1]; inst.x=(int)(p - program); }
+        if (inst.y) { *p++ = b->inst[inst.y-1]; inst.y=(int)(p - program); }
+        if (inst.z) { *p++ = b->inst[inst.z-1]; inst.z=(int)(p - program); }
+        if (inst.w) { *p++ = b->inst[inst.w-1]; inst.w=(int)(p - program); }
+
+        int id = (int)(p - program);
+        if (inst.x) { inst.x -= 1; inst.x -= id; }
+        if (inst.y) { inst.y -= 1; inst.y -= id; }
+        if (inst.z) { inst.z -= 1; inst.z -= id; }
+        if (inst.w) { inst.w -= 1; inst.w -= id; }
+
+        *p++ = inst;
+        *p++ = (Inst){.op=op_done};
+
+        Val v[5];
+        program->op(1,program,v,NULL);
+
+        switch (size) {
+            case 8 : return cse(8 , b, op_splat_8 , .imm=v[id].s8 [0]).id;
+            case 16: return cse(16, b, op_splat_16, .imm=v[id].s16[0]).id;
+            case 32: return cse(32, b, op_splat_32, .imm=v[id].s32[0]).id;
+        }
+        assume(false);
     }
 
     int id = no_cse_(b,inst);
@@ -111,15 +177,6 @@ static int cse_(Builder* b, Inst inst) {
     return id;
 }
 
-#define op_(name) static void op_##name(int n, const Inst* inst, Val* v, void* arg[])
-#define next inst[1].op(n,inst+1,v+1,arg)
-
-op_(done) {
-    (void)n;
-    (void)inst;
-    (void)v;
-    (void)arg;
-}
 op_(inc_arg_and_done) {
     (void)v;
 
@@ -218,7 +275,7 @@ Program* compile(Builder* b) {
             }
         }
     }
-    assert(p->vals == live_vals);
+    assume(p->vals == live_vals);
 
     Inst* inst = p->inst + p->vals;
     for (int ptr = 0; ptr < b->args; ptr++) {
@@ -235,7 +292,7 @@ Program* compile(Builder* b) {
     } else {
         *inst++ = (Inst){.op=op_done};
     }
-    assert(inst == p->inst + insts);
+    assume(inst == p->inst + insts);
 
     free(meta);
     free(b->inst);
@@ -321,24 +378,6 @@ void st4_8(Builder* b, Ptr ptr, V8 x, V8 y, V8 z, V8 w) {
     no_cse(8, b, op_st4_8, .ptr=ptr.ix, .x=x.id, .y=y.id, .z=z.id, .w=w.id);
 }
 
-op_(splat_8) {
-    Val val = {0};
-    val.u8 += (uint8_t)inst->imm;
-    *v = val;
-    next;
-}
-op_(splat_16) {
-    Val val = {0};
-    val.u16 += (uint16_t)inst->imm;
-    *v = val;
-    next;
-}
-op_(splat_32) {
-    Val val = {0};
-    val.u32 += (uint32_t)inst->imm;
-    *v = val;
-    next;
-}
 V8  splat_8 (Builder* b, int imm) { return cse(8 , b, op_splat_8 , .imm=imm); }
 V16 splat_16(Builder* b, int imm) { return cse(16, b, op_splat_16, .imm=imm); }
 V32 splat_32(Builder* b, int imm) { return cse(32, b, op_splat_32, .imm=imm); }
