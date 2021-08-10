@@ -77,11 +77,11 @@ Ptr arg(Builder* b, int stride) {
     return (Ptr){b->args};  // 1-indexed
 }
 
-#define no_cse(size,b,...) (V##size){no_cse_(b, (Inst){__VA_ARGS__})}
 static int no_cse_(Builder* b, Inst inst) {
     push(b->inst,b->insts) = inst;
     return b->insts;  // 1-indexed
 }
+#define no_cse(size,b,...) (V##size){no_cse_(b, (Inst){__VA_ARGS__})}
 
 
 op_(splat_8) {
@@ -131,7 +131,6 @@ static bool is_splat(Inst inst) {
         || inst.op == op_splat_32;
 }
 
-#define cse(size,b,...) (V##size){cse_(size, b, (Inst){__VA_ARGS__})}
 static int cse_(int size, Builder* b, Inst inst) {
     int h = (int)murmur3(0, &inst,sizeof inst);
 
@@ -139,35 +138,28 @@ static int cse_(int size, Builder* b, Inst inst) {
         return ctx.id;
     }
 
-    if (!is_splat(inst)
-            && !inst.ptr
-            && (!inst.x || is_splat(b->inst[inst.x-1]))
-            && (!inst.y || is_splat(b->inst[inst.y-1]))
-            && (!inst.z || is_splat(b->inst[inst.z-1]))
-            && (!inst.w || is_splat(b->inst[inst.w-1]))) {
+    while (!is_splat(inst) && !inst.ptr) {
+        Inst constant_prop[6], *p=constant_prop;
+        if (inst.x && !is_splat(*p++ = b->inst[inst.x-1])) { break; }
+        if (inst.y && !is_splat(*p++ = b->inst[inst.y-1])) { break; }
+        if (inst.z && !is_splat(*p++ = b->inst[inst.z-1])) { break; }
+        if (inst.w && !is_splat(*p++ = b->inst[inst.w-1])) { break; }
 
-        Inst program[6], *p=program;
-        if (inst.x) { *p++ = b->inst[inst.x-1]; inst.x=(int)(p - program); }
-        if (inst.y) { *p++ = b->inst[inst.y-1]; inst.y=(int)(p - program); }
-        if (inst.z) { *p++ = b->inst[inst.z-1]; inst.z=(int)(p - program); }
-        if (inst.w) { *p++ = b->inst[inst.w-1]; inst.w=(int)(p - program); }
-
-        int id = (int)(p - program);
-        if (inst.x) { inst.x -= 1; inst.x -= id; }
-        if (inst.y) { inst.y -= 1; inst.y -= id; }
-        if (inst.z) { inst.z -= 1; inst.z -= id; }
-        if (inst.w) { inst.w -= 1; inst.w -= id; }
-
+        int id = (int)(p - constant_prop);
+        if (inst.x) { inst.x = 0-id; }
+        if (inst.y) { inst.y = 1-id; }
+        if (inst.z) { inst.z = 2-id; }
+        if (inst.w) { inst.w = 3-id; }
         *p++ = inst;
         *p++ = (Inst){.op=op_done};
 
         Val v[5];
-        program->op(1,program,v,NULL);
+        constant_prop->op(1,constant_prop,v,NULL);
 
         switch (size) {
-            case 8 : return cse(8 , b, op_splat_8 , .imm=v[id].s8 [0]).id;
-            case 16: return cse(16, b, op_splat_16, .imm=v[id].s16[0]).id;
-            case 32: return cse(32, b, op_splat_32, .imm=v[id].s32[0]).id;
+            case 8 : return cse_(8 , b, (Inst){op_splat_8 , .imm=v[id].s8 [0]});
+            case 16: return cse_(16, b, (Inst){op_splat_16, .imm=v[id].s16[0]});
+            case 32: return cse_(32, b, (Inst){op_splat_32, .imm=v[id].s32[0]});
         }
         assume(false);
     }
@@ -176,6 +168,7 @@ static int cse_(int size, Builder* b, Inst inst) {
     insert(&b->hash,h,id);
     return id;
 }
+#define cse(size,b,...) (V##size){cse_(size, b, (Inst){__VA_ARGS__})}
 
 op_(inc_arg_and_done) {
     (void)v;
