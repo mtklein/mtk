@@ -715,7 +715,7 @@ _splat_8:
 	ldp	x29, x30, [sp, #0x20]
 	add	sp, sp, #0x30
 	ret
-_cse:
+_cse_:
 	sub	sp, sp, #0x50
 	stp	x22, x21, [sp, #0x20]
 	stp	x20, x19, [sp, #0x30]
@@ -1717,7 +1717,7 @@ _compile.cold.1:
 	add	x1, x1, #0x0
 	adrp	x3, 0 ; 0x1000
 	add	x3, x3, #0x0
-	mov	w2, #0xf0
+	mov	w2, #0xf3
 	bl	0x1974
 _compile.cold.2:
 	stp	x29, x30, [sp, #-0x10]!
@@ -1728,5 +1728,5 @@ _compile.cold.2:
 	add	x1, x1, #0x0
 	adrp	x3, 0 ; 0x1000
 	add	x3, x3, #0x0
-	mov	w2, #0xdf
+	mov	w2, #0xe2
 	bl	0x199c
