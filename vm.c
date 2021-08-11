@@ -4,7 +4,6 @@
 #include "hash.h"
 #include "len.h"
 #include "vm.h"
-#include <math.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -135,7 +134,7 @@ static bool is_splat(Inst inst) {
 
 static bool equiv(float x, float y) {
     return (x <= y && y <= x)
-        || (isnan(x) && isnan(y));
+        || (x != x && y != y);
 }
 
 static bool is_F16_imm(const Builder* b, V16 x, float imm) {

@@ -1580,103 +1580,79 @@ _op_narrow_I16:
 	ldr	x4, [x1, #0x20]!
 	br	x4
 _add_F16:
-	sub	sp, sp, #0x50
-	stp	x22, x21, [sp, #0x20]
-	stp	x20, x19, [sp, #0x30]
-	stp	x29, x30, [sp, #0x40]
-	add	x29, sp, #0x40
-	mov	x20, x2
-	mov	x21, x1
-	mov	x19, x0
-	and	x1, x1, #0xffffffff
-	movi.2d	v0, #0000000000000000
-	bl	0x17cc
-	tbnz	w0, #0x0, 0x1898
-	and	x1, x20, #0xffffffff
-	movi.2d	v0, #0000000000000000
-	mov	x0, x19
-	bl	0x17e0
-	tbz	w0, #0x0, 0x17f0
-	mov	x20, x21
-	b	0x1898
-	ldr	x8, [x19]
-	mov	x9, #-0x100000000
-	add	x11, x9, x21, lsl #32
-	asr	x10, x11, #27
-	ldr	x12, [x8, x10]
+	sub	sp, sp, #0x30
+	stp	x29, x30, [sp, #0x20]
+	add	x29, sp, #0x20
+	mov	x8, x0
+	ldr	x9, [x0]
+	mov	x12, #-0x100000000
+	add	x11, x12, x1, lsl #32
+	asr	x10, x11, #32
+	asr	x11, x11, #27
+	ldr	x11, [x9, x11]
+	adrp	x13, 0 ; 0x1000
+	add	x13, x13, #0x0
+	cmp	x11, x13
+	adrp	x14, 0 ; 0x1000
+	add	x14, x14, #0x0
+	ccmp	x11, x14, #0x4, ne
+	adrp	x15, 0 ; 0x1000
+	add	x15, x15, #0x0
+	ccmp	x11, x15, #0x4, ne
+	b.ne	0x1804
+	add	x16, x9, x10, lsl #5
+	ldr	h0, [x16, #0x1c]
+	fcmp	h0, #0.0
+	b.eq	0x18bc
+	add	x16, x12, x2, lsl #32
+	asr	x12, x16, #32
+	asr	x16, x16, #27
+	ldr	x16, [x9, x16]
+	cmp	x16, x13
+	ccmp	x16, x14, #0x4, ne
+	ccmp	x16, x15, #0x4, ne
+	b.ne	0x1834
+	add	x13, x9, x12, lsl #5
+	ldr	h0, [x13, #0x1c]
+	fcmp	h0, #0.0
+	b.eq	0x1880
+	adrp	x13, 0 ; 0x1000
+	add	x13, x13, #0x0
+	cmp	x11, x13
+	b.eq	0x1864
+	cmp	x16, x13
+	b.eq	0x1888
+	adrp	x9, 0 ; 0x1000
+	add	x9, x9, #0x0
+	str	x9, [sp]
+	stp	w1, w2, [sp, #0x8]
+	stp	xzr, xzr, [sp, #0x10]
+	b	0x18a8
+	add	x9, x9, x10, lsl #5
+	ldr	x9, [x9, #0x8]
 	adrp	x10, 0 ; 0x1000
 	add	x10, x10, #0x0
-	cmp	x12, x10
-	b.eq	0x1840
-	add	x9, x9, x20, lsl #32
-	asr	x11, x9, #27
-	ldr	x11, [x8, x11]
-	cmp	x11, x10
-	b.eq	0x1860
-	adrp	x8, 0 ; 0x1000
-	add	x8, x8, #0x0
-	str	x8, [sp]
-	stp	w21, w20, [sp, #0x8]
-	stp	xzr, xzr, [sp, #0x10]
-	b	0x1884
-	asr	x9, x11, #32
-	add	x8, x8, x9, lsl #5
-	ldr	x8, [x8, #0x8]
-	adrp	x9, 0 ; 0x1000
-	add	x9, x9, #0x0
-	stp	x9, x8, [sp]
-	str	w20, [sp, #0x10]
-	b	0x187c
-	asr	x9, x9, #32
-	add	x8, x8, x9, lsl #5
-	ldr	x8, [x8, #0x8]
-	adrp	x9, 0 ; 0x1000
-	add	x9, x9, #0x0
-	stp	x9, x8, [sp]
-	str	w21, [sp, #0x10]
+	stp	x10, x9, [sp]
+	str	w2, [sp, #0x10]
+	b	0x18a0
+	mov	x2, x1
+	b	0x18bc
+	add	x9, x9, x12, lsl #5
+	ldr	x9, [x9, #0x8]
+	adrp	x10, 0 ; 0x1000
+	add	x10, x10, #0x0
+	stp	x10, x9, [sp]
+	str	w1, [sp, #0x10]
 	str	wzr, [sp, #0x14]
 	str	xzr, [sp, #0x18]
 	mov	x2, sp
 	mov	w0, #0x10
-	mov	x1, x19
-	bl	0x1890
-	mov	x20, x0
-	mov	w0, w20
-	ldp	x29, x30, [sp, #0x40]
-	ldp	x20, x19, [sp, #0x30]
-	ldp	x22, x21, [sp, #0x20]
-	add	sp, sp, #0x50
-	ret
-_is_F16_imm:
-	ldr	x8, [x0]
-	mov	x9, #-0x100000000
-	add	x9, x9, x1, lsl #32
-	asr	x10, x9, #27
-	ldr	x10, [x8, x10]
-	adrp	x11, 0 ; 0x1000
-	add	x11, x11, #0x0
-	cmp	x10, x11
-	adrp	x11, 0 ; 0x1000
-	add	x11, x11, #0x0
-	ccmp	x10, x11, #0x4, ne
-	adrp	x11, 0 ; 0x1000
-	add	x11, x11, #0x0
-	ccmp	x10, x11, #0x4, ne
-	b.ne	0x190c
-	asr	x9, x9, #32
-	add	x8, x8, x9, lsl #5
-	ldr	h1, [x8, #0x1c]
-	fcvt	s2, h1
-	fcmp	s2, s0
-	b.eq	0x1914
-	fcmp	h1, h1
-	b.vs	0x191c
-	mov	w0, #0x0
-	ret
-	mov	w0, #0x1
-	ret
-	fcmp	s0, s0
-	cset	w0, vs
+	mov	x1, x8
+	bl	0x18b4
+	mov	x2, x0
+	mov	w0, w2
+	ldp	x29, x30, [sp, #0x20]
+	add	sp, sp, #0x30
 	ret
 _op_mul_F16:
 	ldpsw	x8, x9, [x1, #0x8]
@@ -1715,65 +1691,69 @@ _op_add_F16:
 	ldr	x4, [x1, #0x20]!
 	br	x4
 _sub_F16:
-	sub	sp, sp, #0x50
-	stp	x22, x21, [sp, #0x20]
-	stp	x20, x19, [sp, #0x30]
-	stp	x29, x30, [sp, #0x40]
-	add	x29, sp, #0x40
-	mov	x21, x2
-	mov	x20, x1
-	mov	x19, x0
-	and	x1, x2, #0xffffffff
-	movi.2d	v0, #0000000000000000
-	bl	0x19d4
-	tbnz	w0, #0x0, 0x1a84
-	ldr	x8, [x19]
-	mov	x9, #-0x100000000
-	add	x11, x9, x20, lsl #32
-	asr	x10, x11, #27
-	ldr	x12, [x8, x10]
+	sub	sp, sp, #0x30
+	stp	x29, x30, [sp, #0x20]
+	add	x29, sp, #0x20
+	mov	x8, x0
+	ldr	x9, [x0]
+	mov	x12, #-0x100000000
+	add	x11, x12, x2, lsl #32
+	asr	x10, x11, #32
+	asr	x11, x11, #27
+	ldr	x11, [x9, x11]
+	adrp	x13, 0 ; 0x1000
+	add	x13, x13, #0x0
+	cmp	x11, x13
+	adrp	x13, 0 ; 0x1000
+	add	x13, x13, #0x0
+	ccmp	x11, x13, #0x4, ne
+	adrp	x13, 0 ; 0x1000
+	add	x13, x13, #0x0
+	ccmp	x11, x13, #0x4, ne
+	b.ne	0x19b0
+	add	x13, x9, x10, lsl #5
+	ldr	h0, [x13, #0x1c]
+	fcmp	h0, #0.0
+	b.eq	0x1a40
+	add	x12, x12, x1, lsl #32
+	asr	x13, x12, #27
+	ldr	x14, [x9, x13]
+	adrp	x13, 0 ; 0x1000
+	add	x13, x13, #0x0
+	cmp	x14, x13
+	b.eq	0x19ec
+	cmp	x11, x13
+	b.eq	0x1a0c
+	adrp	x9, 0 ; 0x1000
+	add	x9, x9, #0x0
+	str	x9, [sp]
+	stp	w1, w2, [sp, #0x8]
+	stp	xzr, xzr, [sp, #0x10]
+	b	0x1a2c
+	asr	x10, x12, #32
+	add	x9, x9, x10, lsl #5
+	ldr	x9, [x9, #0x8]
 	adrp	x10, 0 ; 0x1000
 	add	x10, x10, #0x0
-	cmp	x12, x10
-	b.eq	0x1a2c
-	add	x9, x9, x21, lsl #32
-	asr	x11, x9, #27
-	ldr	x11, [x8, x11]
-	cmp	x11, x10
-	b.eq	0x1a4c
-	adrp	x8, 0 ; 0x1000
-	add	x8, x8, #0x0
-	str	x8, [sp]
-	stp	w20, w21, [sp, #0x8]
-	stp	xzr, xzr, [sp, #0x10]
-	b	0x1a70
-	asr	x9, x11, #32
-	add	x8, x8, x9, lsl #5
-	ldr	x8, [x8, #0x8]
-	adrp	x9, 0 ; 0x1000
-	add	x9, x9, #0x0
-	stp	x9, x8, [sp]
-	str	w21, [sp, #0x10]
-	b	0x1a68
-	asr	x9, x9, #32
-	add	x8, x8, x9, lsl #5
-	ldr	x8, [x8, #0x8]
-	adrp	x9, 0 ; 0x1000
-	add	x9, x9, #0x0
-	stp	x9, x8, [sp]
-	str	w20, [sp, #0x10]
+	stp	x10, x9, [sp]
+	str	w2, [sp, #0x10]
+	b	0x1a24
+	add	x9, x9, x10, lsl #5
+	ldr	x9, [x9, #0x8]
+	adrp	x10, 0 ; 0x1000
+	add	x10, x10, #0x0
+	stp	x10, x9, [sp]
+	str	w1, [sp, #0x10]
 	str	wzr, [sp, #0x14]
 	str	xzr, [sp, #0x18]
 	mov	x2, sp
 	mov	w0, #0x10
-	mov	x1, x19
-	bl	0x1a7c
-	mov	x20, x0
-	mov	w0, w20
-	ldp	x29, x30, [sp, #0x40]
-	ldp	x20, x19, [sp, #0x30]
-	ldp	x22, x21, [sp, #0x20]
-	add	sp, sp, #0x50
+	mov	x1, x8
+	bl	0x1a38
+	mov	x1, x0
+	mov	w0, w1
+	ldp	x29, x30, [sp, #0x20]
+	add	sp, sp, #0x30
 	ret
 _op_mls_F16:
 	ldpsw	x8, x9, [x1, #0x8]
@@ -1817,69 +1797,99 @@ _op_sub_F16:
 	ldr	x4, [x1, #0x20]!
 	br	x4
 _mul_F16:
-	sub	sp, sp, #0x50
-	stp	x22, x21, [sp, #0x20]
-	stp	x20, x19, [sp, #0x30]
-	stp	x29, x30, [sp, #0x40]
-	add	x29, sp, #0x40
-	mov	x19, x2
-	mov	x21, x1
-	mov	x20, x0
-	and	x1, x1, #0xffffffff
-	fmov	s0, #1.00000000
-	bl	0x1b5c
-	tbnz	w0, #0x0, 0x1ba8
-	and	x1, x19, #0xffffffff
-	fmov	s0, #1.00000000
-	mov	x0, x20
-	bl	0x1b70
-	tbz	w0, #0x0, 0x1b80
-	mov	x19, x21
-	b	0x1ba8
-	adrp	x8, 0 ; 0x1000
-	add	x8, x8, #0x0
-	str	x8, [sp]
-	stp	w21, w19, [sp, #0x8]
+	sub	sp, sp, #0x30
+	stp	x29, x30, [sp, #0x20]
+	add	x29, sp, #0x20
+	mov	x8, x0
+	ldr	x9, [x0]
+	mov	x10, #-0x100000000
+	add	x14, x10, x1, lsl #32
+	asr	x11, x14, #27
+	ldr	x15, [x9, x11]
+	adrp	x11, 0 ; 0x1000
+	add	x11, x11, #0x0
+	cmp	x15, x11
+	adrp	x12, 0 ; 0x1000
+	add	x12, x12, #0x0
+	ccmp	x15, x12, #0x4, ne
+	adrp	x13, 0 ; 0x1000
+	add	x13, x13, #0x0
+	ccmp	x15, x13, #0x4, ne
+	b.ne	0x1b4c
+	asr	x14, x14, #32
+	add	x14, x9, x14, lsl #5
+	ldr	h0, [x14, #0x1c]
+	fmov	h1, #1.00000000
+	fcmp	h0, h1
+	b.eq	0x1bb0
+	add	x10, x10, x2, lsl #32
+	asr	x14, x10, #27
+	ldr	x14, [x9, x14]
+	cmp	x14, x11
+	ccmp	x14, x12, #0x4, ne
+	ccmp	x14, x13, #0x4, ne
+	b.ne	0x1b80
+	asr	x10, x10, #32
+	add	x9, x9, x10, lsl #5
+	ldr	h0, [x9, #0x1c]
+	fmov	h1, #1.00000000
+	fcmp	h0, h1
+	b.eq	0x1bac
+	adrp	x9, 0 ; 0x1000
+	add	x9, x9, #0x0
+	str	x9, [sp]
+	stp	w1, w2, [sp, #0x8]
 	stp	xzr, xzr, [sp, #0x10]
 	mov	x2, sp
 	mov	w0, #0x10
-	mov	x1, x20
+	mov	x1, x8
 	bl	0x1ba0
-	mov	x19, x0
-	mov	w0, w19
-	ldp	x29, x30, [sp, #0x40]
-	ldp	x20, x19, [sp, #0x30]
-	ldp	x22, x21, [sp, #0x20]
-	add	sp, sp, #0x50
+	mov	x2, x0
+	b	0x1bb0
+	mov	x2, x1
+	mov	w0, w2
+	ldp	x29, x30, [sp, #0x20]
+	add	sp, sp, #0x30
 	ret
 _div_F16:
-	sub	sp, sp, #0x50
-	stp	x22, x21, [sp, #0x20]
-	stp	x20, x19, [sp, #0x30]
-	stp	x29, x30, [sp, #0x40]
-	add	x29, sp, #0x40
-	mov	x21, x2
-	mov	x20, x1
-	mov	x19, x0
-	and	x1, x2, #0xffffffff
-	fmov	s0, #1.00000000
-	bl	0x1be8
-	tbnz	w0, #0x0, 0x1c18
-	adrp	x8, 0 ; 0x1000
-	add	x8, x8, #0x0
-	str	x8, [sp]
-	stp	w20, w21, [sp, #0x8]
+	sub	sp, sp, #0x30
+	stp	x29, x30, [sp, #0x20]
+	add	x29, sp, #0x20
+	mov	x8, x0
+	ldr	x9, [x0]
+	mov	x10, #-0x100000000
+	add	x10, x10, x2, lsl #32
+	asr	x11, x10, #27
+	ldr	x11, [x9, x11]
+	adrp	x12, 0 ; 0x1000
+	add	x12, x12, #0x0
+	cmp	x11, x12
+	adrp	x12, 0 ; 0x1000
+	add	x12, x12, #0x0
+	ccmp	x11, x12, #0x4, ne
+	adrp	x12, 0 ; 0x1000
+	add	x12, x12, #0x0
+	ccmp	x11, x12, #0x4, ne
+	b.ne	0x1c24
+	asr	x10, x10, #32
+	add	x9, x9, x10, lsl #5
+	ldr	h0, [x9, #0x1c]
+	fmov	h1, #1.00000000
+	fcmp	h0, h1
+	b.eq	0x1c4c
+	adrp	x9, 0 ; 0x1000
+	add	x9, x9, #0x0
+	str	x9, [sp]
+	stp	w1, w2, [sp, #0x8]
 	stp	xzr, xzr, [sp, #0x10]
 	mov	x2, sp
 	mov	w0, #0x10
-	mov	x1, x19
-	bl	0x1c10
-	mov	x20, x0
-	mov	w0, w20
-	ldp	x29, x30, [sp, #0x40]
-	ldp	x20, x19, [sp, #0x30]
-	ldp	x22, x21, [sp, #0x20]
-	add	sp, sp, #0x50
+	mov	x1, x8
+	bl	0x1c44
+	mov	x1, x0
+	mov	w0, w1
+	ldp	x29, x30, [sp, #0x20]
+	add	sp, sp, #0x30
 	ret
 _op_div_F16:
 	ldpsw	x8, x9, [x1, #0x8]
@@ -1905,7 +1915,7 @@ _add_I32:
 	mov	x2, sp
 	mov	w0, #0x20
 	mov	x1, x8
-	bl	0x1c88
+	bl	0x1cb4
 	mov	w0, w0
 	ldp	x29, x30, [sp, #0x20]
 	add	sp, sp, #0x30
@@ -1939,7 +1949,7 @@ _sub_I32:
 	mov	x2, sp
 	mov	w0, #0x20
 	mov	x1, x8
-	bl	0x1d08
+	bl	0x1d34
 	mov	w0, w0
 	ldp	x29, x30, [sp, #0x20]
 	add	sp, sp, #0x30
@@ -1973,7 +1983,7 @@ _mul_I32:
 	mov	x2, sp
 	mov	w0, #0x20
 	mov	x1, x8
-	bl	0x1d88
+	bl	0x1db4
 	mov	w0, w0
 	ldp	x29, x30, [sp, #0x20]
 	add	sp, sp, #0x30
@@ -2009,7 +2019,7 @@ _shl_I32:
 	mov	x2, sp
 	mov	w0, #0x20
 	mov	x1, x8
-	bl	0x1e10
+	bl	0x1e3c
 	mov	w0, w0
 	ldp	x29, x30, [sp, #0x20]
 	add	sp, sp, #0x30
@@ -2044,7 +2054,7 @@ _shr_S32:
 	mov	x2, sp
 	mov	w0, #0x20
 	mov	x1, x8
-	bl	0x1e94
+	bl	0x1ec0
 	mov	w0, w0
 	ldp	x29, x30, [sp, #0x20]
 	add	sp, sp, #0x30
@@ -2080,7 +2090,7 @@ _shr_U32:
 	mov	x2, sp
 	mov	w0, #0x20
 	mov	x1, x8
-	bl	0x1f1c
+	bl	0x1f48
 	mov	w0, w0
 	ldp	x29, x30, [sp, #0x20]
 	add	sp, sp, #0x30
@@ -2118,14 +2128,14 @@ _run:
 	stur	x8, [x29, #-0x48]
 	ldr	w8, [x0]
 	cmp	w8, #0x11
-	b.lt	0x1fc4
+	b.lt	0x1ff0
 	lsl	x0, x8, #6
-	bl	0x1fb4
+	bl	0x1fe0
 	mov	x21, x0
-	cbnz	w20, 0x1fcc
-	b	0x2010
+	cbnz	w20, 0x1ff8
+	b	0x203c
 	mov	x21, sp
-	cbz	w20, 0x2010
+	cbz	w20, 0x203c
 	ldrsw	x8, [x22, #0x4]
 	add	x9, x22, x8, lsl #5
 	add	x23, x9, #0x8
@@ -2142,18 +2152,18 @@ _run:
 	mov	x2, x24
 	mov	x1, x23
 	adds	w20, w8, w20
-	b.ne	0x1fe8
+	b.ne	0x2014
 	mov	x8, sp
 	cmp	x21, x8
-	b.eq	0x2024
+	b.eq	0x2050
 	mov	x0, x21
-	bl	0x2020
+	bl	0x204c
 	ldur	x8, [x29, #-0x48]
 	adrp	x9, 0 ; 0x2000
 	ldr	x9, [x9]
 	ldr	x9, [x9]
 	cmp	x9, x8
-	b.ne	0x2058
+	b.ne	0x2084
 	add	sp, sp, #0x410
 	ldp	x29, x30, [sp, #0x40]
 	ldp	x20, x19, [sp, #0x30]
@@ -2161,7 +2171,7 @@ _run:
 	ldp	x24, x23, [sp, #0x10]
 	ldp	x28, x27, [sp], #0x50
 	ret
-	bl	0x2058
+	bl	0x2084
 _inst_eq:
 	ldp	x9, x8, [x1]
 	ldr	x9, [x9]
@@ -2178,7 +2188,7 @@ _inst_eq:
 	orr	x9, x10, x11
 	orr	x8, x12, x8
 	orr	x8, x9, x8
-	cbz	x8, 0x20a4
+	cbz	x8, 0x20d0
 	mov	w0, #0x0
 	ret
 	str	w0, [x1, #0x10]
@@ -2193,8 +2203,8 @@ _compile.cold.1:
 	add	x1, x1, #0x0
 	adrp	x3, 0 ; 0x2000
 	add	x3, x3, #0x0
-	mov	w2, #0x130
-	bl	0x20d4
+	mov	w2, #0x12f
+	bl	0x2100
 _compile.cold.2:
 	stp	x29, x30, [sp, #-0x10]!
 	mov	x29, sp
@@ -2204,8 +2214,8 @@ _compile.cold.2:
 	add	x1, x1, #0x0
 	adrp	x3, 0 ; 0x2000
 	add	x3, x3, #0x0
-	mov	w2, #0x11f
-	bl	0x20fc
+	mov	w2, #0x11e
+	bl	0x2128
 _cse_.cold.1:
 	stp	x29, x30, [sp, #-0x10]!
 	mov	x29, sp
@@ -2215,5 +2225,5 @@ _cse_.cold.1:
 	add	x1, x1, #0x0
 	adrp	x3, 0 ; 0x2000
 	add	x3, x3, #0x0
-	mov	w2, #0xb4
-	bl	0x2124
+	mov	w2, #0xb3
+	bl	0x2150
