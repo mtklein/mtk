@@ -23,10 +23,7 @@
               8,24,40,56,  9,25,41,57, 10,26,42,58, 11,27,43,59, \
              12,28,44,60, 13,29,45,61, 14,30,46,62, 15,31,47,63
 
-#define SPLAT_0 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0
-#define SPLAT_1 1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1
-#define SPLAT_2 2,2,2,2, 2,2,2,2, 2,2,2,2, 2,2,2,2
-#define SPLAT_3 3,3,3,3, 3,3,3,3, 3,3,3,3, 3,3,3,3
+#define WHATEVER -1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1
 
 #define cast    __builtin_convertvector
 #define shuffle __builtin_shufflevector
@@ -330,10 +327,10 @@ op_(ld4_8) {
     uint8_t __attribute__((vector_size(4*N<<0), aligned(1))) s;
     if (n<N) {
         memcpy(&s, arg[inst->ptr], 4);
-        v[0].u8 = shuffle(s,s, SPLAT_0);
-        v[1].u8 = shuffle(s,s, SPLAT_1);
-        v[2].u8 = shuffle(s,s, SPLAT_2);
-        v[3].u8 = shuffle(s,s, SPLAT_3);
+        v[0].u8 = shuffle(s,s, 0,WHATEVER);
+        v[1].u8 = shuffle(s,s, 1,WHATEVER);
+        v[2].u8 = shuffle(s,s, 2,WHATEVER);
+        v[3].u8 = shuffle(s,s, 3,WHATEVER);
     } else {
         memcpy(&s, arg[inst->ptr], sizeof s);
         v[0].u8 = shuffle(s,s, LD4_0);
