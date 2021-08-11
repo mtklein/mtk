@@ -42,9 +42,6 @@ rule link
 
 rule run
     command = $runtime ./$in > $out
-
-rule disasm
-    command = otool -tvdX $in > $out
 '''
 
 with open('build.ninja', 'w') as f:
@@ -65,8 +62,6 @@ with open('build.ninja', 'w') as f:
             p('    cc      = {cc}')
             p('build {full}_test.ok: run {full}_test')
             p('    runtime = {runtime}')
-            if mode == '':
-                p('build asm/{target}.S: disasm {full}.o')
 
 rc = os.system(' '.join(['ninja'] + sys.argv[1:]))
 os.remove('build.ninja')
