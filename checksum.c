@@ -43,8 +43,13 @@
     }
 #endif
 
-#pragma clang attribute push(__attribute__((no_sanitize("unsigned-integer-overflow"))), \
-                             apply_to=function)
+#pragma clang diagnostic ignored "-Wunknown-sanitizers"
+
+#pragma clang attribute push
+#pragma clang attribute( \
+        __attribute__((no_sanitize("unsigned-integer-overflow"))), apply_to=function)
+#pragma clang attribute( \
+        __attribute__((no_sanitize("unsigned-shift-base"))), apply_to=function)
 
 uint32_t crc32(const void* vptr, size_t len) {
     uint32_t hash = 0xffffffff;

@@ -12,13 +12,15 @@ deps = {
     'vm':       ['array', 'checksum', 'hash'],
 }
 
-native_modes = {
-    '':       '$clang -Os',
-    'lto':    '$clang -Os -flto',
-    'san':    '$clang -O0 -fsanitize=address,integer,undefined -fno-sanitize-recover=all',
-    'x86_64': '$clang -Os -arch x86_64 -arch x86_64h -momit-leaf-frame-pointer',
+apple_modes = {
+    '':       '$apple -Os',
+    'lto':    '$apple -Os -flto',
+    'san':    '$apple -O0 -fsanitize=address,integer,undefined -fno-sanitize-recover=all',
+    'x86_64': '$apple -Os -arch x86_64 -arch x86_64h -momit-leaf-frame-pointer',
 }
-
+brew_modes = {
+    'lsan':   '$brew  -O0 -fsanitize=address,integer,undefined -fno-sanitize-recover=all',
+}
 wasm_modes = {
     'wasm':   '$zigcc -Os -target wasm32-wasi -D_POSIX_SOURCE -Xclang -fnative-half-type',
 }
@@ -26,11 +28,13 @@ wasm_modes = {
 header = '''
 builddir = out
 
-clang = clang -fcolor-diagnostics -Weverything -Xclang -nostdsysteminc
+apple = clang -fcolor-diagnostics -Weverything -Xclang -nostdsysteminc
+brew  = ~/brew/opt/llvm/bin/clang -fcolor-diagnostics -Weverything -Xclang -nostdsysteminc
 zigcc = zig cc -fcolor-diagnostics -Weverything
 
-runtime_native = env BENCH_SEC=0.001
-runtime_wasm   = wasmtime --env BENCH_SEC=0.001
+runtime_apple = env BENCH_SEC=0.001
+runtime_brew  = env BENCH_SEC=0.001 ASAN_OPTIONS=detect_leaks=1
+runtime_wasm  = wasmtime --env BENCH_SEC=0.001
 
 rule compile
     command = $cc -Werror -std=c11 -g -ffp-contract=fast -MD -MF $out.d -c $in -o $out
@@ -49,10 +53,12 @@ rule disasm
 
 with open('build.ninja', 'w') as f:
     print(header, file=f)
-    modes = native_modes | wasm_modes
+    modes = apple_modes | brew_modes | wasm_modes
     for target in deps:
         for mode in modes:
-            arch = 'native' if mode in native_modes else 'wasm'
+            arch = ('apple' if mode in apple_modes else
+                    'brew'  if mode in  brew_modes else
+                    'wasm')
             objs = ''.join(' out/{}/{}.o'.format(mode,dep) for dep in deps[target])
             p = lambda s: print(s.format(target = target,
                                          full   = 'out/{}/{}'.format(mode,target),

@@ -33,7 +33,8 @@ static void pretty_double(double   x) { dprintf(2, "%g\n"    , x); }
 static inline double now() {
     struct timespec ts;
     expect_eq(0, clock_gettime(CLOCK_MONOTONIC, &ts));
-    return (double)ts.tv_sec + 1e-9 * ts.tv_nsec;
+    return (double)ts.tv_sec
+         + (double)ts.tv_nsec * 1e-9;
 }
 
 static inline void bench_(const char* name, double(*fn)(int, double*, const char**)) {
