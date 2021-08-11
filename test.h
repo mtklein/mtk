@@ -26,6 +26,7 @@ static void pretty_double(double   x) { dprintf(2, "%g\n"    , x); }
 
 #define expect(cond)       expect_(cond,==,1)
 #define expect_eq(x,y)     expect_(x,==,y)
+#define expect_ne(x,y)     expect_(x,!=,y)
 #define expect_lt(x,y)     expect_(x, <,y)
 #define expect_in(x,lo,hi) expect_(lo,<=,x); expect_(x,<=,hi)
 

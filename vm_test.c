@@ -193,6 +193,28 @@ static void test_constant_prop() {
     }
 }
 
+static void test_peephole() {
+    Builder* b = builder();
+
+    V16 x = uniform_16(b, arg(b,0), 0),
+      one =   splat_16(b, fp16(1.0f)),
+     zero =   splat_16(b, fp16(0.0f));
+
+    expect_eq(x.id, add_F16(b, x,zero).id);
+    expect_eq(x.id, add_F16(b, zero,x).id);
+
+    expect_eq(x.id, sub_F16(b, x,zero).id);
+    expect_ne(x.id, sub_F16(b, zero,x).id);
+
+    expect_eq(x.id, mul_F16(b, x,one).id);
+    expect_eq(x.id, mul_F16(b, one,x).id);
+
+    expect_eq(x.id, div_F16(b, x,one).id);
+    expect_ne(x.id, div_F16(b, one,x).id);
+
+    drop(compile(b));
+}
+
 void approx_jit(uint32_t dst[], uint32_t val, int n);
 
 __attribute__((noinline))
@@ -341,6 +363,7 @@ int main(int argc, char** argv) {
     test_dce();
     test_structs();
     test_constant_prop();
+    test_peephole();
 
     bench(memset32_goal);
     bench(memset32_vm);
