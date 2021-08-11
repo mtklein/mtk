@@ -3,6 +3,8 @@
 #include "vm.h"
 #include <string.h>
 
+#pragma GCC diagnostic ignored "-Wfloat-equal"
+
 static int fp16(float x) {
     union {
         __fp16  f;
@@ -56,7 +58,6 @@ static void test_memset32_uniform() {
 }
 
 static void test_F16() {
-
     Program* p;
     {
         Builder* b = builder();
@@ -89,6 +90,7 @@ static void test_F16() {
         expect_eq((float)x[i], 0.3125f);
         expect_eq((float)y[i], 0.2500f);
     }
+    drop(p);
 }
 
 static void test_cse() {
@@ -118,6 +120,7 @@ static void test_cse() {
     for (int i = 0; i < len(xs); i++) {
         expect_eq(xs[i], (i+3)*(i+3));
     }
+    drop(p);
 }
 
 static void test_dce() {
@@ -139,6 +142,7 @@ static void test_dce() {
     for (int i = 0; i < len(xs); i++) {
         expect_eq(xs[i], 0x42);
     }
+    drop(p);
 }
 
 static void test_structs() {
@@ -167,6 +171,7 @@ static void test_structs() {
                        | (uint32_t)((i+0) << 16)
                        | (uint32_t)((i+3) << 24));
     }
+    drop(p);
 }
 
 static void test_constant_prop() {
@@ -191,20 +196,27 @@ static void test_constant_prop() {
     for (int i = 0; i < len(xs); i++) {
         expect_eq(xs[i], 42+47);
     }
+    drop(p);
 }
 
 static void test_peephole() {
     Builder* b = builder();
 
-    V16 x = uniform_16(b, arg(b,0), 0),
-      one =   splat_16(b, fp16(1.0f)),
-     zero =   splat_16(b, fp16(0.0f));
+    V16 x     = uniform_16(b, arg(b,0), 0),
+        one   =   splat_16(b, fp16( 1.0f)),
+        pzero =   splat_16(b, fp16( 0.0f)),
+        nzero =   splat_16(b, fp16(-0.0f));
 
-    expect_eq(x.id, add_F16(b, x,zero).id);
-    expect_eq(x.id, add_F16(b, zero,x).id);
 
-    expect_eq(x.id, sub_F16(b, x,zero).id);
-    expect_ne(x.id, sub_F16(b, zero,x).id);
+    expect_eq(x.id, add_F16(b, x,pzero).id);
+    expect_eq(x.id, add_F16(b, x,nzero).id);
+    expect_eq(x.id, add_F16(b, pzero,x).id);
+    expect_eq(x.id, add_F16(b, nzero,x).id);
+
+    expect_eq(x.id, sub_F16(b, x,pzero).id);
+    expect_eq(x.id, sub_F16(b, x,nzero).id);
+    expect_ne(x.id, sub_F16(b, pzero,x).id);
+    expect_ne(x.id, sub_F16(b, nzero,x).id);
 
     expect_eq(x.id, mul_F16(b, x,one).id);
     expect_eq(x.id, mul_F16(b, one,x).id);
@@ -213,6 +225,66 @@ static void test_peephole() {
     expect_ne(x.id, div_F16(b, one,x).id);
 
     drop(compile(b));
+}
+
+static void test_mul_add_fusion() {
+    Program* p;
+    {
+        Builder* b = builder();
+        Ptr left  = arg(b,2),
+            right = arg(b,2);
+
+        V16 x   =   ld1_16(b, left),
+            one = splat_16(b, fp16(1.0f)),
+            two = splat_16(b, fp16(2.0f));
+
+        st1_16(b, left,  add_F16(b, one, mul_F16(b, x,two)));
+        st1_16(b, right, add_F16(b, mul_F16(b, x,two), one));
+
+        p = compile(b);
+    }
+
+    __fp16 left[63],
+          right[len(left)];
+    for (int i = 0; i < len(left); i++) {
+        left[i] = (__fp16)(float)i;
+    }
+    run(p,len(left), (void*[]){left,right});
+    for (int i = 0; i < len(left); i++) {
+        expect_eq((float)left [i], (float)i * 2 + 1);
+        expect_eq((float)right[i], (float)i * 2 + 1);
+    }
+    drop(p);
+}
+
+static void test_mul_sub_fusion() {
+    Program* p;
+    {
+        Builder* b = builder();
+        Ptr left  = arg(b,2),
+            right = arg(b,2);
+
+        V16 x   =   ld1_16(b, left),
+            one = splat_16(b, fp16(1.0f)),
+            two = splat_16(b, fp16(2.0f));
+
+        st1_16(b, left,  sub_F16(b, one, mul_F16(b, x,two)));
+        st1_16(b, right, sub_F16(b, mul_F16(b, x,two), one));
+
+        p = compile(b);
+    }
+
+    __fp16 left[63],
+          right[len(left)];
+    for (int i = 0; i < len(left); i++) {
+        left[i] = (__fp16)(float)i;
+    }
+    run(p,len(left), (void*[]){left,right});
+    for (int i = 0; i < len(left); i++) {
+        expect_eq((float)left [i], 1 - (float)i * 2);
+        expect_eq((float)right[i], (float)i * 2 - 1);
+    }
+    drop(p);
 }
 
 void approx_jit(uint32_t dst[], uint32_t val, int n);
@@ -364,6 +436,8 @@ int main(int argc, char** argv) {
     test_structs();
     test_constant_prop();
     test_peephole();
+    test_mul_add_fusion();
+    test_mul_sub_fusion();
 
     bench(memset32_goal);
     bench(memset32_vm);
