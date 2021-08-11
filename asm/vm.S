@@ -2203,7 +2203,7 @@ _compile.cold.1:
 	add	x1, x1, #0x0
 	adrp	x3, 0 ; 0x2000
 	add	x3, x3, #0x0
-	mov	w2, #0x12f
+	mov	w2, #0x121
 	bl	0x2100
 _compile.cold.2:
 	stp	x29, x30, [sp, #-0x10]!
@@ -2214,7 +2214,7 @@ _compile.cold.2:
 	add	x1, x1, #0x0
 	adrp	x3, 0 ; 0x2000
 	add	x3, x3, #0x0
-	mov	w2, #0x11e
+	mov	w2, #0x110
 	bl	0x2128
 _cse_.cold.1:
 	stp	x29, x30, [sp, #-0x10]!
@@ -2225,5 +2225,5 @@ _cse_.cold.1:
 	add	x1, x1, #0x0
 	adrp	x3, 0 ; 0x2000
 	add	x3, x3, #0x0
-	mov	w2, #0xb3
+	mov	w2, #0xa5
 	bl	0x2150

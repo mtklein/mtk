@@ -132,20 +132,6 @@ static bool is_splat(Inst inst) {
         || inst.op == op_splat_32;
 }
 
-static bool equiv(float x, float y) {
-    return (x <= y && y <= x)
-        || (x != x && y != y);
-}
-
-static bool is_F16_imm(const Builder* b, V16 x, float imm) {
-    Inst inst = b->inst[x.id-1];
-    union {
-        int bits;
-        __fp16 f;
-    } pun = {inst.imm};
-    return is_splat(inst) && equiv((float)pun.f, imm);
-}
-
 static int cse_(int size, Builder* b, Inst inst) {
     int h = (int)murmur3(0, &inst,sizeof inst);
 
@@ -490,9 +476,23 @@ op_(div_F16) { v->f16 = cast(cast(v[inst->x].f16,f32) / cast(v[inst->y].f16,f32)
     }
 #endif
 
+static bool equiv(float x, float y) {
+    return (x <= y && y <= x)
+        || (x != x && y != y);
+}
+
+static bool is_splat_F16(const Builder* b, V16 x, float imm) {
+    Inst inst = b->inst[x.id-1];
+    union {
+        int bits;
+        __fp16 f;
+    } pun = {inst.imm};
+    return is_splat(inst) && equiv((float)pun.f, imm);
+}
+
 V16 add_F16(Builder* b, V16 x, V16 y) {
-    if (is_F16_imm(b, x, 0.0f)) { return y; }
-    if (is_F16_imm(b, y, 0.0f)) { return x; }
+    if (is_splat_F16(b, x, 0.0f)) { return y; }
+    if (is_splat_F16(b, y, 0.0f)) { return x; }
     for (Inst mul = b->inst[x.id-1]; mul.op == op_mul_F16; ) {
         return cse(16, b, op_mla_F16, .x=mul.x, .y=mul.y, .z=y.id);
     }
@@ -502,7 +502,7 @@ V16 add_F16(Builder* b, V16 x, V16 y) {
     return cse(16, b, op_add_F16, .x=x.id, .y=y.id);
 }
 V16 sub_F16(Builder* b, V16 x, V16 y) {
-    if (is_F16_imm(b, y, 0.0f)) { return x; }
+    if (is_splat_F16(b, y, 0.0f)) { return x; }
     for (Inst mul = b->inst[x.id-1]; mul.op == op_mul_F16; ) {
         return cse(16, b, op_mls_F16, .x=mul.x, .y=mul.y, .z=y.id);
     }
@@ -512,12 +512,12 @@ V16 sub_F16(Builder* b, V16 x, V16 y) {
     return cse(16, b, op_sub_F16, .x=x.id, .y=y.id);
 }
 V16 mul_F16(Builder* b, V16 x, V16 y) {
-    if (is_F16_imm(b, x, 1.0f)) { return y; }
-    if (is_F16_imm(b, y, 1.0f)) { return x; }
+    if (is_splat_F16(b, x, 1.0f)) { return y; }
+    if (is_splat_F16(b, y, 1.0f)) { return x; }
     return cse(16, b, op_mul_F16, .x=x.id, .y=y.id);
 }
 V16 div_F16(Builder* b, V16 x, V16 y) {
-    if (is_F16_imm(b, y, 1.0f)) { return x; }
+    if (is_splat_F16(b, y, 1.0f)) { return x; }
     return cse(16, b, op_div_F16, .x=x.id, .y=y.id);
 }
 
