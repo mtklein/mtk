@@ -12,17 +12,17 @@ deps = {
     'vm':       ['array', 'checksum', 'hash'],
 }
 
-apple_modes = {
-    '':       '$apple -Os',
-    'lto':    '$apple -Os -flto',
-    'san':    '$apple -O0 -fsanitize=address,integer,undefined -fno-sanitize-recover=all',
-    'x86_64': '$apple -Os -arch x86_64 -arch x86_64h -momit-leaf-frame-pointer',
-}
-brew_modes = {
-    'lsan':   '$brew  -O0 -fsanitize=address,integer,undefined -fno-sanitize-recover=all',
-}
-wasm_modes = {
-    'wasm':   '$zigcc -Os -target wasm32-wasi -D_POSIX_SOURCE -Xclang -fnative-half-type',
+apple = 'env BENCH_SEC=0.001'
+brew  = 'env BENCH_SEC=0.001 ASAN_OPTIONS=detect_leaks=1'
+wasm  = 'wasmtime --env BENCH_SEC=0.001'
+
+modes = {
+    '':       (apple, '$apple -Os'),
+    'lsan':   (brew,  '$brew  -fsanitize=address,integer,undefined -fno-sanitize-recover=all'),
+    'lto':    (apple, '$apple -Os -flto'),
+    'san':    (apple, '$apple -fsanitize=address,integer,undefined -fno-sanitize-recover=all'),
+    'x86_64': (apple, '$apple -Os -arch x86_64 -arch x86_64h -momit-leaf-frame-pointer'),
+    'wasm':   (wasm,  '$zigcc -Os -target wasm32-wasi -D_POSIX_SOURCE -Xclang -fnative-half-type'),
 }
 
 header = '''
@@ -31,10 +31,6 @@ builddir = out
 apple = clang -fcolor-diagnostics -Weverything -Xclang -nostdsysteminc
 brew  = ~/brew/opt/llvm/bin/clang -fcolor-diagnostics -Weverything -Xclang -nostdsysteminc
 zigcc = zig cc -fcolor-diagnostics -Weverything
-
-runtime_apple = env BENCH_SEC=0.001
-runtime_brew  = env BENCH_SEC=0.001 ASAN_OPTIONS=detect_leaks=1
-runtime_wasm  = wasmtime --env BENCH_SEC=0.001
 
 rule compile
     command = $cc -Werror -std=c11 -g -ffp-contract=fast -MD -MF $out.d -c $in -o $out
@@ -53,17 +49,14 @@ rule disasm
 
 with open('build.ninja', 'w') as f:
     print(header, file=f)
-    modes = apple_modes | brew_modes | wasm_modes
     for target in deps:
         for mode in modes:
-            arch = ('apple' if mode in apple_modes else
-                    'brew'  if mode in  brew_modes else
-                    'wasm')
+            runtime, cc = modes[mode]
             objs = ''.join(' out/{}/{}.o'.format(mode,dep) for dep in deps[target])
-            p = lambda s: print(s.format(target = target,
-                                         full   = 'out/{}/{}'.format(mode,target),
-                                         cc     = modes[mode],
-                                         arch   = arch), file=f)
+            p = lambda s: print(s.format(target  = target,
+                                         full    = 'out/{}/{}'.format(mode,target),
+                                         cc      = cc,
+                                         runtime = runtime), file=f)
             p('build {full}.o: compile {target}.c')
             p('    cc      = {cc}')
             p('build {full}_test.o: compile {target}_test.c')
@@ -71,7 +64,7 @@ with open('build.ninja', 'w') as f:
             p('build {full}_test: link {full}.o {full}_test.o' + objs)
             p('    cc      = {cc}')
             p('build {full}_test.ok: run {full}_test')
-            p('    runtime = $runtime_{arch}')
+            p('    runtime = {runtime}')
             if mode == '':
                 p('build asm/{target}.S: disasm {full}.o')
 
