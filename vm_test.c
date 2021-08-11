@@ -3,6 +3,14 @@
 #include "vm.h"
 #include <string.h>
 
+static int fp16(float x) {
+    union {
+        __fp16  f;
+        int16_t bits;
+    } pun = {(__fp16)x};
+    return pun.bits;
+}
+
 static void test_memset32() {
     Program* p;
     {
@@ -48,10 +56,6 @@ static void test_memset32_uniform() {
 }
 
 static void test_F16() {
-    typedef union {
-        __fp16  f;
-        int16_t bits;
-    } Pun;
 
     Program* p;
     {
@@ -64,9 +68,9 @@ static void test_F16() {
 
         V16 v;
         v = add_F16(b, x,y);
-        v = mul_F16(b, v,splat_16(b, (Pun){.f=2.000f}.bits));
-        v = sub_F16(b, v,splat_16(b, (Pun){.f=0.125f}.bits));
-        v = div_F16(b, v,splat_16(b, (Pun){.f=2.000f}.bits));
+        v = mul_F16(b, v,splat_16(b, fp16(2.000f)));
+        v = sub_F16(b, v,splat_16(b, fp16(0.125f)));
+        v = div_F16(b, v,splat_16(b, fp16(2.000f)));
         st1_16(b, xp, v);
 
         p = compile(b);
