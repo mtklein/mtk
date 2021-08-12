@@ -73,14 +73,15 @@ V16 narrow_F32(Builder*, V32);
 V16 narrow_I32(Builder*, V32);
 V8  narrow_I16(Builder*, V16);
 
-V16 add_F16(Builder*, V16, V16);
-V16 div_F16(Builder*, V16, V16);
-V16 mul_F16(Builder*, V16, V16);
-V16 sub_F16(Builder*, V16, V16);
+V16  add_F16(Builder*, V16, V16);
+V16  sub_F16(Builder*, V16, V16);
+V16  mul_F16(Builder*, V16, V16);
+V16  div_F16(Builder*, V16, V16);
+V16 sqrt_F16(Builder*, V16);
 
 V32 add_I32(Builder*, V32, V32);
-V32 mul_I32(Builder*, V32, V32);
 V32 sub_I32(Builder*, V32, V32);
+V32 mul_I32(Builder*, V32, V32);
 
 V32 shl_I32(Builder*, V32, int);
 V32 shr_S32(Builder*, V32, int);

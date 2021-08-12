@@ -4,6 +4,7 @@
 #include "hash.h"
 #include "len.h"
 #include "vm.h"
+#include <math.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,6 +25,9 @@
              12,28,44,60, 13,29,45,61, 14,30,46,62, 15,31,47,63
 
 #define WHATEVER -1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1
+
+#define APPLY(M) \
+    M(0) M(1) M(2) M(3) M(4) M(5) M(6) M(7) M(8) M(9) M(10) M(11) M(12) M(13) M(14) M(15)
 
 #define cast    __builtin_convertvector
 #define shuffle __builtin_shufflevector
@@ -520,6 +524,16 @@ V16 div_F16(Builder* b, V16 x, V16 y) {
     if (is_splat_F16(b, y, 1.0f)) { return x; }
     return cse(16, b, op_div_F16, .x=x.id, .y=y.id);
 }
+
+// TODO: #if defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
+op_(sqrt_F16) {
+    f32 x = cast(v[inst->x].f16, f32);
+    #define M(i) (__fp16)sqrtf(x[i]),
+    v->f16 = (f16){ APPLY(M) };
+    #undef M
+    next;
+}
+V16 sqrt_F16(Builder* b, V16 x) { return cse(16, b, op_sqrt_F16, .x=x.id); }
 
 
 op_(add_I32) { v->u32 = v[inst->x].u32 + v[inst->y].u32; next; }

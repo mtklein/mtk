@@ -1,6 +1,7 @@
 #include "len.h"
 #include "test.h"
 #include "vm.h"
+#include <math.h>
 #include <string.h>
 
 #pragma GCC diagnostic ignored "-Wfloat-equal"
@@ -287,6 +288,32 @@ static void test_mul_sub_fusion() {
     drop(p);
 }
 
+static void test_sqrt() {
+    Program* p;
+    {
+        Builder* b = builder();
+        Ptr ptr = arg(b,2);
+
+        V16 x = ld1_16(b, ptr);
+        st1_16(b, ptr, sqrt_F16(b,x));
+
+        p = compile(b);
+    }
+
+    __fp16 xs[63];
+    for (int i = 0; i < len(xs); i++) {
+        xs[i] = (__fp16)(float)i;
+    }
+    run(p,len(xs), (void*[]){xs});
+
+    for (int i = 0; i < len(xs); i++) {
+        float expected = sqrtf((float)i);
+        expect_in((float)xs[i], expected * 0.95f
+                              , expected * 1.05f);
+    }
+    drop(p);
+}
+
 void approx_jit(uint32_t dst[], uint32_t val, int n);
 
 __attribute__((noinline))
@@ -438,6 +465,7 @@ int main(int argc, char** argv) {
     test_peephole();
     test_mul_add_fusion();
     test_mul_sub_fusion();
+    test_sqrt();
 
     bench(memset32_goal);
     bench(memset32_vm);
