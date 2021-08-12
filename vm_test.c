@@ -289,6 +289,21 @@ static void test_mul_sub_fusion() {
 }
 
 static void test_sqrt() {
+    {
+        Builder* b = builder();
+        V16 x,y;
+
+        x = splat_16(b, fp16(0.0f));
+        y = sqrt_F16(b, x);
+        expect_eq(x.id, y.id);
+
+        x = splat_16(b, fp16(1.0f));
+        y = sqrt_F16(b, x);
+        expect_eq(x.id, y.id);
+
+        drop(compile(b));
+    }
+
     Program* p;
     {
         Builder* b = builder();
