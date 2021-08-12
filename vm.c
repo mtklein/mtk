@@ -30,9 +30,12 @@
 
 #define WHATEVER -1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1
 
-#if !defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
-    #define APPLY(M) \
-        M(0) M(1) M(2) M(3) M(4) M(5) M(6) M(7) M(8) M(9) M(10) M(11) M(12) M(13) M(14) M(15)
+#if defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
+    #define LO 0,1, 2, 3, 4, 5, 6, 7
+    #define HI 8,9,10,11,12,13,14,15
+#else
+    #define APPLY(M) M(0) M(1) M( 2) M( 3) M( 4) M( 5) M( 6) M( 7) \
+                     M(8) M(9) M(10) M(11) M(12) M(13) M(14) M(15)
 #endif
 
 #define cast    __builtin_convertvector
@@ -534,9 +537,8 @@ V16 div_F16(Builder* b, V16 x, V16 y) {
 op_(sqrt_F16) {
 #if defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
     f16 x = v[inst->x].f16;
-    v->f16 = (f16)shuffle(vsqrtq_f16((float16x8_t)shuffle(x,x, 0,1, 2, 3, 4, 5, 6, 7)),
-                          vsqrtq_f16((float16x8_t)shuffle(x,x, 8,9,10,11,12,13,14,15)),
-                          0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15);
+    v->f16 = (f16)shuffle(vsqrtq_f16((float16x8_t)shuffle(x,x, LO)),
+                          vsqrtq_f16((float16x8_t)shuffle(x,x, HI)), LO,HI);
 #else
     f32 x = cast(v[inst->x].f16, f32);
     #define M(i) (__fp16)sqrtf(x[i]),
