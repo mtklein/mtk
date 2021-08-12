@@ -9,6 +9,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
+    #include <arm_neon.h>
+#endif
+
 #define N 16
 #define LD4_0  0,4, 8,12, 16,20,24,28, 32,36,40,44, 48,52,56,60
 #define LD4_1  1,5, 9,13, 17,21,25,29, 33,37,41,45, 49,53,57,61
@@ -26,8 +30,10 @@
 
 #define WHATEVER -1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1
 
-#define APPLY(M) \
-    M(0) M(1) M(2) M(3) M(4) M(5) M(6) M(7) M(8) M(9) M(10) M(11) M(12) M(13) M(14) M(15)
+#if !defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
+    #define APPLY(M) \
+        M(0) M(1) M(2) M(3) M(4) M(5) M(6) M(7) M(8) M(9) M(10) M(11) M(12) M(13) M(14) M(15)
+#endif
 
 #define cast    __builtin_convertvector
 #define shuffle __builtin_shufflevector
@@ -525,12 +531,21 @@ V16 div_F16(Builder* b, V16 x, V16 y) {
     return cse(16, b, op_div_F16, .x=x.id, .y=y.id);
 }
 
-// TODO: #if defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
 op_(sqrt_F16) {
+#if defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
+    float16x8_t lo,hi;
+    memcpy(&lo, (const char*)&v[inst->x].f16 +         0, sizeof lo);
+    memcpy(&hi, (const char*)&v[inst->x].f16 + sizeof lo, sizeof hi);
+    lo = vsqrtq_f16(lo);
+    hi = vsqrtq_f16(hi);
+    memcpy((char*)v +         0, &lo, sizeof lo);
+    memcpy((char*)v + sizeof lo, &hi, sizeof hi);
+#else
     f32 x = cast(v[inst->x].f16, f32);
     #define M(i) (__fp16)sqrtf(x[i]),
     v->f16 = (f16){ APPLY(M) };
     #undef M
+#endif
     next;
 }
 V16 sqrt_F16(Builder* b, V16 x) { return cse(16, b, op_sqrt_F16, .x=x.id); }
