@@ -533,10 +533,10 @@ V16 div_F16(Builder* b, V16 x, V16 y) {
 
 op_(sqrt_F16) {
 #if defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
-    float16x8x2_t x = vld2q_f16((const __fp16*)&v[inst->x].f16);
-    x.val[0] = vsqrtq_f16(x.val[0]);
-    x.val[1] = vsqrtq_f16(x.val[1]);
-    vst2q_f16((__fp16*)&v->f16, x);
+    f16 x = v[inst->x].f16;
+    v->f16 = (f16)shuffle(vsqrtq_f16((float16x8_t)shuffle(x,x, 0,1, 2, 3, 4, 5, 6, 7)),
+                          vsqrtq_f16((float16x8_t)shuffle(x,x, 8,9,10,11,12,13,14,15)),
+                          0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15);
 #else
     f32 x = cast(v[inst->x].f16, f32);
     #define M(i) (__fp16)sqrtf(x[i]),
