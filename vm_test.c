@@ -308,8 +308,8 @@ static void test_sqrt() {
 
     for (int i = 0; i < len(xs); i++) {
         float expected = sqrtf((float)i);
-        expect_in((float)xs[i], expected * 0.95f
-                              , expected * 1.05f);
+        expect_in((float)xs[i], expected * 0.999f
+                              , expected * 1.001f);
     }
     drop(p);
 }
