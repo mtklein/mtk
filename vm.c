@@ -132,11 +132,8 @@ typedef struct {
 
 static bool inst_eq(int id, void* vctx) {
     inst_eq_ctx* ctx = vctx;
-    if (0 == memcmp(ctx->inst, ctx->b->inst + id-1/*1-indexed*/, sizeof(Inst))) {
-        ctx->id = id;
-        return true;
-    }
-    return false;
+    return 0 == memcmp(ctx->inst, ctx->b->inst + id-1/*1-indexed*/, sizeof(Inst))
+        && (ctx->id = id);
 }
 
 static bool is_splat(Inst inst) {
