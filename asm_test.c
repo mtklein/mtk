@@ -1,7 +1,40 @@
 #include "asm.h"
 #include "test.h"
 
+#if defined(__aarch64__)
+    #include <sys/mman.h>
+    #include <unistd.h>
+#endif
+
 // $ echo "fmul v4.8h, v3.8h, v1.8h" | brew/opt/llvm/bin/llvm-mc -show-encoding -mattr=+fullfp16
+
+static void jit(void(*setup)(uint32_t*),
+                void(*test )(void(*)(void))) {
+#if defined(__aarch64__)
+    const size_t size = (size_t)sysconf(_SC_PAGESIZE);  // One page ought to be enough for anyone.
+
+    void* p = mmap(NULL,size, PROT_READ|PROT_WRITE, MAP_ANONYMOUS|MAP_PRIVATE, -1,0);
+    expect_ne((uintptr_t)p, ~(uintptr_t)0);
+    setup(p);
+
+    expect_eq(0, mprotect(p,size, PROT_READ|PROT_EXEC));
+    test((void(*)(void))p);
+
+    munmap(p,size);
+#else
+    (void)setup;
+    (void)test;
+#endif
+}
+
+static void setup_square(uint32_t* p) {
+    *p++ = vfmul(_4s, v0,v0,v0);
+    *p++ = xret(lr);
+}
+static void test_square(void(*p)(void)) {
+    float (*fn)(float) = (float(*)(float))p;
+    expect_eq(9.0f, fn(3.0f));
+}
 
 int main(void) {
     expect_eq(0xd65f03c0, xret(lr));
@@ -24,6 +57,7 @@ int main(void) {
     expect_eq(0x6e411c64, vfmul(_8h, v4,v3,v1));
     expect_eq(0x2e411c64, vfmul(_4h, v4,v3,v1));
 
+    jit(setup_square, test_square);
 
     return 0;
 }
