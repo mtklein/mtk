@@ -5,53 +5,50 @@ typedef struct Program Program;
 
 Builder* builder(void);
 Program* compile(Builder*);
-void     run    (const Program*, int n, void* arg[]);
+void     run    (const Program*, int n, const void* uniforms, void* varying[]);
 void     drop   (Program*);
-
-typedef struct { int ix; } Ptr;
-Ptr arg(Builder*, int stride);
 
 typedef struct { int id; } V8;
 typedef struct { int id; } V16;
 typedef struct { int id; } V32;
 
-V8                          ld1_8(Builder*, Ptr);
-struct V8x2 { V8 r,g    ; } ld2_8(Builder*, Ptr);
-struct V8x3 { V8 r,g,b  ; } ld3_8(Builder*, Ptr);
-struct V8x4 { V8 r,g,b,a; } ld4_8(Builder*, Ptr);
+V8                          ld1_8(Builder*);
+struct V8x2 { V8 r,g    ; } ld2_8(Builder*);
+struct V8x3 { V8 r,g,b  ; } ld3_8(Builder*);
+struct V8x4 { V8 r,g,b,a; } ld4_8(Builder*);
 
-V16                           ld1_16(Builder*, Ptr);
-struct V16x2 { V16 r,g    ; } ld2_16(Builder*, Ptr);
-struct V16x3 { V16 r,g,b  ; } ld3_16(Builder*, Ptr);
-struct V16x4 { V16 r,g,b,a; } ld4_16(Builder*, Ptr);
+V16                           ld1_16(Builder*);
+struct V16x2 { V16 r,g    ; } ld2_16(Builder*);
+struct V16x3 { V16 r,g,b  ; } ld3_16(Builder*);
+struct V16x4 { V16 r,g,b,a; } ld4_16(Builder*);
 
-V32                           ld1_32(Builder*, Ptr);
-struct V32x2 { V32 r,g    ; } ld2_32(Builder*, Ptr);
-struct V32x3 { V32 r,g,b  ; } ld3_32(Builder*, Ptr);
-struct V32x4 { V32 r,g,b,a; } ld4_32(Builder*, Ptr);
+V32                           ld1_32(Builder*);
+struct V32x2 { V32 r,g    ; } ld2_32(Builder*);
+struct V32x3 { V32 r,g,b  ; } ld3_32(Builder*);
+struct V32x4 { V32 r,g,b,a; } ld4_32(Builder*);
 
-void st1_8(Builder*, Ptr, V8);
-void st2_8(Builder*, Ptr, V8,V8);
-void st3_8(Builder*, Ptr, V8,V8,V8);
-void st4_8(Builder*, Ptr, V8,V8,V8,V8);
+void st1_8(Builder*, V8);
+void st2_8(Builder*, V8,V8);
+void st3_8(Builder*, V8,V8,V8);
+void st4_8(Builder*, V8,V8,V8,V8);
 
-void st1_16(Builder*, Ptr, V16);
-void st2_16(Builder*, Ptr, V16,V16);
-void st3_16(Builder*, Ptr, V16,V16,V16);
-void st4_16(Builder*, Ptr, V16,V16,V16,V16);
+void st1_16(Builder*, V16);
+void st2_16(Builder*, V16,V16);
+void st3_16(Builder*, V16,V16,V16);
+void st4_16(Builder*, V16,V16,V16,V16);
 
-void st1_32(Builder*, Ptr, V32);
-void st2_32(Builder*, Ptr, V32,V32);
-void st3_32(Builder*, Ptr, V32,V32,V32);
-void st4_32(Builder*, Ptr, V32,V32,V32,V32);
+void st1_32(Builder*, V32);
+void st2_32(Builder*, V32,V32);
+void st3_32(Builder*, V32,V32,V32);
+void st4_32(Builder*, V32,V32,V32,V32);
+
+V8  uniform_8 (Builder*, int offset);
+V16 uniform_16(Builder*, int offset);
+V32 uniform_32(Builder*, int offset);
 
 V8  splat_8 (Builder*, int);
 V16 splat_16(Builder*, int);
 V32 splat_32(Builder*, int);
-
-V8  uniform_8 (Builder*, Ptr, int offset);
-V16 uniform_16(Builder*, Ptr, int offset);
-V32 uniform_32(Builder*, Ptr, int offset);
 
 V16 cast_F16_to_S16(Builder*, V16);
 V16 cast_F16_to_U16(Builder*, V16);

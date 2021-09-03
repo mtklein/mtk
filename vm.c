@@ -41,8 +41,9 @@
 #define cast    __builtin_convertvector
 #define shuffle __builtin_shufflevector
 
-#define op_(name) static void op_##name(int n, const Inst* inst, Val* v, void* arg[])
-#define next inst[1].op(n,inst+1,v+1,arg)
+#define op_(name) \
+    static void op_##name(int n, const Inst* inst, Val* v, const void* uniforms, void* varying[])
+#define next inst[1].op(n,inst+1,v+1,uniforms,varying)
 
 typedef int8_t   __attribute__((vector_size(1*N))) s8;
 typedef int16_t  __attribute__((vector_size(2*N))) s16;
@@ -64,17 +65,16 @@ typedef union {
 } Val;
 
 typedef struct Inst {
-    void (*op)(int n, const struct Inst*, Val* v, void* arg[]);
+    void (*op)(int n, const struct Inst*, Val* v, const void* uniforms, void* varying[]);
     int x,y,z,w;
-    int ptr;
     int imm;
+    enum { MATH, SPLAT, UNIFORM, LOAD, STORE } kind;
 } Inst;
 
 struct Builder {
     Inst* inst;
-    int*  stride;
     int   insts;
-    int   args;
+    int   varying;
     Hash  hash;
 };
 
@@ -83,20 +83,253 @@ Builder* builder() {
     return b;
 }
 
-// In Builder convention, pointer arguments (from arg()) and value IDs (from no_cse(), cse())
-// are all 1-indexed.  This allows testing Inst's ptr,x,y,z,w fields' existence with !=0.
-
-Ptr arg(Builder* b, int stride) {
-    push(b->stride,b->args) = stride;
-    return (Ptr){b->args};  // 1-indexed
-}
-
+// In Builder convention, value IDs (from no_cse() or cse()) are 1-indexed.
+// This allows testing Inst's x,y,z,w fields' existence with !=0.
+// TODO: merge no_cse() and cse() by inspecting inst.kind.
 static int no_cse_(Builder* b, Inst inst) {
     push(b->inst,b->insts) = inst;
-    return b->insts;  // 1-indexed
+    return b->insts;
 }
 #define no_cse(size,b,...) (V##size){no_cse_(b, (Inst){__VA_ARGS__})}
 
+op_(done) {
+    (void)n;
+    (void)inst;
+    (void)v;
+    (void)uniforms;
+    (void)varying;
+}
+
+typedef struct {
+    const Builder* b;
+    const Inst*    inst;
+    int            id;
+    int            unused;
+} inst_eq_ctx;
+
+static bool inst_eq(int id, void* vctx) {
+    inst_eq_ctx* ctx = vctx;
+    return 0 == memcmp(ctx->inst, ctx->b->inst + id-1/*1-indexed*/, sizeof(Inst))
+        && (ctx->id = id);
+}
+
+static int cse_(int size, Builder* b, Inst inst) {
+    int h = (int)murmur3(0, &inst,sizeof inst);
+
+    for (inst_eq_ctx ctx={.b=b,.inst=&inst}; lookup(&b->hash,h, inst_eq,&ctx);) {
+        return ctx.id;
+    }
+
+    while (inst.kind == MATH) {
+        Inst constant_prop[6], *p=constant_prop;
+        if (inst.x && (*p++ = b->inst[inst.x-1]).kind != SPLAT) { break; }
+        if (inst.y && (*p++ = b->inst[inst.y-1]).kind != SPLAT) { break; }
+        if (inst.z && (*p++ = b->inst[inst.z-1]).kind != SPLAT) { break; }
+        if (inst.w && (*p++ = b->inst[inst.w-1]).kind != SPLAT) { break; }
+
+        int id = (int)(p - constant_prop);
+        if (inst.x) { inst.x = 0-id; }
+        if (inst.y) { inst.y = 1-id; }
+        if (inst.z) { inst.z = 2-id; }
+        if (inst.w) { inst.w = 3-id; }
+        *p++ = inst;
+        *p++ = (Inst){.op=op_done};
+
+        Val v[5];
+        constant_prop->op(1,constant_prop,v,NULL,NULL);
+
+        switch (size) {
+            case 8 : return splat_8 (b, v[id].s8 [0]).id;
+            case 16: return splat_16(b, v[id].s16[0]).id;
+            case 32: return splat_32(b, v[id].s32[0]).id;
+        }
+        assume(false);
+    }
+
+    int id = no_cse_(b,inst);
+    insert(&b->hash,h,id);
+    return id;
+}
+#define cse(size,b,...) (V##size){cse_(size, b, (Inst){__VA_ARGS__})}
+
+
+struct Program {
+    int  vals;
+    int  loop;
+    Inst inst[];
+};
+
+Program* compile(Builder* b) {
+    union {
+        struct { bool live, loop_dependent; };
+        int reordered_id;
+    } *meta = calloc((size_t)b->insts, sizeof *meta);
+
+    int live_vals = 0;
+    for (int i = b->insts; i --> 0;) {
+        const Inst* inst = b->inst+i;
+        if (inst->kind == STORE) {
+            meta[i].live = true;
+        }
+        if (meta[i].live) {
+            live_vals++;
+            if (inst->x) { meta[inst->x-1].live = true; }
+            if (inst->y) { meta[inst->y-1].live = true; }
+            if (inst->z) { meta[inst->z-1].live = true; }
+            if (inst->w) { meta[inst->w-1].live = true; }
+        }
+    }
+
+    for (int i = 0; i < b->insts; i++) {
+        const Inst* inst = b->inst+i;
+        meta[i].loop_dependent = inst->kind >= LOAD
+                              || (inst->x && meta[inst->x-1].loop_dependent)
+                              || (inst->y && meta[inst->y-1].loop_dependent)
+                              || (inst->z && meta[inst->z-1].loop_dependent)
+                              || (inst->w && meta[inst->w-1].loop_dependent);
+    }
+
+    Program* p = malloc(sizeof *p + sizeof(Inst) * (size_t)(live_vals + 1/*op_done*/));
+    p->vals = 0;
+
+    for (int loop_dependent = 0; loop_dependent < 2; loop_dependent++) {
+        if (loop_dependent) {
+            p->loop = p->vals;
+        }
+        for (int i = 0; i < b->insts; i++) {
+            if (meta[i].live && meta[i].loop_dependent == loop_dependent) {
+                Inst* inst = p->inst + p->vals;
+                *inst = b->inst[i];
+
+                // Program uses relative value args, writing to *v, reading from v[inst->x], etc.
+                if (inst->x) { inst->x = meta[inst->x-1].reordered_id - p->vals; }
+                if (inst->y) { inst->y = meta[inst->y-1].reordered_id - p->vals; }
+                if (inst->z) { inst->z = meta[inst->z-1].reordered_id - p->vals; }
+                if (inst->w) { inst->w = meta[inst->w-1].reordered_id - p->vals; }
+
+                meta[i].reordered_id = p->vals++;
+            }
+        }
+    }
+    assume(p->vals == live_vals);
+    p->inst[p->vals] = (Inst){.op=op_done};
+
+    free(meta);
+    free(b->inst);
+    free(b->hash.table);
+    free(b);
+    return p;
+}
+
+void drop(Program* p) {
+    free(p);
+}
+
+op_(ld1_8) {
+    uint8_t* p = varying[inst->imm];
+    n<N ? memcpy(v, p,   sizeof *p)
+        : memcpy(v, p, N*sizeof *p);
+    varying[inst->imm] = p + (n<N ? 1 : N);
+    next;
+}
+op_(ld1_16) {
+    uint16_t* p = varying[inst->imm];
+    n<N ? memcpy(v, p,   sizeof *p)
+        : memcpy(v, p, N*sizeof *p);
+    varying[inst->imm] = p + (n<N ? 1 : N);
+    next;
+}
+op_(ld1_32) {
+    uint32_t* p = varying[inst->imm];
+    n<N ? memcpy(v, p,   sizeof *p)
+        : memcpy(v, p, N*sizeof *p);
+    varying[inst->imm] = p + (n<N ? 1 : N);
+    next;
+}
+
+V8  ld1_8 (Builder* b) { return no_cse(8 , b, op_ld1_8 , .imm=b->varying++, .kind=LOAD); }
+V16 ld1_16(Builder* b) { return no_cse(16, b, op_ld1_16, .imm=b->varying++, .kind=LOAD); }
+V32 ld1_32(Builder* b) { return no_cse(32, b, op_ld1_32, .imm=b->varying++, .kind=LOAD); }
+
+op_(st1_8) {
+    uint8_t* p = varying[inst->imm];
+    n<N ? memcpy(p, &v[inst->x],   sizeof *p)
+        : memcpy(p, &v[inst->x], N*sizeof *p);
+    varying[inst->imm] = p + (n<N ? 1 : N);
+    next;
+}
+op_(st1_16) {
+    uint16_t* p = varying[inst->imm];
+    n<N ? memcpy(p, &v[inst->x],   sizeof *p)
+        : memcpy(p, &v[inst->x], N*sizeof *p);
+    varying[inst->imm] = p + (n<N ? 1 : N);
+    next;
+}
+op_(st1_32) {
+    uint32_t* p = varying[inst->imm];
+    n<N ? memcpy(p, &v[inst->x],   sizeof *p)
+        : memcpy(p, &v[inst->x], N*sizeof *p);
+    varying[inst->imm] = p + (n<N ? 1 : N);
+    next;
+}
+void st1_8 (Builder* b, V8  x) {
+    no_cse(8 , b, op_st1_8 , .x=x.id, .imm=b->varying++, .kind=STORE);
+}
+void st1_16(Builder* b, V16 x) {
+    no_cse(16, b, op_st1_16, .x=x.id, .imm=b->varying++, .kind=STORE);
+}
+void st1_32(Builder* b, V32 x) {
+    no_cse(32, b, op_st1_32, .x=x.id, .imm=b->varying++, .kind=STORE);
+}
+
+op_(ld4_8) {
+    uint8_t* p = varying[inst->imm];
+    uint8_t __attribute__((vector_size(4*N<<0), aligned(1))) s;
+    if (n<N) {
+        memcpy(&s, p, 4);
+        v[0].u8 = shuffle(s,s, 0,WHATEVER);
+        v[1].u8 = shuffle(s,s, 1,WHATEVER);
+        v[2].u8 = shuffle(s,s, 2,WHATEVER);
+        v[3].u8 = shuffle(s,s, 3,WHATEVER);
+    } else {
+        memcpy(&s, p, sizeof s);
+        v[0].u8 = shuffle(s,s, LD4_0);
+        v[1].u8 = shuffle(s,s, LD4_1);
+        v[2].u8 = shuffle(s,s, LD4_2);
+        v[3].u8 = shuffle(s,s, LD4_3);
+    }
+    varying[inst->imm] = p + 4*(n<N ? 1 : N);
+    inst += 3;
+    v    += 3;
+    next;
+}
+struct V8x4 ld4_8(Builder* b) {
+    V8 r = no_cse(8, b, op_ld4_8, .imm=b->varying++, .kind=LOAD);
+    return (struct V8x4) {
+        .r = r,
+        .g = no_cse(8, b, .x=r.id),
+        .b = no_cse(8, b, .x=r.id),
+        .a = no_cse(8, b, .x=r.id),
+    };
+}
+
+op_(st4_8) {
+    typedef uint8_t __attribute__((vector_size(4*1<<0), aligned(1))) S1;
+    typedef uint8_t __attribute__((vector_size(4*N<<0), aligned(1))) SN;
+    uint8_t* p = varying[inst->imm];
+    if (n<N) {
+        *(S1*)p = shuffle(shuffle(v[inst->x].u8, v[inst->y].u8, CONCAT),
+                          shuffle(v[inst->z].u8, v[inst->w].u8, CONCAT), ST4_1);
+    } else {
+        *(SN*)p = shuffle(shuffle(v[inst->x].u8, v[inst->y].u8, CONCAT),
+                          shuffle(v[inst->z].u8, v[inst->w].u8, CONCAT), ST4);
+    }
+    varying[inst->imm] = p + 4*(n<N ? 1 : N);
+    next;
+}
+void st4_8(Builder* b, V8 x, V8 y, V8 z, V8 w) {
+    no_cse(8, b, op_st4_8, .x=x.id, .y=y.id, .z=z.id, .w=w.id, .imm=b->varying++, .kind=STORE);
+}
 
 op_(splat_8) {
     Val val = {0};
@@ -116,279 +349,13 @@ op_(splat_32) {
     *v = val;
     next;
 }
-op_(done) {
-    (void)n;
-    (void)inst;
-    (void)v;
-    (void)arg;
-}
-
-typedef struct {
-    const Builder* b;
-    const Inst*    inst;
-    int            id;
-    int            unused;
-} inst_eq_ctx;
-
-static bool inst_eq(int id, void* vctx) {
-    inst_eq_ctx* ctx = vctx;
-    return 0 == memcmp(ctx->inst, ctx->b->inst + id-1/*1-indexed*/, sizeof(Inst))
-        && (ctx->id = id);
-}
-
-static bool is_splat(Inst inst) {
-    return inst.op == op_splat_8
-        || inst.op == op_splat_16
-        || inst.op == op_splat_32;
-}
-
-static int cse_(int size, Builder* b, Inst inst) {
-    int h = (int)murmur3(0, &inst,sizeof inst);
-
-    for (inst_eq_ctx ctx={.b=b,.inst=&inst}; lookup(&b->hash,h, inst_eq,&ctx);) {
-        return ctx.id;
-    }
-
-    while (!is_splat(inst) && !inst.ptr) {
-        Inst constant_prop[6], *p=constant_prop;
-        if (inst.x && !is_splat(*p++ = b->inst[inst.x-1])) { break; }
-        if (inst.y && !is_splat(*p++ = b->inst[inst.y-1])) { break; }
-        if (inst.z && !is_splat(*p++ = b->inst[inst.z-1])) { break; }
-        if (inst.w && !is_splat(*p++ = b->inst[inst.w-1])) { break; }
-
-        int id = (int)(p - constant_prop);
-        if (inst.x) { inst.x = 0-id; }
-        if (inst.y) { inst.y = 1-id; }
-        if (inst.z) { inst.z = 2-id; }
-        if (inst.w) { inst.w = 3-id; }
-        *p++ = inst;
-        *p++ = (Inst){.op=op_done};
-
-        Val v[5];
-        constant_prop->op(1,constant_prop,v,NULL);
-
-        switch (size) {
-            case 8 : return cse_(8 , b, (Inst){op_splat_8 , .imm=v[id].s8 [0]});
-            case 16: return cse_(16, b, (Inst){op_splat_16, .imm=v[id].s16[0]});
-            case 32: return cse_(32, b, (Inst){op_splat_32, .imm=v[id].s32[0]});
-        }
-        assume(false);
-    }
-
-    int id = no_cse_(b,inst);
-    insert(&b->hash,h,id);
-    return id;
-}
-#define cse(size,b,...) (V##size){cse_(size, b, (Inst){__VA_ARGS__})}
-
-op_(inc_arg_and_done) {
-    (void)v;
-
-    int ptr    = inst->ptr,
-        stride = inst->imm;
-
-    arg[ptr] = (char*)arg[ptr] + (n<N ? 1*stride
-                                      : N*stride);
-}
-op_(inc_arg) {
-    op_inc_arg_and_done(n,inst,v,arg);
-    next;
-}
-
-static bool has_varying_pointer(const Builder* b, const Inst* inst) {
-    return inst->ptr
-        && b->stride[inst->ptr-1] != 0;
-}
-
-static bool is_store(const Builder* b, const Inst* inst) {
-    return has_varying_pointer(b,inst)
-        && (inst->x || inst->y || inst->z || inst->w);
-}
-
-static bool has_side_effect(const Builder* b, const Inst* inst) {
-    return is_store(b,inst);
-}
-
-struct Program {
-    int  vals;
-    int  loop;
-    Inst inst[];
-};
-
-Program* compile(Builder* b) {
-    union {
-        struct { bool live, loop_dependent; };
-        int reordered_id;
-    } *meta = calloc((size_t)b->insts, sizeof *meta);
-
-    int live_vals = 0;
-    for (int i = b->insts; i --> 0;) {
-        const Inst* inst = b->inst+i;
-        if (has_side_effect(b,inst)) {
-            meta[i].live = true;
-        }
-        if (meta[i].live) {
-            if (inst->x) { meta[inst->x-1].live = true; }
-            if (inst->y) { meta[inst->y-1].live = true; }
-            if (inst->z) { meta[inst->z-1].live = true; }
-            if (inst->w) { meta[inst->w-1].live = true; }
-            live_vals++;
-        }
-    }
-
-    for (int i = 0; i < b->insts; i++) {
-        const Inst* inst = b->inst+i;
-        meta[i].loop_dependent = has_varying_pointer(b,inst)
-                              || (inst->x && meta[inst->x-1].loop_dependent)
-                              || (inst->y && meta[inst->y-1].loop_dependent)
-                              || (inst->z && meta[inst->z-1].loop_dependent)
-                              || (inst->w && meta[inst->w-1].loop_dependent);
-    }
-
-    int varying_ptrs = 0;
-    for (int ptr = 0; ptr < b->args; ptr++) {
-        if (b->stride[ptr] != 0) {
-            varying_ptrs++;
-        }
-    }
-    const int insts = live_vals
-                    + (varying_ptrs ? varying_ptrs : 1/*op_done*/);
-
-    Program* p = malloc(sizeof *p + sizeof(Inst) * (size_t)insts);
-    p->vals = 0;
-
-    for (int loop_dependent = 0; loop_dependent < 2; loop_dependent++) {
-        if (loop_dependent) {
-            p->loop = p->vals;
-        }
-        for (int i = 0; i < b->insts; i++) {
-            if (meta[i].live && meta[i].loop_dependent == loop_dependent) {
-                Inst* inst = p->inst + p->vals;
-                *inst = b->inst[i];
-
-                // Update inst with reordered argument IDs and translate to Program convention:
-                //    - relative value arguments, writing to *v and reading v[inst->x], etc.
-                //    - 1-indexed ptr -> 0-indexed ptr
-                if (inst->x  ) { inst->x = meta[inst->x-1].reordered_id - p->vals; }
-                if (inst->y  ) { inst->y = meta[inst->y-1].reordered_id - p->vals; }
-                if (inst->z  ) { inst->z = meta[inst->z-1].reordered_id - p->vals; }
-                if (inst->w  ) { inst->w = meta[inst->w-1].reordered_id - p->vals; }
-                if (inst->ptr) { inst->ptr--; }
-
-                meta[i].reordered_id = p->vals++;
-            }
-        }
-    }
-    assume(p->vals == live_vals);
-
-    Inst* inst = p->inst + p->vals;
-    for (int ptr = 0; ptr < b->args; ptr++) {
-        if (b->stride[ptr] != 0) {
-            *inst++ = (Inst) {
-                .op  = op_inc_arg,
-                .ptr = ptr,
-                .imm = b->stride[ptr],
-            };
-        }
-    }
-    if (inst > p->inst + p->vals) {
-        inst[-1].op = op_inc_arg_and_done;
-    } else {
-        *inst++ = (Inst){.op=op_done};
-    }
-    assume(inst == p->inst + insts);
-
-    free(meta);
-    free(b->inst);
-    free(b->stride);
-    free(b->hash.table);
-    free(b);
-    return p;
-}
-
-void drop(Program* p) {
-    free(p);
-}
-
-op_(ld1_8 ) { n<N ? memcpy(v, arg[inst->ptr], 1<<0) : memcpy(v, arg[inst->ptr], N<<0); next; }
-op_(ld1_16) { n<N ? memcpy(v, arg[inst->ptr], 1<<1) : memcpy(v, arg[inst->ptr], N<<1); next; }
-op_(ld1_32) { n<N ? memcpy(v, arg[inst->ptr], 1<<2) : memcpy(v, arg[inst->ptr], N<<2); next; }
-
-V8  ld1_8 (Builder* b, Ptr ptr) { return no_cse(8 , b, op_ld1_8 , .ptr=ptr.ix); }
-V16 ld1_16(Builder* b, Ptr ptr) { return no_cse(16, b, op_ld1_16, .ptr=ptr.ix); }
-V32 ld1_32(Builder* b, Ptr ptr) { return no_cse(32, b, op_ld1_32, .ptr=ptr.ix); }
-
-op_(st1_8) {
-    n<N ? memcpy(arg[inst->ptr], &v[inst->x], 1<<0)
-        : memcpy(arg[inst->ptr], &v[inst->x], N<<0);
-    next;
-}
-op_(st1_16) {
-    n<N ? memcpy(arg[inst->ptr], &v[inst->x], 1<<1)
-        : memcpy(arg[inst->ptr], &v[inst->x], N<<1);
-    next;
-}
-op_(st1_32) {
-    n<N ? memcpy(arg[inst->ptr], &v[inst->x], 1<<2)
-        : memcpy(arg[inst->ptr], &v[inst->x], N<<2);
-    next;
-}
-void st1_8 (Builder* b, Ptr ptr, V8  x) { no_cse(8 , b, op_st1_8 , .ptr=ptr.ix, .x=x.id); }
-void st1_16(Builder* b, Ptr ptr, V16 x) { no_cse(16, b, op_st1_16, .ptr=ptr.ix, .x=x.id); }
-void st1_32(Builder* b, Ptr ptr, V32 x) { no_cse(32, b, op_st1_32, .ptr=ptr.ix, .x=x.id); }
-
-op_(ld4_8) {
-    uint8_t __attribute__((vector_size(4*N<<0), aligned(1))) s;
-    if (n<N) {
-        memcpy(&s, arg[inst->ptr], 4);
-        v[0].u8 = shuffle(s,s, 0,WHATEVER);
-        v[1].u8 = shuffle(s,s, 1,WHATEVER);
-        v[2].u8 = shuffle(s,s, 2,WHATEVER);
-        v[3].u8 = shuffle(s,s, 3,WHATEVER);
-    } else {
-        memcpy(&s, arg[inst->ptr], sizeof s);
-        v[0].u8 = shuffle(s,s, LD4_0);
-        v[1].u8 = shuffle(s,s, LD4_1);
-        v[2].u8 = shuffle(s,s, LD4_2);
-        v[3].u8 = shuffle(s,s, LD4_3);
-    }
-    inst += 3;
-    v    += 3;
-    next;
-}
-struct V8x4 ld4_8(Builder* b, Ptr ptr) {
-    V8 r = no_cse(8, b, op_ld4_8, .ptr=ptr.ix);
-    return (struct V8x4) {
-        .r = r,
-        .g = no_cse(8, b, .x=r.id),
-        .b = no_cse(8, b, .x=r.id),
-        .a = no_cse(8, b, .x=r.id),
-    };
-}
-
-op_(st4_8) {
-    typedef uint8_t __attribute__((vector_size(4*1<<0), aligned(1))) S1;
-    typedef uint8_t __attribute__((vector_size(4*N<<0), aligned(1))) SN;
-    if (n<N) {
-        *(S1*)arg[inst->ptr] = shuffle(shuffle(v[inst->x].u8, v[inst->y].u8, CONCAT),
-                                       shuffle(v[inst->z].u8, v[inst->w].u8, CONCAT), ST4_1);
-    } else {
-        *(SN*)arg[inst->ptr] = shuffle(shuffle(v[inst->x].u8, v[inst->y].u8, CONCAT),
-                                       shuffle(v[inst->z].u8, v[inst->w].u8, CONCAT), ST4);
-    }
-    next;
-}
-void st4_8(Builder* b, Ptr ptr, V8 x, V8 y, V8 z, V8 w) {
-    no_cse(8, b, op_st4_8, .ptr=ptr.ix, .x=x.id, .y=y.id, .z=z.id, .w=w.id);
-}
-
-V8  splat_8 (Builder* b, int imm) { return cse(8 , b, op_splat_8 , .imm=imm); }
-V16 splat_16(Builder* b, int imm) { return cse(16, b, op_splat_16, .imm=imm); }
-V32 splat_32(Builder* b, int imm) { return cse(32, b, op_splat_32, .imm=imm); }
+V8  splat_8 (Builder* b, int imm) { return cse(8 , b, op_splat_8 , .imm=imm, .kind=SPLAT); }
+V16 splat_16(Builder* b, int imm) { return cse(16, b, op_splat_16, .imm=imm, .kind=SPLAT); }
+V32 splat_32(Builder* b, int imm) { return cse(32, b, op_splat_32, .imm=imm, .kind=SPLAT); }
 
 op_(uniform_8) {
     uint8_t uni;
-    memcpy(&uni, (const char*)arg[inst->ptr] + inst->imm, sizeof uni);
+    memcpy(&uni, (const char*)uniforms + inst->imm, sizeof uni);
 
     Val val = {0};
     val.u8 += uni;
@@ -397,7 +364,7 @@ op_(uniform_8) {
 }
 op_(uniform_16) {
     uint16_t uni;
-    memcpy(&uni, (const char*)arg[inst->ptr] + inst->imm, sizeof uni);
+    memcpy(&uni, (const char*)uniforms + inst->imm, sizeof uni);
 
     Val val = {0};
     val.u16 += uni;
@@ -406,16 +373,22 @@ op_(uniform_16) {
 }
 op_(uniform_32) {
     uint32_t uni;
-    memcpy(&uni, (const char*)arg[inst->ptr] + inst->imm, sizeof uni);
+    memcpy(&uni, (const char*)uniforms + inst->imm, sizeof uni);
 
     Val val = {0};
     val.u32 += uni;
     *v = val;
     next;
 }
-V8  uniform_8 (Builder* b, Ptr p, int k) { return cse(8 , b, op_uniform_8 , .ptr=p.ix, .imm=k); }
-V16 uniform_16(Builder* b, Ptr p, int k) { return cse(16, b, op_uniform_16, .ptr=p.ix, .imm=k); }
-V32 uniform_32(Builder* b, Ptr p, int k) { return cse(32, b, op_uniform_32, .ptr=p.ix, .imm=k); }
+V8  uniform_8 (Builder* b, int offset) {
+    return cse(8 , b, op_uniform_8 , .imm=offset, .kind=UNIFORM);
+}
+V16 uniform_16(Builder* b, int offset) {
+    return cse(16, b, op_uniform_16, .imm=offset, .kind=UNIFORM);
+}
+V32 uniform_32(Builder* b, int offset) {
+    return cse(32, b, op_uniform_32, .imm=offset, .kind=UNIFORM);
+}
 
 
 op_(cast_F16_to_S16) { v->s16 = cast(v[inst->x].f16, s16); next; }
@@ -490,14 +463,14 @@ static bool equiv(float x, float y) {
     return (x <= y && y <= x)
         || (x != x && y != y);
 }
-
 static bool is_splat_F16(const Builder* b, V16 x, float imm) {
     Inst inst = b->inst[x.id-1];
     union {
         int bits;
         __fp16 f;
     } pun = {inst.imm};
-    return is_splat(inst) && equiv((float)pun.f, imm);
+    return inst.kind == SPLAT
+        && equiv((float)pun.f, imm);
 }
 
 V16 add_F16(Builder* b, V16 x, V16 y) {
@@ -562,7 +535,7 @@ V32 shr_S32(Builder* b, V32 x, int k) { return cse(32, b, op_shr_S32, .x=x.id, .
 V32 shr_U32(Builder* b, V32 x, int k) { return cse(32, b, op_shr_U32, .x=x.id, .imm=k); }
 
 
-void run(const Program* p, int n, void* arg[]) {
+void run(const Program* p, int n, const void* uniforms, void* varying[]) {
     Val scratch[16], *val = scratch;
     if (len(scratch) < p->vals) {
         val = malloc((size_t)p->vals * sizeof *val);
@@ -575,7 +548,7 @@ void run(const Program* p, int n, void* arg[]) {
         *l = val + p->loop;
 
     for (; n; n -= (n<N ? 1 : N)) {
-        start->op(n,start,v,arg);
+        start->op(n,start,v,uniforms,varying);
         start = loop;
         v     = l;
     }
