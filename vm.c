@@ -83,15 +83,6 @@ Builder* builder() {
     return b;
 }
 
-// In Builder convention, value IDs (from no_cse() or cse()) are 1-indexed.
-// This allows testing Inst's x,y,z,w fields' existence with !=0.
-// TODO: merge no_cse() and cse() by inspecting inst.kind.
-static int no_cse_(Builder* b, Inst inst) {
-    push(b->inst,b->insts) = inst;
-    return b->insts;
-}
-#define no_cse(size,b,...) (V##size){no_cse_(b, (Inst){__VA_ARGS__})}
-
 op_(done) {
     (void)n;
     (void)inst;
@@ -113,10 +104,9 @@ static bool inst_eq(int id, void* vctx) {
         && (ctx->id = id);
 }
 
-static int cse_(int size, Builder* b, Inst inst) {
-    int h = (int)murmur3(0, &inst,sizeof inst);
-
-    for (inst_eq_ctx ctx={.b=b,.inst=&inst}; lookup(&b->hash,h, inst_eq,&ctx);) {
+static int inst_(int size, Builder* b, Inst inst) {
+    int hash = (int)murmur3(0, &inst,sizeof inst);
+    for (inst_eq_ctx ctx={.b=b,.inst=&inst}; lookup(&b->hash,hash, inst_eq,&ctx);) {
         return ctx.id;
     }
 
@@ -146,11 +136,15 @@ static int cse_(int size, Builder* b, Inst inst) {
         assume(false);
     }
 
-    int id = no_cse_(b,inst);
-    insert(&b->hash,h,id);
+    // In Builder convention, IDs are 1-indexed so we can test x,y,z,w arg existence with !=0.
+    push(b->inst,b->insts) = inst;
+    int id = b->insts;
+    if (inst.kind <= UNIFORM) {
+        insert(&b->hash,hash,id);
+    }
     return id;
 }
-#define cse(size,b,...) (V##size){cse_(size, b, (Inst){__VA_ARGS__})}
+#define inst(size,b,...) (V##size){inst_(size, b, (Inst){__VA_ARGS__})}
 
 
 struct Program {
@@ -247,9 +241,9 @@ op_(ld1_32) {
     next;
 }
 
-V8  ld1_8 (Builder* b) { return no_cse(8 , b, op_ld1_8 , .imm=b->varying++, .kind=LOAD); }
-V16 ld1_16(Builder* b) { return no_cse(16, b, op_ld1_16, .imm=b->varying++, .kind=LOAD); }
-V32 ld1_32(Builder* b) { return no_cse(32, b, op_ld1_32, .imm=b->varying++, .kind=LOAD); }
+V8  ld1_8 (Builder* b) { return inst(8 , b, op_ld1_8 , .imm=b->varying++, .kind=LOAD); }
+V16 ld1_16(Builder* b) { return inst(16, b, op_ld1_16, .imm=b->varying++, .kind=LOAD); }
+V32 ld1_32(Builder* b) { return inst(32, b, op_ld1_32, .imm=b->varying++, .kind=LOAD); }
 
 op_(st1_8) {
     uint8_t* p = varying[inst->imm];
@@ -273,13 +267,13 @@ op_(st1_32) {
     next;
 }
 void st1_8 (Builder* b, V8  x) {
-    no_cse(8 , b, op_st1_8 , .x=x.id, .imm=b->varying++, .kind=STORE);
+    inst(8 , b, op_st1_8 , .x=x.id, .imm=b->varying++, .kind=STORE);
 }
 void st1_16(Builder* b, V16 x) {
-    no_cse(16, b, op_st1_16, .x=x.id, .imm=b->varying++, .kind=STORE);
+    inst(16, b, op_st1_16, .x=x.id, .imm=b->varying++, .kind=STORE);
 }
 void st1_32(Builder* b, V32 x) {
-    no_cse(32, b, op_st1_32, .x=x.id, .imm=b->varying++, .kind=STORE);
+    inst(32, b, op_st1_32, .x=x.id, .imm=b->varying++, .kind=STORE);
 }
 
 op_(ld4_8) {
@@ -304,12 +298,12 @@ op_(ld4_8) {
     next;
 }
 struct V8x4 ld4_8(Builder* b) {
-    V8 r = no_cse(8, b, op_ld4_8, .imm=b->varying++, .kind=LOAD);
+    V8 r = inst(8, b, op_ld4_8, .imm=b->varying++, .kind=LOAD);
     return (struct V8x4) {
         .r = r,
-        .g = no_cse(8, b, .x=r.id),
-        .b = no_cse(8, b, .x=r.id),
-        .a = no_cse(8, b, .x=r.id),
+        .g = inst(8, b, .x=r.id, .kind=LOAD),
+        .b = inst(8, b, .x=r.id, .kind=LOAD),
+        .a = inst(8, b, .x=r.id, .kind=LOAD),
     };
 }
 
@@ -328,7 +322,7 @@ op_(st4_8) {
     next;
 }
 void st4_8(Builder* b, V8 x, V8 y, V8 z, V8 w) {
-    no_cse(8, b, op_st4_8, .x=x.id, .y=y.id, .z=z.id, .w=w.id, .imm=b->varying++, .kind=STORE);
+    inst(8, b, op_st4_8, .x=x.id, .y=y.id, .z=z.id, .w=w.id, .imm=b->varying++, .kind=STORE);
 }
 
 op_(splat_8) {
@@ -349,9 +343,9 @@ op_(splat_32) {
     *v = val;
     next;
 }
-V8  splat_8 (Builder* b, int imm) { return cse(8 , b, op_splat_8 , .imm=imm, .kind=SPLAT); }
-V16 splat_16(Builder* b, int imm) { return cse(16, b, op_splat_16, .imm=imm, .kind=SPLAT); }
-V32 splat_32(Builder* b, int imm) { return cse(32, b, op_splat_32, .imm=imm, .kind=SPLAT); }
+V8  splat_8 (Builder* b, int imm) { return inst(8 , b, op_splat_8 , .imm=imm, .kind=SPLAT); }
+V16 splat_16(Builder* b, int imm) { return inst(16, b, op_splat_16, .imm=imm, .kind=SPLAT); }
+V32 splat_32(Builder* b, int imm) { return inst(32, b, op_splat_32, .imm=imm, .kind=SPLAT); }
 
 op_(uniform_8) {
     uint8_t uni;
@@ -381,13 +375,13 @@ op_(uniform_32) {
     next;
 }
 V8  uniform_8 (Builder* b, int offset) {
-    return cse(8 , b, op_uniform_8 , .imm=offset, .kind=UNIFORM);
+    return inst(8 , b, op_uniform_8 , .imm=offset, .kind=UNIFORM);
 }
 V16 uniform_16(Builder* b, int offset) {
-    return cse(16, b, op_uniform_16, .imm=offset, .kind=UNIFORM);
+    return inst(16, b, op_uniform_16, .imm=offset, .kind=UNIFORM);
 }
 V32 uniform_32(Builder* b, int offset) {
-    return cse(32, b, op_uniform_32, .imm=offset, .kind=UNIFORM);
+    return inst(32, b, op_uniform_32, .imm=offset, .kind=UNIFORM);
 }
 
 
@@ -400,14 +394,14 @@ op_(cast_F32_to_U32) { v->u32 = cast(v[inst->x].f32, u32); next; }
 op_(cast_S32_to_F32) { v->f32 = cast(v[inst->x].s32, f32); next; }
 op_(cast_U32_to_F32) { v->f32 = cast(v[inst->x].u32, f32); next; }
 
-V16 cast_F16_to_S16(Builder* b, V16 x) { return cse(16, b, op_cast_F16_to_S16, .x=x.id); }
-V16 cast_F16_to_U16(Builder* b, V16 x) { return cse(16, b, op_cast_F16_to_U16, .x=x.id); }
-V16 cast_S16_to_F16(Builder* b, V16 x) { return cse(16, b, op_cast_S16_to_F16, .x=x.id); }
-V16 cast_U16_to_F16(Builder* b, V16 x) { return cse(16, b, op_cast_U16_to_F16, .x=x.id); }
-V32 cast_F32_to_S32(Builder* b, V32 x) { return cse(32, b, op_cast_F32_to_S32, .x=x.id); }
-V32 cast_F32_to_U32(Builder* b, V32 x) { return cse(32, b, op_cast_F32_to_U32, .x=x.id); }
-V32 cast_S32_to_F32(Builder* b, V32 x) { return cse(32, b, op_cast_S32_to_F32, .x=x.id); }
-V32 cast_U32_to_F32(Builder* b, V32 x) { return cse(32, b, op_cast_U32_to_F32, .x=x.id); }
+V16 cast_F16_to_S16(Builder* b, V16 x) { return inst(16, b, op_cast_F16_to_S16, .x=x.id); }
+V16 cast_F16_to_U16(Builder* b, V16 x) { return inst(16, b, op_cast_F16_to_U16, .x=x.id); }
+V16 cast_S16_to_F16(Builder* b, V16 x) { return inst(16, b, op_cast_S16_to_F16, .x=x.id); }
+V16 cast_U16_to_F16(Builder* b, V16 x) { return inst(16, b, op_cast_U16_to_F16, .x=x.id); }
+V32 cast_F32_to_S32(Builder* b, V32 x) { return inst(32, b, op_cast_F32_to_S32, .x=x.id); }
+V32 cast_F32_to_U32(Builder* b, V32 x) { return inst(32, b, op_cast_F32_to_U32, .x=x.id); }
+V32 cast_S32_to_F32(Builder* b, V32 x) { return inst(32, b, op_cast_S32_to_F32, .x=x.id); }
+V32 cast_U32_to_F32(Builder* b, V32 x) { return inst(32, b, op_cast_U32_to_F32, .x=x.id); }
 
 
 op_( widen_S8 ) { v->s16 = cast(v->s8 , s16); next; }
@@ -419,14 +413,14 @@ op_(narrow_F32) { v->f16 = cast(v->f32, f16); next; }
 op_(narrow_I32) { v->u16 = cast(v->u32, u16); next; }
 op_(narrow_I16) { v->u8  = cast(v->u16, u8 ); next; }
 
-V16  widen_S8 (Builder* b, V8  x) { return cse(16, b,  op_widen_S8 , .x=x.id); }
-V16  widen_U8 (Builder* b, V8  x) { return cse(16, b,  op_widen_U8 , .x=x.id); }
-V32  widen_F16(Builder* b, V16 x) { return cse(32, b,  op_widen_F16, .x=x.id); }
-V32  widen_S16(Builder* b, V16 x) { return cse(32, b,  op_widen_S16, .x=x.id); }
-V32  widen_U16(Builder* b, V16 x) { return cse(32, b,  op_widen_U16, .x=x.id); }
-V16 narrow_F32(Builder* b, V32 x) { return cse(16, b, op_narrow_F32, .x=x.id); }
-V16 narrow_I32(Builder* b, V32 x) { return cse(16, b, op_narrow_I32, .x=x.id); }
-V8  narrow_I16(Builder* b, V16 x) { return cse(8 , b, op_narrow_I16, .x=x.id); }
+V16  widen_S8 (Builder* b, V8  x) { return inst(16, b,  op_widen_S8 , .x=x.id); }
+V16  widen_U8 (Builder* b, V8  x) { return inst(16, b,  op_widen_U8 , .x=x.id); }
+V32  widen_F16(Builder* b, V16 x) { return inst(32, b,  op_widen_F16, .x=x.id); }
+V32  widen_S16(Builder* b, V16 x) { return inst(32, b,  op_widen_S16, .x=x.id); }
+V32  widen_U16(Builder* b, V16 x) { return inst(32, b,  op_widen_U16, .x=x.id); }
+V16 narrow_F32(Builder* b, V32 x) { return inst(16, b, op_narrow_F32, .x=x.id); }
+V16 narrow_I32(Builder* b, V32 x) { return inst(16, b, op_narrow_I32, .x=x.id); }
+V8  narrow_I16(Builder* b, V16 x) { return inst(8 , b, op_narrow_I16, .x=x.id); }
 
 
 op_(add_F16) { v->f16 = cast(cast(v[inst->x].f16,f32) + cast(v[inst->y].f16,f32), f16); next; }
@@ -477,31 +471,31 @@ V16 add_F16(Builder* b, V16 x, V16 y) {
     if (is_splat_F16(b, x, 0.0f)) { return y; }
     if (is_splat_F16(b, y, 0.0f)) { return x; }
     for (Inst mul = b->inst[x.id-1]; mul.op == op_mul_F16; ) {
-        return cse(16, b, op_mla_F16, .x=mul.x, .y=mul.y, .z=y.id);
+        return inst(16, b, op_mla_F16, .x=mul.x, .y=mul.y, .z=y.id);
     }
     for (Inst mul = b->inst[y.id-1]; mul.op == op_mul_F16; ) {
-        return cse(16, b, op_mla_F16, .x=mul.x, .y=mul.y, .z=x.id);
+        return inst(16, b, op_mla_F16, .x=mul.x, .y=mul.y, .z=x.id);
     }
-    return cse(16, b, op_add_F16, .x=x.id, .y=y.id);
+    return inst(16, b, op_add_F16, .x=x.id, .y=y.id);
 }
 V16 sub_F16(Builder* b, V16 x, V16 y) {
     if (is_splat_F16(b, y, 0.0f)) { return x; }
     for (Inst mul = b->inst[x.id-1]; mul.op == op_mul_F16; ) {
-        return cse(16, b, op_mls_F16, .x=mul.x, .y=mul.y, .z=y.id);
+        return inst(16, b, op_mls_F16, .x=mul.x, .y=mul.y, .z=y.id);
     }
     for (Inst mul = b->inst[y.id-1]; mul.op == op_mul_F16; ) {
-        return cse(16, b, op_nma_F16, .x=mul.x, .y=mul.y, .z=x.id);
+        return inst(16, b, op_nma_F16, .x=mul.x, .y=mul.y, .z=x.id);
     }
-    return cse(16, b, op_sub_F16, .x=x.id, .y=y.id);
+    return inst(16, b, op_sub_F16, .x=x.id, .y=y.id);
 }
 V16 mul_F16(Builder* b, V16 x, V16 y) {
     if (is_splat_F16(b, x, 1.0f)) { return y; }
     if (is_splat_F16(b, y, 1.0f)) { return x; }
-    return cse(16, b, op_mul_F16, .x=x.id, .y=y.id);
+    return inst(16, b, op_mul_F16, .x=x.id, .y=y.id);
 }
 V16 div_F16(Builder* b, V16 x, V16 y) {
     if (is_splat_F16(b, y, 1.0f)) { return x; }
-    return cse(16, b, op_div_F16, .x=x.id, .y=y.id);
+    return inst(16, b, op_div_F16, .x=x.id, .y=y.id);
 }
 
 op_(sqrt_F16) {
@@ -517,7 +511,7 @@ op_(sqrt_F16) {
 #endif
     next;
 }
-V16 sqrt_F16(Builder* b, V16 x) { return cse(16, b, op_sqrt_F16, .x=x.id); }
+V16 sqrt_F16(Builder* b, V16 x) { return inst(16, b, op_sqrt_F16, .x=x.id); }
 
 
 op_(add_I32) { v->u32 = v[inst->x].u32 + v[inst->y].u32; next; }
@@ -527,12 +521,12 @@ op_(shl_I32) { v->u32 = v[inst->x].u32 << inst->imm; next; }
 op_(shr_S32) { v->s32 = v[inst->x].s32 >> inst->imm; next; }
 op_(shr_U32) { v->u32 = v[inst->x].u32 >> inst->imm; next; }
 
-V32 add_I32(Builder* b, V32 x, V32 y) { return cse(32, b, op_add_I32, .x=x.id, .y=y.id); }
-V32 sub_I32(Builder* b, V32 x, V32 y) { return cse(32, b, op_sub_I32, .x=x.id, .y=y.id); }
-V32 mul_I32(Builder* b, V32 x, V32 y) { return cse(32, b, op_mul_I32, .x=x.id, .y=y.id); }
-V32 shl_I32(Builder* b, V32 x, int k) { return cse(32, b, op_shl_I32, .x=x.id, .imm=k); }
-V32 shr_S32(Builder* b, V32 x, int k) { return cse(32, b, op_shr_S32, .x=x.id, .imm=k); }
-V32 shr_U32(Builder* b, V32 x, int k) { return cse(32, b, op_shr_U32, .x=x.id, .imm=k); }
+V32 add_I32(Builder* b, V32 x, V32 y) { return inst(32, b, op_add_I32, .x=x.id, .y=y.id); }
+V32 sub_I32(Builder* b, V32 x, V32 y) { return inst(32, b, op_sub_I32, .x=x.id, .y=y.id); }
+V32 mul_I32(Builder* b, V32 x, V32 y) { return inst(32, b, op_mul_I32, .x=x.id, .y=y.id); }
+V32 shl_I32(Builder* b, V32 x, int k) { return inst(32, b, op_shl_I32, .x=x.id, .imm=k); }
+V32 shr_S32(Builder* b, V32 x, int k) { return inst(32, b, op_shr_S32, .x=x.id, .imm=k); }
+V32 shr_U32(Builder* b, V32 x, int k) { return inst(32, b, op_shr_U32, .x=x.id, .imm=k); }
 
 
 void run(const Program* p, int n, const void* uniforms, void* varying[]) {
