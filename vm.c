@@ -156,7 +156,7 @@ static int cse_(int size, Builder* b, Inst inst) {
 struct Program {
     int  vals;
     int  loop;
-    Inst inst[];
+    Inst inst[1/*op_done*/];
 };
 
 Program* compile(Builder* b) {
@@ -189,7 +189,7 @@ Program* compile(Builder* b) {
                               || (inst->w && meta[inst->w-1].loop_dependent);
     }
 
-    Program* p = malloc(sizeof *p + sizeof(Inst) * (size_t)(live_vals + 1/*op_done*/));
+    Program* p = malloc(sizeof *p + sizeof(Inst) * (size_t)live_vals);
     p->vals = 0;
 
     for (int loop_dependent = 0; loop_dependent < 2; loop_dependent++) {
