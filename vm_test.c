@@ -14,6 +14,12 @@ static int fp16(float x) {
     return pun.bits;
 }
 
+static void test_nothing() {
+    Program* p = compile(builder());
+    run(p, 42, NULL, NULL);
+    drop(p);
+}
+
 static void test_memset32() {
     Program* p;
     {
@@ -447,6 +453,7 @@ static double compile_cse(int k, double *scale, const char* *unit) {
 }
 
 int main(int argc, char** argv) {
+    test_nothing();
     test_memset32();
     test_memset32_uniform();
     test_F16();
