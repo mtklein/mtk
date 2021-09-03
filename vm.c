@@ -42,6 +42,7 @@
 #define shuffle __builtin_shufflevector
 
 #define op_(name) \
+    __attribute__((flatten)) \
     static void op_##name(int n, const Inst* inst, Val* v, const void* uniforms, void* varying[])
 #define next inst[1].op(n,inst+1,v+1,uniforms,varying)
 
@@ -65,7 +66,8 @@ typedef union {
 } Val;
 
 typedef struct Inst {
-    void (*op)(int n, const struct Inst*, Val* v, const void* uniforms, void* varying[]);
+    void (*op  )(int n, const struct Inst*, Val* v, const void* uniforms, void* varying[]);
+    void (*done)(int n, const struct Inst*, Val* v, const void* uniforms, void* varying[]);
     int x,y,z,w;
     int imm;
     enum { MATH, SPLAT, UNIFORM, LOAD, STORE } kind;
@@ -206,6 +208,12 @@ Program* compile(Builder* b) {
         }
     }
     assume(p->vals == live_vals);
+
+    for (int last = p->vals-1; last >= 0 && p->inst[last].done;) {
+        p->inst[last].op = p->inst[last].done;
+        break;
+    }
+
     p->inst[p->vals] = (Inst){.op=op_done};
 
     free(meta);
@@ -245,35 +253,39 @@ V8  ld1_8 (Builder* b) { return inst(8 , b, op_ld1_8 , .imm=b->varying++, .kind=
 V16 ld1_16(Builder* b) { return inst(16, b, op_ld1_16, .imm=b->varying++, .kind=LOAD); }
 V32 ld1_32(Builder* b) { return inst(32, b, op_ld1_32, .imm=b->varying++, .kind=LOAD); }
 
-op_(st1_8) {
+op_(st1_8_and_done) {
+    (void)uniforms;
     void** var = varying + inst->imm;
     uint8_t* p = *var;
     if (n<N) { memcpy(p, &v[inst->x],   sizeof *p); *var = p+1; }
     else     { memcpy(p, &v[inst->x], N*sizeof *p); *var = p+N; }
-    next;
 }
-op_(st1_16) {
+op_(st1_16_and_done) {
+    (void)uniforms;
     void** var = varying + inst->imm;
     uint16_t* p = *var;
     if (n<N) { memcpy(p, &v[inst->x],   sizeof *p); *var = p+1; }
     else     { memcpy(p, &v[inst->x], N*sizeof *p); *var = p+N; }
-    next;
 }
-op_(st1_32) {
+op_(st1_32_and_done) {
+    (void)uniforms;
     void** var = varying + inst->imm;
     uint32_t* p = *var;
     if (n<N) { memcpy(p, &v[inst->x],   sizeof *p); *var = p+1; }
     else     { memcpy(p, &v[inst->x], N*sizeof *p); *var = p+N; }
-    next;
 }
+op_(st1_8 ) { op_st1_8_and_done (n,inst,v,uniforms,varying); next; }
+op_(st1_16) { op_st1_16_and_done(n,inst,v,uniforms,varying); next; }
+op_(st1_32) { op_st1_32_and_done(n,inst,v,uniforms,varying); next; }
+
 void st1_8 (Builder* b, V8  x) {
-    inst(8 , b, op_st1_8 , .x=x.id, .imm=b->varying++, .kind=STORE);
+    inst(8 , b, op_st1_8 , .done=op_st1_8_and_done , .x=x.id, .imm=b->varying++, .kind=STORE);
 }
 void st1_16(Builder* b, V16 x) {
-    inst(16, b, op_st1_16, .x=x.id, .imm=b->varying++, .kind=STORE);
+    inst(16, b, op_st1_16, .done=op_st1_16_and_done, .x=x.id, .imm=b->varying++, .kind=STORE);
 }
 void st1_32(Builder* b, V32 x) {
-    inst(32, b, op_st1_32, .x=x.id, .imm=b->varying++, .kind=STORE);
+    inst(32, b, op_st1_32, .done=op_st1_32_and_done, .x=x.id, .imm=b->varying++, .kind=STORE);
 }
 
 op_(ld4_8) {
@@ -309,9 +321,11 @@ struct V8x4 ld4_8(Builder* b) {
     };
 }
 
-op_(st4_8) {
+op_(st4_8_and_done) {
+    (void)uniforms;
     typedef uint8_t __attribute__((vector_size(4*1<<0), aligned(1))) S1;
     typedef uint8_t __attribute__((vector_size(4*N<<0), aligned(1))) SN;
+
     void** var = varying + inst->imm;
     uint8_t* p = *var;
     if (n<N) {
@@ -323,10 +337,12 @@ op_(st4_8) {
                           shuffle(v[inst->z].u8, v[inst->w].u8, CONCAT), ST4);
         *var = p+4*N;
     }
-    next;
 }
+op_(st4_8) { op_st4_8_and_done(n,inst,v,uniforms,varying); next; }
+
 void st4_8(Builder* b, V8 x, V8 y, V8 z, V8 w) {
-    inst(8, b, op_st4_8, .x=x.id, .y=y.id, .z=z.id, .w=w.id, .imm=b->varying++, .kind=STORE);
+    inst(8, b, op_st4_8, .done=op_st4_8_and_done,
+         .x=x.id, .y=y.id, .z=z.id, .w=w.id, .imm=b->varying++, .kind=STORE);
 }
 
 op_(splat_8) {
