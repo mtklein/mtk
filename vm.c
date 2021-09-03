@@ -220,24 +220,27 @@ void drop(Program* p) {
 }
 
 op_(ld1_8) {
-    uint8_t* p = varying[inst->imm];
+    void** var = varying + inst->imm;
+    uint8_t* p = *var;
     n<N ? memcpy(v, p,   sizeof *p)
         : memcpy(v, p, N*sizeof *p);
-    varying[inst->imm] = p + (n<N ? 1 : N);
+    *var = p + (n<N ? 1 : N);
     next;
 }
 op_(ld1_16) {
-    uint16_t* p = varying[inst->imm];
+    void** var = varying + inst->imm;
+    uint16_t* p = *var;
     n<N ? memcpy(v, p,   sizeof *p)
         : memcpy(v, p, N*sizeof *p);
-    varying[inst->imm] = p + (n<N ? 1 : N);
+    *var = p + (n<N ? 1 : N);
     next;
 }
 op_(ld1_32) {
-    uint32_t* p = varying[inst->imm];
+    void** var = varying + inst->imm;
+    uint32_t* p = *var;
     n<N ? memcpy(v, p,   sizeof *p)
         : memcpy(v, p, N*sizeof *p);
-    varying[inst->imm] = p + (n<N ? 1 : N);
+    *var = p + (n<N ? 1 : N);
     next;
 }
 
@@ -246,24 +249,27 @@ V16 ld1_16(Builder* b) { return inst(16, b, op_ld1_16, .imm=b->varying++, .kind=
 V32 ld1_32(Builder* b) { return inst(32, b, op_ld1_32, .imm=b->varying++, .kind=LOAD); }
 
 op_(st1_8) {
-    uint8_t* p = varying[inst->imm];
+    void** var = varying + inst->imm;
+    uint8_t* p = *var;
     n<N ? memcpy(p, &v[inst->x],   sizeof *p)
         : memcpy(p, &v[inst->x], N*sizeof *p);
-    varying[inst->imm] = p + (n<N ? 1 : N);
+    *var = p + (n<N ? 1 : N);
     next;
 }
 op_(st1_16) {
-    uint16_t* p = varying[inst->imm];
+    void** var = varying + inst->imm;
+    uint16_t* p = *var;
     n<N ? memcpy(p, &v[inst->x],   sizeof *p)
         : memcpy(p, &v[inst->x], N*sizeof *p);
-    varying[inst->imm] = p + (n<N ? 1 : N);
+    *var = p + (n<N ? 1 : N);
     next;
 }
 op_(st1_32) {
-    uint32_t* p = varying[inst->imm];
+    void** var = varying + inst->imm;
+    uint32_t* p = *var;
     n<N ? memcpy(p, &v[inst->x],   sizeof *p)
         : memcpy(p, &v[inst->x], N*sizeof *p);
-    varying[inst->imm] = p + (n<N ? 1 : N);
+    *var = p + (n<N ? 1 : N);
     next;
 }
 void st1_8 (Builder* b, V8  x) {
@@ -277,7 +283,8 @@ void st1_32(Builder* b, V32 x) {
 }
 
 op_(ld4_8) {
-    uint8_t* p = varying[inst->imm];
+    void** var = varying + inst->imm;
+    uint8_t* p = *var;
     uint8_t __attribute__((vector_size(4*N<<0), aligned(1))) s;
     if (n<N) {
         memcpy(&s, p, 4);
@@ -292,7 +299,7 @@ op_(ld4_8) {
         v[2].u8 = shuffle(s,s, LD4_2);
         v[3].u8 = shuffle(s,s, LD4_3);
     }
-    varying[inst->imm] = p + 4*(n<N ? 1 : N);
+    *var = p + 4*(n<N ? 1 : N);
     inst += 3;
     v    += 3;
     next;
@@ -310,7 +317,8 @@ struct V8x4 ld4_8(Builder* b) {
 op_(st4_8) {
     typedef uint8_t __attribute__((vector_size(4*1<<0), aligned(1))) S1;
     typedef uint8_t __attribute__((vector_size(4*N<<0), aligned(1))) SN;
-    uint8_t* p = varying[inst->imm];
+    void** var = varying + inst->imm;
+    uint8_t* p = *var;
     if (n<N) {
         *(S1*)p = shuffle(shuffle(v[inst->x].u8, v[inst->y].u8, CONCAT),
                           shuffle(v[inst->z].u8, v[inst->w].u8, CONCAT), ST4_1);
@@ -318,7 +326,7 @@ op_(st4_8) {
         *(SN*)p = shuffle(shuffle(v[inst->x].u8, v[inst->y].u8, CONCAT),
                           shuffle(v[inst->z].u8, v[inst->w].u8, CONCAT), ST4);
     }
-    varying[inst->imm] = p + 4*(n<N ? 1 : N);
+    *var = p + 4*(n<N ? 1 : N);
     next;
 }
 void st4_8(Builder* b, V8 x, V8 y, V8 z, V8 w) {
