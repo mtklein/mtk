@@ -66,8 +66,8 @@ typedef union {
 } Val;
 
 typedef struct Inst {
-    void (*op  )(int n, const struct Inst*, Val* v, const void* uniforms, void* varying[]);
-    void (*done)(int n, const struct Inst*, Val* v, const void* uniforms, void* varying[]);
+    void (*op         )(int n, const struct Inst*, Val* v, const void* uniforms, void* varying[]);
+    void (*op_and_done)(int n, const struct Inst*, Val* v, const void* uniforms, void* varying[]);
     int x,y,z,w;
     int imm;
     enum { MATH, SPLAT, UNIFORM, LOAD, STORE } kind;
@@ -186,7 +186,7 @@ Program* compile(Builder* b) {
     }
 
     const bool need_op_done = live_vals == 0
-                           || b->inst[live_vals-1].done == NULL;
+                           || b->inst[live_vals-1].op_and_done == NULL;
 
     Program* p = malloc(sizeof *p + sizeof(Inst) * (size_t)(live_vals + need_op_done));
     p->vals = 0;
@@ -215,7 +215,7 @@ Program* compile(Builder* b) {
     if (need_op_done) {
         p->inst[p->vals] = (Inst){.op=op_done};
     } else {
-        p->inst[p->vals-1].op = p->inst[p->vals-1].done;
+        p->inst[p->vals-1].op = p->inst[p->vals-1].op_and_done;
     }
 
     free(meta);
@@ -281,13 +281,13 @@ op_(st1_16) { op_st1_16_and_done(n,inst,v,uniforms,varying); next; }
 op_(st1_32) { op_st1_32_and_done(n,inst,v,uniforms,varying); next; }
 
 void st1_8 (Builder* b, V8  x) {
-    inst(8 , b, op_st1_8 , .done=op_st1_8_and_done , .x=x.id, .imm=b->varying++, .kind=STORE);
+    inst(8 , b, op_st1_8 , op_st1_8_and_done , .x=x.id, .imm=b->varying++, .kind=STORE);
 }
 void st1_16(Builder* b, V16 x) {
-    inst(16, b, op_st1_16, .done=op_st1_16_and_done, .x=x.id, .imm=b->varying++, .kind=STORE);
+    inst(16, b, op_st1_16, op_st1_16_and_done, .x=x.id, .imm=b->varying++, .kind=STORE);
 }
 void st1_32(Builder* b, V32 x) {
-    inst(32, b, op_st1_32, .done=op_st1_32_and_done, .x=x.id, .imm=b->varying++, .kind=STORE);
+    inst(32, b, op_st1_32, op_st1_32_and_done, .x=x.id, .imm=b->varying++, .kind=STORE);
 }
 
 op_(ld4_8) {
@@ -343,7 +343,7 @@ op_(st4_8_and_done) {
 op_(st4_8) { op_st4_8_and_done(n,inst,v,uniforms,varying); next; }
 
 void st4_8(Builder* b, V8 x, V8 y, V8 z, V8 w) {
-    inst(8, b, op_st4_8, .done=op_st4_8_and_done,
+    inst(8, b, op_st4_8, op_st4_8_and_done,
          .x=x.id, .y=y.id, .z=z.id, .w=w.id, .imm=b->varying++, .kind=STORE);
 }
 
