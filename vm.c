@@ -152,7 +152,7 @@ static int inst_(int size, Builder* b, Inst inst) {
 struct Program {
     int  vals;
     int  loop;
-    Inst inst[1/*op_done*/];
+    Inst inst[];
 };
 
 Program* compile(Builder* b) {
@@ -185,7 +185,10 @@ Program* compile(Builder* b) {
                               || (inst->w && meta[inst->w-1].loop_dependent);
     }
 
-    Program* p = malloc(sizeof *p + sizeof(Inst) * (size_t)live_vals);
+    const bool need_op_done = live_vals == 0
+                           || b->inst[live_vals-1].done == NULL;
+
+    Program* p = malloc(sizeof *p + sizeof(Inst) * (size_t)(live_vals + need_op_done));
     p->vals = 0;
 
     for (int loop_dependent = 0; loop_dependent < 2; loop_dependent++) {
@@ -209,12 +212,11 @@ Program* compile(Builder* b) {
     }
     assume(p->vals == live_vals);
 
-    for (int last = p->vals-1; last >= 0 && p->inst[last].done;) {
-        p->inst[last].op = p->inst[last].done;
-        break;
+    if (need_op_done) {
+        p->inst[p->vals] = (Inst){.op=op_done};
+    } else {
+        p->inst[p->vals-1].op = p->inst[p->vals-1].done;
     }
-
-    p->inst[p->vals] = (Inst){.op=op_done};
 
     free(meta);
     free(b->inst);
