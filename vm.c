@@ -477,8 +477,7 @@ static bool equiv(float x, float y) {
     return (x <= y && y <= x)
         || (x != x && y != y);
 }
-static bool is_splat_F16(const Builder* b, V16 x, float imm) {
-    Inst inst = b->inst[x.id-1];
+static bool is_splat_F16(Inst inst, float imm) {
     union {
         int bits;
         __fp16 f;
@@ -488,8 +487,8 @@ static bool is_splat_F16(const Builder* b, V16 x, float imm) {
 }
 
 V16 add_F16(Builder* b, V16 x, V16 y) {
-    if (is_splat_F16(b, x, 0.0f)) { return y; }
-    if (is_splat_F16(b, y, 0.0f)) { return x; }
+    if (is_splat_F16(b->inst[x.id-1], 0.0f)) { return y; }
+    if (is_splat_F16(b->inst[y.id-1], 0.0f)) { return x; }
     for (Inst mul = b->inst[x.id-1]; mul.op == op_mul_F16; ) {
         return inst(16, b, op_mla_F16, .x=mul.x, .y=mul.y, .z=y.id);
     }
@@ -499,7 +498,7 @@ V16 add_F16(Builder* b, V16 x, V16 y) {
     return inst(16, b, op_add_F16, .x=x.id, .y=y.id);
 }
 V16 sub_F16(Builder* b, V16 x, V16 y) {
-    if (is_splat_F16(b, y, 0.0f)) { return x; }
+    if (is_splat_F16(b->inst[y.id-1], 0.0f)) { return x; }
     for (Inst mul = b->inst[x.id-1]; mul.op == op_mul_F16; ) {
         return inst(16, b, op_mls_F16, .x=mul.x, .y=mul.y, .z=y.id);
     }
@@ -509,12 +508,12 @@ V16 sub_F16(Builder* b, V16 x, V16 y) {
     return inst(16, b, op_sub_F16, .x=x.id, .y=y.id);
 }
 V16 mul_F16(Builder* b, V16 x, V16 y) {
-    if (is_splat_F16(b, x, 1.0f)) { return y; }
-    if (is_splat_F16(b, y, 1.0f)) { return x; }
+    if (is_splat_F16(b->inst[x.id-1], 1.0f)) { return y; }
+    if (is_splat_F16(b->inst[y.id-1], 1.0f)) { return x; }
     return inst(16, b, op_mul_F16, .x=x.id, .y=y.id);
 }
 V16 div_F16(Builder* b, V16 x, V16 y) {
-    if (is_splat_F16(b, y, 1.0f)) { return x; }
+    if (is_splat_F16(b->inst[y.id-1], 1.0f)) { return x; }
     return inst(16, b, op_div_F16, .x=x.id, .y=y.id);
 }
 
