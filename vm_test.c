@@ -318,6 +318,161 @@ static void test_sqrt() {
     drop(p);
 }
 
+static void test_widen_S8() {
+    Program* p;
+    {
+        Builder* b = builder();
+
+        V8 x = ld1_8(b);
+        st1_16(b, widen_S8(b, x));
+
+        p = compile(b);
+    }
+
+    int8_t  in[] = {-128,-1,0,1,127};
+    int16_t out[len(in)] = {0};
+    run(p,len(in), NULL, (void*[]){in,out});
+    for (int i = 0; i < len(in); i++) {
+        expect_eq(out[i], in[i]);
+    }
+    drop(p);
+}
+static void test_widen_U8() {
+    Program* p;
+    {
+        Builder* b = builder();
+
+        V8 x = ld1_8(b);
+        st1_16(b, widen_U8(b, x));
+
+        p = compile(b);
+    }
+
+    uint8_t  in[] = {0,128,255};
+    uint16_t out[len(in)] = {0};
+    run(p,len(in), NULL, (void*[]){in,out});
+    for (int i = 0; i < len(in); i++) {
+        expect_eq(out[i], in[i]);
+    }
+    drop(p);
+}
+
+static void test_widen_S16() {
+    Program* p;
+    {
+        Builder* b = builder();
+
+        V16 x = ld1_16(b);
+        st1_32(b, widen_S16(b, x));
+
+        p = compile(b);
+    }
+
+    int16_t  in[] = {-32768,-1,0,1,32767};
+    int32_t out[len(in)] = {0};
+    run(p,len(in), NULL, (void*[]){in,out});
+    for (int i = 0; i < len(in); i++) {
+        expect_eq(out[i], in[i]);
+    }
+    drop(p);
+}
+static void test_widen_U16() {
+    Program* p;
+    {
+        Builder* b = builder();
+
+        V16 x = ld1_16(b);
+        st1_32(b, widen_U16(b, x));
+
+        p = compile(b);
+    }
+
+    uint16_t  in[] = {0,32768,65535};
+    uint32_t out[len(in)] = {0};
+    run(p,len(in), NULL, (void*[]){in,out});
+    for (int i = 0; i < len(in); i++) {
+        expect_eq(out[i], in[i]);
+    }
+    drop(p);
+}
+static void test_widen_F16() {
+    Program* p;
+    {
+        Builder* b = builder();
+
+        V16 x = ld1_16(b);
+        st1_32(b, widen_F16(b, x));
+
+        p = compile(b);
+    }
+
+    __fp16 in[] = {-INFINITY,-1,0,+1,+INFINITY};
+    float out[len(in)] = {0};
+    run(p,len(in), NULL, (void*[]){in,out});
+    for (int i = 0; i < len(in); i++) {
+        expect_eq(out[i], (float)in[i]);
+    }
+    drop(p);
+}
+
+static void test_narrow_F32() {
+    Program* p;
+    {
+        Builder* b = builder();
+
+        V32 x = ld1_32(b);
+        st1_16(b, narrow_F32(b, x));
+
+        p = compile(b);
+    }
+
+    float in[] = {-INFINITY,-1,0,+1,+INFINITY};
+    __fp16 out[len(in)] = {0};
+    run(p,len(in), NULL, (void*[]){in,out});
+    for (int i = 0; i < len(in); i++) {
+        expect_eq((float)out[i], in[i]);
+    }
+    drop(p);
+}
+static void test_narrow_I32() {
+    Program* p;
+    {
+        Builder* b = builder();
+
+        V32 x = ld1_32(b);
+        st1_16(b, narrow_I32(b, x));
+
+        p = compile(b);
+    }
+
+    int32_t in[] = {-32768,-1,0,1,32767};
+    int16_t out[len(in)] = {0};
+    run(p,len(in), NULL, (void*[]){in,out});
+    for (int i = 0; i < len(in); i++) {
+        expect_eq(out[i], in[i]);
+    }
+    drop(p);
+}
+static void test_narrow_I16() {
+    Program* p;
+    {
+        Builder* b = builder();
+
+        V16 x = ld1_16(b);
+        st1_8(b, narrow_I16(b, x));
+
+        p = compile(b);
+    }
+
+    int16_t in[] = {-128,-1,0,1,127};
+    int8_t out[len(in)] = {0};
+    run(p,len(in), NULL, (void*[]){in,out});
+    for (int i = 0; i < len(in); i++) {
+        expect_eq(out[i], in[i]);
+    }
+    drop(p);
+}
+
 
 void goal(uint32_t dst[], uint32_t val, int n);
 
@@ -466,6 +621,14 @@ int main(int argc, char** argv) {
     test_mul_add_fusion();
     test_mul_sub_fusion();
     test_sqrt();
+    test_widen_S8();
+    test_widen_U8();
+    test_widen_S16();
+    test_widen_U16();
+    test_widen_F16();
+    test_narrow_F32();
+    test_narrow_I32();
+    test_narrow_I16();
 
     bench(memset32_goal);
     bench(memset32_splat);

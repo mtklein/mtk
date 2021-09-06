@@ -424,14 +424,14 @@ V32 cast_S32_to_F32(Builder* b, V32 x) { return inst(32, b, op_cast_S32_to_F32, 
 V32 cast_U32_to_F32(Builder* b, V32 x) { return inst(32, b, op_cast_U32_to_F32, .x=x.id); }
 
 
-op_( widen_S8 ) { v->s16 = cast(v->s8 , s16); next; }
-op_( widen_U8 ) { v->u16 = cast(v->u8 , u16); next; }
-op_( widen_F16) { v->f32 = cast(v->f16, f32); next; }
-op_( widen_S16) { v->s32 = cast(v->s16, s32); next; }
-op_( widen_U16) { v->u32 = cast(v->u16, u32); next; }
-op_(narrow_F32) { v->f16 = cast(v->f32, f16); next; }
-op_(narrow_I32) { v->u16 = cast(v->u32, u16); next; }
-op_(narrow_I16) { v->u8  = cast(v->u16, u8 ); next; }
+op_( widen_S8 ) { v->s16 = cast(v[inst->x].s8 , s16); next; }
+op_( widen_U8 ) { v->u16 = cast(v[inst->x].u8 , u16); next; }
+op_( widen_F16) { v->f32 = cast(v[inst->x].f16, f32); next; }
+op_( widen_S16) { v->s32 = cast(v[inst->x].s16, s32); next; }
+op_( widen_U16) { v->u32 = cast(v[inst->x].u16, u32); next; }
+op_(narrow_F32) { v->f16 = cast(v[inst->x].f32, f16); next; }
+op_(narrow_I32) { v->u16 = cast(v[inst->x].u32, u16); next; }
+op_(narrow_I16) { v->u8  = cast(v[inst->x].u16, u8 ); next; }
 
 V16  widen_S8 (Builder* b, V8  x) { return inst(16, b,  op_widen_S8 , .x=x.id); }
 V16  widen_U8 (Builder* b, V8  x) { return inst(16, b,  op_widen_U8 , .x=x.id); }
