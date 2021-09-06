@@ -66,18 +66,25 @@ typedef union {
 } Val;
 
 typedef struct Inst {
-    void (*op         )(int n, const struct Inst*, Val* v, const void* uniforms, void* varying[]);
-    void (*op_and_done)(int n, const struct Inst*, Val* v, const void* uniforms, void* varying[]);
-    int x,y,z,w;
+    void (*op)(int n, const struct Inst*, Val* v, const void* uniforms, void* varying[]);
+    const Val *x,*y,*z,*w;
     int imm;
-    enum { MATH, SPLAT, UNIFORM, LOAD, STORE } kind;
+    int unused;
 } Inst;
 
+typedef struct {
+    void (*op         )(int n, const Inst*, Val* v, const void* uniforms, void* varying[]);
+    void (*op_and_done)(int n, const Inst*, Val* v, const void* uniforms, void* varying[]);
+    int x,y,z,w;  // 1-indexed, letting !=0 test existence.
+    int imm;
+    enum { MATH, SPLAT, UNIFORM, LOAD, STORE } kind;
+} BInst;
+
 struct Builder {
-    Inst* inst;
-    int   insts;
-    int   varying;
-    Hash  hash;
+    BInst* inst;
+    int    insts;
+    int    varying;
+    Hash   hash;
 };
 
 Builder* builder() {
@@ -95,39 +102,46 @@ op_(done) {
 
 typedef struct {
     const Builder* b;
-    const Inst*    inst;
+    const BInst*   inst;
     int            id;
     int            unused;
 } inst_eq_ctx;
 
 static bool inst_eq(int id, void* vctx) {
     inst_eq_ctx* ctx = vctx;
-    return 0 == memcmp(ctx->inst, ctx->b->inst + id-1/*1-indexed*/, sizeof(Inst))
+    return 0 == memcmp(ctx->inst, ctx->b->inst + id-1/*1-indexed*/, sizeof(BInst))
         && (ctx->id = id);
 }
 
-static int inst_(int size, Builder* b, Inst inst) {
+static int inst_(int size, Builder* b, BInst inst) {
     int hash = (int)murmur3(0, &inst,sizeof inst);
     for (inst_eq_ctx ctx={.b=b,.inst=&inst}; lookup(&b->hash,hash, inst_eq,&ctx);) {
         return ctx.id;
     }
 
     while (inst.kind == MATH) {
-        Inst constant_prop[6], *p=constant_prop;
-        if (inst.x && (*p++ = b->inst[inst.x-1]).kind != SPLAT) { break; }
-        if (inst.y && (*p++ = b->inst[inst.y-1]).kind != SPLAT) { break; }
-        if (inst.z && (*p++ = b->inst[inst.z-1]).kind != SPLAT) { break; }
-        if (inst.w && (*p++ = b->inst[inst.w-1]).kind != SPLAT) { break; }
+        if (inst.x && b->inst[inst.x-1].kind != SPLAT) { break; }
+        if (inst.y && b->inst[inst.y-1].kind != SPLAT) { break; }
+        if (inst.z && b->inst[inst.z-1].kind != SPLAT) { break; }
+        if (inst.w && b->inst[inst.w-1].kind != SPLAT) { break; }
 
+        Val  v[5];
+        Inst constant_prop[6], *p=constant_prop;
+        if (inst.x) { *p++ = (Inst){.op = b->inst[inst.x-1].op, .imm = b->inst[inst.x-1].imm}; }
+        if (inst.y) { *p++ = (Inst){.op = b->inst[inst.y-1].op, .imm = b->inst[inst.y-1].imm}; }
+        if (inst.z) { *p++ = (Inst){.op = b->inst[inst.z-1].op, .imm = b->inst[inst.z-1].imm}; }
+        if (inst.w) { *p++ = (Inst){.op = b->inst[inst.w-1].op, .imm = b->inst[inst.w-1].imm}; }
         int id = (int)(p - constant_prop);
-        if (inst.x) { inst.x = 0-id; }
-        if (inst.y) { inst.y = 1-id; }
-        if (inst.z) { inst.z = 2-id; }
-        if (inst.w) { inst.w = 3-id; }
-        *p++ = inst;
+        *p++ = (Inst) {
+            .op  = inst.op,
+            .x   = v+0,
+            .y   = v+1,
+            .z   = v+2,
+            .w   = v+3,
+            .imm = inst.imm,
+        };
         *p++ = (Inst){.op=op_done};
 
-        Val v[5];
         constant_prop->op(1,constant_prop,v,NULL,NULL);
 
         switch (size) {
@@ -138,21 +152,21 @@ static int inst_(int size, Builder* b, Inst inst) {
         assume(false);
     }
 
-    // In Builder convention, IDs are 1-indexed so we can test x,y,z,w arg existence with !=0.
     push(b->inst,b->insts) = inst;
-    int id = b->insts;
+    int id = b->insts;  // 1-indexed
     if (inst.kind <= UNIFORM) {
         insert(&b->hash,hash,id);
     }
     return id;
 }
-#define inst(size,b,...) (V##size){inst_(size, b, (Inst){__VA_ARGS__})}
+#define inst(size,b,...) (V##size){inst_(size, b, (BInst){__VA_ARGS__})}
 
 
 struct Program {
-    int  vals;
-    int  loop;
-    Inst inst[];
+    Val*  val;
+    Inst* inst;
+    int   vals;
+    int   loop;
 };
 
 Program* compile(Builder* b) {
@@ -163,7 +177,7 @@ Program* compile(Builder* b) {
 
     int live_vals = 0;
     for (int i = b->insts; i --> 0;) {
-        const Inst* inst = b->inst+i;
+        const BInst* inst = b->inst+i;
         if (inst->kind == STORE) {
             meta[i].live = true;
         }
@@ -177,7 +191,7 @@ Program* compile(Builder* b) {
     }
 
     for (int i = 0; i < b->insts; i++) {
-        const Inst* inst = b->inst+i;
+        const BInst* inst = b->inst+i;
         meta[i].loop_dependent = inst->kind >= LOAD
                               || (inst->x && meta[inst->x-1].loop_dependent)
                               || (inst->y && meta[inst->y-1].loop_dependent)
@@ -185,8 +199,9 @@ Program* compile(Builder* b) {
                               || (inst->w && meta[inst->w-1].loop_dependent);
     }
 
-    Program* p = malloc(sizeof *p + sizeof(Inst) * (size_t)(live_vals ? live_vals : 1/*op_done*/));
-    p->vals = 0;
+    Program* p = calloc(1, sizeof *p);
+    p->val     = calloc((size_t)live_vals, sizeof *p->val);
+    p->inst    = calloc((size_t)(live_vals ? live_vals : 1/*op_done*/), sizeof *p->inst);
 
     for (int loop_dependent = 0; loop_dependent < 2; loop_dependent++) {
         if (loop_dependent) {
@@ -194,25 +209,24 @@ Program* compile(Builder* b) {
         }
         for (int i = 0; i < b->insts; i++) {
             if (meta[i].live && meta[i].loop_dependent == loop_dependent) {
-                Inst* inst = p->inst + p->vals;
-                *inst = b->inst[i];
+                BInst orig = b->inst[i];
 
-                // Program uses relative value args, writing to *v, reading from v[inst->x], etc.
-                if (inst->x) { inst->x = meta[inst->x-1].reordered_id - p->vals; }
-                if (inst->y) { inst->y = meta[inst->y-1].reordered_id - p->vals; }
-                if (inst->z) { inst->z = meta[inst->z-1].reordered_id - p->vals; }
-                if (inst->w) { inst->w = meta[inst->w-1].reordered_id - p->vals; }
+                p->inst[p->vals] = (Inst) {
+                    .op  = (--live_vals == 0) ? orig.op_and_done : orig.op,
+                    .x   = orig.x ? p->val + meta[orig.x-1].reordered_id : NULL,
+                    .y   = orig.y ? p->val + meta[orig.y-1].reordered_id : NULL,
+                    .z   = orig.z ? p->val + meta[orig.z-1].reordered_id : NULL,
+                    .w   = orig.w ? p->val + meta[orig.w-1].reordered_id : NULL,
+                    .imm = orig.imm,
+                };
 
                 meta[i].reordered_id = p->vals++;
             }
         }
     }
-    assume(p->vals == live_vals);
+    assume(live_vals == 0);
 
-    if (p->vals) {
-        assume(p->inst[p->vals-1].op_and_done);
-        p->inst[p->vals-1].op = p->inst[p->vals-1].op_and_done;
-    } else {
+    if (!p->vals) {
         p->inst[0] = (Inst){.op=op_done};
     }
 
@@ -224,6 +238,8 @@ Program* compile(Builder* b) {
 }
 
 void drop(Program* p) {
+    free(p->val);
+    free(p->inst);
     free(p);
 }
 
@@ -254,25 +270,28 @@ V16 ld1_16(Builder* b) { return inst(16, b, op_ld1_16, .imm=b->varying++, .kind=
 V32 ld1_32(Builder* b) { return inst(32, b, op_ld1_32, .imm=b->varying++, .kind=LOAD); }
 
 op_(st1_8_and_done) {
+    (void)v;
     (void)uniforms;
     void** var = varying + inst->imm;
     uint8_t* p = *var;
-    if (n<N) { memcpy(p, &v[inst->x],   sizeof *p); *var = p+1; }
-    else     { memcpy(p, &v[inst->x], N*sizeof *p); *var = p+N; }
+    if (n<N) { memcpy(p, inst->x,   sizeof *p); *var = p+1; }
+    else     { memcpy(p, inst->x, N*sizeof *p); *var = p+N; }
 }
 op_(st1_16_and_done) {
+    (void)v;
     (void)uniforms;
     void** var = varying + inst->imm;
     uint16_t* p = *var;
-    if (n<N) { memcpy(p, &v[inst->x],   sizeof *p); *var = p+1; }
-    else     { memcpy(p, &v[inst->x], N*sizeof *p); *var = p+N; }
+    if (n<N) { memcpy(p, inst->x,   sizeof *p); *var = p+1; }
+    else     { memcpy(p, inst->x, N*sizeof *p); *var = p+N; }
 }
 op_(st1_32_and_done) {
+    (void)v;
     (void)uniforms;
     void** var = varying + inst->imm;
     uint32_t* p = *var;
-    if (n<N) { memcpy(p, &v[inst->x],   sizeof *p); *var = p+1; }
-    else     { memcpy(p, &v[inst->x], N*sizeof *p); *var = p+N; }
+    if (n<N) { memcpy(p, inst->x,   sizeof *p); *var = p+1; }
+    else     { memcpy(p, inst->x, N*sizeof *p); *var = p+N; }
 }
 op_(st1_8 ) { op_st1_8_and_done (n,inst,v,uniforms,varying); next; }
 op_(st1_16) { op_st1_16_and_done(n,inst,v,uniforms,varying); next; }
@@ -322,6 +341,7 @@ struct V8x4 ld4_8(Builder* b) {
 }
 
 op_(st4_8_and_done) {
+    (void)v;
     (void)uniforms;
     typedef uint8_t __attribute__((vector_size(4*1<<0), aligned(1))) S1;
     typedef uint8_t __attribute__((vector_size(4*N<<0), aligned(1))) SN;
@@ -329,12 +349,12 @@ op_(st4_8_and_done) {
     void** var = varying + inst->imm;
     uint8_t* p = *var;
     if (n<N) {
-        *(S1*)p = shuffle(shuffle(v[inst->x].u8, v[inst->y].u8, CONCAT),
-                          shuffle(v[inst->z].u8, v[inst->w].u8, CONCAT), ST4_1);
+        *(S1*)p = shuffle(shuffle(inst->x->u8, inst->y->u8, CONCAT),
+                          shuffle(inst->z->u8, inst->w->u8, CONCAT), ST4_1);
         *var = p+4;
     } else {
-        *(SN*)p = shuffle(shuffle(v[inst->x].u8, v[inst->y].u8, CONCAT),
-                          shuffle(v[inst->z].u8, v[inst->w].u8, CONCAT), ST4);
+        *(SN*)p = shuffle(shuffle(inst->x->u8, inst->y->u8, CONCAT),
+                          shuffle(inst->z->u8, inst->w->u8, CONCAT), ST4);
         *var = p+4*N;
     }
 }
@@ -405,14 +425,14 @@ V32 uniform_32(Builder* b, int offset) {
 }
 
 
-op_(cast_F16_to_S16) { v->s16 = cast(v[inst->x].f16, s16); next; }
-op_(cast_F16_to_U16) { v->u16 = cast(v[inst->x].f16, u16); next; }
-op_(cast_S16_to_F16) { v->f16 = cast(v[inst->x].s16, f16); next; }
-op_(cast_U16_to_F16) { v->f16 = cast(v[inst->x].u16, f16); next; }
-op_(cast_F32_to_S32) { v->s32 = cast(v[inst->x].f32, s32); next; }
-op_(cast_F32_to_U32) { v->u32 = cast(v[inst->x].f32, u32); next; }
-op_(cast_S32_to_F32) { v->f32 = cast(v[inst->x].s32, f32); next; }
-op_(cast_U32_to_F32) { v->f32 = cast(v[inst->x].u32, f32); next; }
+op_(cast_F16_to_S16) { v->s16 = cast(inst->x->f16, s16); next; }
+op_(cast_F16_to_U16) { v->u16 = cast(inst->x->f16, u16); next; }
+op_(cast_S16_to_F16) { v->f16 = cast(inst->x->s16, f16); next; }
+op_(cast_U16_to_F16) { v->f16 = cast(inst->x->u16, f16); next; }
+op_(cast_F32_to_S32) { v->s32 = cast(inst->x->f32, s32); next; }
+op_(cast_F32_to_U32) { v->u32 = cast(inst->x->f32, u32); next; }
+op_(cast_S32_to_F32) { v->f32 = cast(inst->x->s32, f32); next; }
+op_(cast_U32_to_F32) { v->f32 = cast(inst->x->u32, f32); next; }
 
 V16 cast_F16_to_S16(Builder* b, V16 x) { return inst(16, b, op_cast_F16_to_S16, .x=x.id); }
 V16 cast_F16_to_U16(Builder* b, V16 x) { return inst(16, b, op_cast_F16_to_U16, .x=x.id); }
@@ -424,14 +444,14 @@ V32 cast_S32_to_F32(Builder* b, V32 x) { return inst(32, b, op_cast_S32_to_F32, 
 V32 cast_U32_to_F32(Builder* b, V32 x) { return inst(32, b, op_cast_U32_to_F32, .x=x.id); }
 
 
-op_( widen_S8 ) { v->s16 = cast(v->s8 , s16); next; }
-op_( widen_U8 ) { v->u16 = cast(v->u8 , u16); next; }
-op_( widen_F16) { v->f32 = cast(v->f16, f32); next; }
-op_( widen_S16) { v->s32 = cast(v->s16, s32); next; }
-op_( widen_U16) { v->u32 = cast(v->u16, u32); next; }
-op_(narrow_F32) { v->f16 = cast(v->f32, f16); next; }
-op_(narrow_I32) { v->u16 = cast(v->u32, u16); next; }
-op_(narrow_I16) { v->u8  = cast(v->u16, u8 ); next; }
+op_( widen_S8 ) { v->s16 = cast(inst->x->s8 , s16); next; }
+op_( widen_U8 ) { v->u16 = cast(inst->x->u8 , u16); next; }
+op_( widen_F16) { v->f32 = cast(inst->x->f16, f32); next; }
+op_( widen_S16) { v->s32 = cast(inst->x->s16, s32); next; }
+op_( widen_U16) { v->u32 = cast(inst->x->u16, u32); next; }
+op_(narrow_F32) { v->f16 = cast(inst->x->f32, f16); next; }
+op_(narrow_I32) { v->u16 = cast(inst->x->u32, u16); next; }
+op_(narrow_I16) { v->u8  = cast(inst->x->u16, u8 ); next; }
 
 V16  widen_S8 (Builder* b, V8  x) { return inst(16, b,  op_widen_S8 , .x=x.id); }
 V16  widen_U8 (Builder* b, V8  x) { return inst(16, b,  op_widen_U8 , .x=x.id); }
@@ -443,32 +463,32 @@ V16 narrow_I32(Builder* b, V32 x) { return inst(16, b, op_narrow_I32, .x=x.id); 
 V8  narrow_I16(Builder* b, V16 x) { return inst(8 , b, op_narrow_I16, .x=x.id); }
 
 
-op_(add_F16) { v->f16 = cast(cast(v[inst->x].f16,f32) + cast(v[inst->y].f16,f32), f16); next; }
-op_(sub_F16) { v->f16 = cast(cast(v[inst->x].f16,f32) - cast(v[inst->y].f16,f32), f16); next; }
-op_(mul_F16) { v->f16 = cast(cast(v[inst->x].f16,f32) * cast(v[inst->y].f16,f32), f16); next; }
-op_(div_F16) { v->f16 = cast(cast(v[inst->x].f16,f32) / cast(v[inst->y].f16,f32), f16); next; }
+op_(add_F16) { v->f16 = cast(cast(inst->x->f16,f32) + cast(inst->y->f16,f32), f16); next; }
+op_(sub_F16) { v->f16 = cast(cast(inst->x->f16,f32) - cast(inst->y->f16,f32), f16); next; }
+op_(mul_F16) { v->f16 = cast(cast(inst->x->f16,f32) * cast(inst->y->f16,f32), f16); next; }
+op_(div_F16) { v->f16 = cast(cast(inst->x->f16,f32) / cast(inst->y->f16,f32), f16); next; }
 
 #if defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
-    op_(mla_F16) { v->f16 =  v[inst->x].f16 * v[inst->y].f16 + v[inst->z].f16; next; }
-    op_(mls_F16) { v->f16 =  v[inst->x].f16 * v[inst->y].f16 - v[inst->z].f16; next; }
-    op_(nma_F16) { v->f16 = -v[inst->x].f16 * v[inst->y].f16 + v[inst->z].f16; next; }
+    op_(mla_F16) { v->f16 =  inst->x->f16 * inst->y->f16 + inst->z->f16; next; }
+    op_(mls_F16) { v->f16 =  inst->x->f16 * inst->y->f16 - inst->z->f16; next; }
+    op_(nma_F16) { v->f16 = -inst->x->f16 * inst->y->f16 + inst->z->f16; next; }
 #else
     op_(mla_F16) {
-        v->f16 = cast( cast(v[inst->x].f16,f32)
-                    *  cast(v[inst->y].f16,f32)
-                    +  cast(v[inst->z].f16,f32), f16);
+        v->f16 = cast( cast(inst->x->f16,f32)
+                    *  cast(inst->y->f16,f32)
+                    +  cast(inst->z->f16,f32), f16);
         next;
     }
     op_(mls_F16) {
-        v->f16 = cast( cast(v[inst->x].f16,f32)
-                    *  cast(v[inst->y].f16,f32)
-                    -  cast(v[inst->z].f16,f32), f16);
+        v->f16 = cast( cast(inst->x->f16,f32)
+                    *  cast(inst->y->f16,f32)
+                    -  cast(inst->z->f16,f32), f16);
         next;
     }
     op_(nma_F16) {
-        v->f16 = cast(-cast(v[inst->x].f16,f32)
-                    *  cast(v[inst->y].f16,f32)
-                    +  cast(v[inst->z].f16,f32), f16);
+        v->f16 = cast(-cast(inst->x->f16,f32)
+                    *  cast(inst->y->f16,f32)
+                    +  cast(inst->z->f16,f32), f16);
         next;
     }
 #endif
@@ -477,7 +497,7 @@ static bool equiv(float x, float y) {
     return (x <= y && y <= x)
         || (x != x && y != y);
 }
-static bool is_splat_F16(Inst inst, float imm) {
+static bool is_splat_F16(BInst inst, float imm) {
     union {
         int bits;
         __fp16 f;
@@ -489,20 +509,20 @@ static bool is_splat_F16(Inst inst, float imm) {
 V16 add_F16(Builder* b, V16 x, V16 y) {
     if (is_splat_F16(b->inst[x.id-1], 0.0f)) { return y; }
     if (is_splat_F16(b->inst[y.id-1], 0.0f)) { return x; }
-    for (Inst mul = b->inst[x.id-1]; mul.op == op_mul_F16; ) {
+    for (BInst mul = b->inst[x.id-1]; mul.op == op_mul_F16; ) {
         return inst(16, b, op_mla_F16, .x=mul.x, .y=mul.y, .z=y.id);
     }
-    for (Inst mul = b->inst[y.id-1]; mul.op == op_mul_F16; ) {
+    for (BInst mul = b->inst[y.id-1]; mul.op == op_mul_F16; ) {
         return inst(16, b, op_mla_F16, .x=mul.x, .y=mul.y, .z=x.id);
     }
     return inst(16, b, op_add_F16, .x=x.id, .y=y.id);
 }
 V16 sub_F16(Builder* b, V16 x, V16 y) {
     if (is_splat_F16(b->inst[y.id-1], 0.0f)) { return x; }
-    for (Inst mul = b->inst[x.id-1]; mul.op == op_mul_F16; ) {
+    for (BInst mul = b->inst[x.id-1]; mul.op == op_mul_F16; ) {
         return inst(16, b, op_mls_F16, .x=mul.x, .y=mul.y, .z=y.id);
     }
-    for (Inst mul = b->inst[y.id-1]; mul.op == op_mul_F16; ) {
+    for (BInst mul = b->inst[y.id-1]; mul.op == op_mul_F16; ) {
         return inst(16, b, op_nma_F16, .x=mul.x, .y=mul.y, .z=x.id);
     }
     return inst(16, b, op_sub_F16, .x=x.id, .y=y.id);
@@ -519,11 +539,11 @@ V16 div_F16(Builder* b, V16 x, V16 y) {
 
 op_(sqrt_F16) {
 #if defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
-    f16 x = v[inst->x].f16;
+    f16 x = inst->x->f16;
     v->f16 = (f16)shuffle(vsqrtq_f16((float16x8_t)shuffle(x,x, LO)),
                           vsqrtq_f16((float16x8_t)shuffle(x,x, HI)), LO,HI);
 #else
-    f32 x = cast(v[inst->x].f16, f32);
+    f32 x = cast(inst->x->f16, f32);
     #define M(i) (__fp16)sqrtf(x[i]),
     v->f16 = (f16){ APPLY(M) };
     #undef M
@@ -533,12 +553,12 @@ op_(sqrt_F16) {
 V16 sqrt_F16(Builder* b, V16 x) { return inst(16, b, op_sqrt_F16, .x=x.id); }
 
 
-op_(add_I32) { v->u32 = v[inst->x].u32 + v[inst->y].u32; next; }
-op_(sub_I32) { v->u32 = v[inst->x].u32 - v[inst->y].u32; next; }
-op_(mul_I32) { v->u32 = v[inst->x].u32 * v[inst->y].u32; next; }
-op_(shl_I32) { v->u32 = v[inst->x].u32 << inst->imm; next; }
-op_(shr_S32) { v->s32 = v[inst->x].s32 >> inst->imm; next; }
-op_(shr_U32) { v->u32 = v[inst->x].u32 >> inst->imm; next; }
+op_(add_I32) { v->u32 = inst->x->u32 + inst->y->u32; next; }
+op_(sub_I32) { v->u32 = inst->x->u32 - inst->y->u32; next; }
+op_(mul_I32) { v->u32 = inst->x->u32 * inst->y->u32; next; }
+op_(shl_I32) { v->u32 = inst->x->u32 << inst->imm; next; }
+op_(shr_S32) { v->s32 = inst->x->s32 >> inst->imm; next; }
+op_(shr_U32) { v->u32 = inst->x->u32 >> inst->imm; next; }
 
 V32 add_I32(Builder* b, V32 x, V32 y) { return inst(32, b, op_add_I32, .x=x.id, .y=y.id); }
 V32 sub_I32(Builder* b, V32 x, V32 y) { return inst(32, b, op_sub_I32, .x=x.id, .y=y.id); }
@@ -549,24 +569,15 @@ V32 shr_U32(Builder* b, V32 x, int k) { return inst(32, b, op_shr_U32, .x=x.id, 
 
 
 void run(const Program* p, int n, const void* uniforms, void* varying[]) {
-    Val scratch[16], *val = scratch;
-    if (len(scratch) < p->vals) {
-        val = malloc((size_t)p->vals * sizeof *val);
-    }
-
     const Inst *start = p->inst,
                *loop  = p->inst + p->loop;
 
-    Val *v = val,
-        *l = val + p->loop;
+    Val *v = p->val,
+        *l = p->val + p->loop;
 
     for (; n; n -= (n<N ? 1 : N)) {
         start->op(n,start,v,uniforms,varying);
         start = loop;
         v     = l;
-    }
-
-    if (val != scratch) {
-        free(val);
     }
 }
