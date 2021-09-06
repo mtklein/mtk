@@ -318,10 +318,11 @@ static void test_sqrt() {
     drop(p);
 }
 
-void approx_jit(uint32_t dst[], uint32_t val, int n);
+
+void goal(uint32_t dst[], uint32_t val, int n);
 
 __attribute__((noinline))
-void approx_jit(uint32_t dst[], uint32_t val, int n) {
+void goal(uint32_t dst[], uint32_t val, int n) {
     #define N 8
     typedef uint32_t __attribute__((ext_vector_type(N), aligned(4))) Wide;
     for (; n >= N; n -= N) {
@@ -340,12 +341,12 @@ static double memset32_goal(int k, double *scale, const char* *unit) {
     double start = now();
     uint32_t buf[1024];
     while (k --> 0) {
-        approx_jit(buf, 0xffaaccee, len(buf));
+        goal(buf, 0xffaaccee, len(buf));
     }
     return now() - start;
 }
 
-static double memset32_vm(int k, double *scale, const char* *unit) {
+static double memset32_splat(int k, double *scale, const char* *unit) {
     *scale = 1024;
     *unit  = "px";
 
@@ -467,7 +468,7 @@ int main(int argc, char** argv) {
     test_sqrt();
 
     bench(memset32_goal);
-    bench(memset32_vm);
+    bench(memset32_splat);
     bench(memset32_uniform);
     bench(swap_rb);
     bench(compile_memset32);
