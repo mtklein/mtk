@@ -9,6 +9,7 @@ deps = {
     'checksum': [],
     'hash':     [],
     'gfx':      [],
+    'stack':    [],
     'vm':       ['array', 'checksum', 'hash'],
 }
 
