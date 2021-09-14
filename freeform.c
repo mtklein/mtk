@@ -10,6 +10,7 @@ __asm__(
     "fn      .req x10"               "\n"
     "stash   .req x11"               "\n"
 
+    ".global _args"                  "\n"
     ".global _interp"                "\n"
     ".global _done"                  "\n"
 
@@ -21,6 +22,17 @@ __asm__(
     ".global _ptr6"                  "\n"
     ".global _ptr7"                  "\n"
 
+    ".global _update1"               "\n"
+    ".global _update2"               "\n"
+    ".global _update3"               "\n"
+    ".global _update4"               "\n"
+    ".global _update5"               "\n"
+    ".global _update6"               "\n"
+    ".global _update7"               "\n"
+
+    ".global _inc"                   "\n"
+    ".global _inc1"                  "\n"
+
     ".global _store"                 "\n"
     ".global _store1"                "\n"
     ".global _loadX"                 "\n"
@@ -30,6 +42,8 @@ __asm__(
 
     ".global _add"                   "\n"
     ".global _mul"                   "\n"
+
+    "_args: ret"                     "\n"
 
     "_interp:"                       "\n"
         "mov stash,lr"               "\n"   // save lr
@@ -47,6 +61,17 @@ __asm__(
     "_ptr5: mov ptr,x5\n ret\n"
     "_ptr6: mov ptr,x6\n ret\n"
     "_ptr7: mov ptr,x7\n ret\n"
+
+    "_inc:  add ptr,ptr,32\n ret\n"
+    "_inc1: add ptr,ptr,4 \n ret\n"
+
+    "_update1: mov x1,ptr\n ret\n"
+    "_update2: mov x2,ptr\n ret\n"
+    "_update3: mov x3,ptr\n ret\n"
+    "_update4: mov x4,ptr\n ret\n"
+    "_update5: mov x5,ptr\n ret\n"
+    "_update6: mov x6,ptr\n ret\n"
+    "_update7: mov x7,ptr\n ret\n"
 
     "_store:  stp q0,q4, [ptr]\n ret\n"
     "_store1: str s0,    [ptr]\n ret\n"
