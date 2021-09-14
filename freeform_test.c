@@ -41,9 +41,22 @@
 
 
     int main(void) {
-        float x[] = { 1,2,3,4,5,6,7,8,9,10 };
-        float y[] = { 1,1,1,1,1,1,1,1,1, 1 };
+        float x[] = { 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20 };
+        float y[] = { 1,1,1,1,1,1,1,1,1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
         float z[len(x)] = {0};
+
+        void (*program_1[])(void) = {
+            ptrA, loadX_1, incA,
+            ptrB, loadY_1, incB,
+            add,
+            ptrC, store_1, incC,
+            done,
+        };
+        interp(program_1,len(x), x+0,y+0,z+0, 0,0,0);
+        for (int i = 0; i < len(x); i++) {
+            expect_eq(z[i], x[i]+y[i]);
+            z[i] = 0;
+        }
 
         void (*program_8[])(void) = {
             ptrA, loadX_8, incA,
@@ -53,33 +66,24 @@
             done,
         };
 
-        void (*program_1[])(void) = {
-            ptrA, loadX_1, incA,
-            ptrB, loadY_1, incB,
-            add,
-            ptrC, store_1, incC,
-            done,
-        };
-
-        interp(program_8,8, x+0,y+0,z+0, 0,0,0);
-        interp(program_1,1, x+8,y+8,z+8, 0,0,0);
-        interp(program_1,1, x+9,y+9,z+9, 0,0,0);
-
+        interp(program_8,2, x+ 0,y+ 0,z+ 0, 0,0,0);
+        interp(program_1,4, x+16,y+16,z+16, 0,0,0);
         for (int i = 0; i < len(x); i++) {
             expect_eq(z[i], x[i]+y[i]);
-        }
-
-        for (int i = 0; i < len(x); i++) {
             z[i] = 0;
         }
 
         jit_fn p8 = jit(program_8),
                p1 = jit(program_1);
-        p8(0, 8, x+0,y+0,z+0, 0,0,0);
-        p1(0, 1, x+8,y+8,z+8, 0,0,0);
-        p1(0, 1, x+9,y+9,z+9, 0,0,0);
+        p8(0, 0, x+ 0,y+ 0,z+ 0, 0,0,0);
+        p8(0, 0, x+ 8,y+ 8,z+ 8, 0,0,0);
+        p1(0, 0, x+16,y+16,z+16, 0,0,0);
+        p1(0, 0, x+17,y+17,z+17, 0,0,0);
+        p1(0, 0, x+18,y+18,z+18, 0,0,0);
+        p1(0, 0, x+19,y+19,z+19, 0,0,0);
         for (int i = 0; i < len(x); i++) {
             expect_eq(z[i], x[i]+y[i]);
+            z[i] = 0;
         }
 
         drop_jit(p8);

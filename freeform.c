@@ -17,6 +17,7 @@ __asm__(
     "ptr     .req x9"                "\n"
     "fn      .req x10"               "\n"
     "stash   .req x11"               "\n"
+    "inst    .req x12"               "\n"
 
     ".global _interp"                "\n"
     ".global _done"                  "\n"
@@ -46,13 +47,20 @@ __asm__(
     ".global _mul"                   "\n"
 
     "_interp:"                       "\n"
-        "mov stash,lr"               "\n"   // save lr
-        "bl  loop"                   "\n"   // effectively, lr = loop
-    "loop:"                          "\n"
-        "ldr fn,[program],8"         "\n"   // fn = *program++
-        "br  fn"                     "\n"   // fn(), returning to loop
+        "mov stash,lr"               "\n"  // stash = lr      (preserve ultimate return address)
+        "adr lr,2f"                  "\n"  // lr = inner loop (setup so br fn will return to 2:)
 
-    "_done: ret stash"               "\n"   // actually return
+    "1:"                             "\n"  // top of outer loop over n:
+        "mov inst,program"           "\n"  //   inst will step, program will stay put
+
+    "2:"                             "\n"  // top of inner loop over instructions:
+        "ldr fn,[inst],8"            "\n"  //   fn = *inst++
+        "br fn"                      "\n"  //   fn(), return to 2:, the top of this inner loop
+
+    "_done:"                         "\n"  // always the last instruction,
+        "subs n,n,1"                 "\n"  //   n -= 1
+        "b.ne 1b"                    "\n"  //   if (!n) goto 1:, the top of the outer loop over n
+        "ret stash"                  "\n"  //   otherwise return to stashed return address
 
     "_ptrA: mov ptr,A\n ret\n"
     "_ptrB: mov ptr,B\n ret\n"
