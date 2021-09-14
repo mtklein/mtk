@@ -12,7 +12,8 @@
 
 #if defined(__aarch64__)
 
-    typedef void (*jit_fn)(void);
+    typedef void (*jit_fn)(int unused, int n, void* A, void* B, void* C
+                                            , void* D, void* E, void* F);
 
     static jit_fn jit(void (*program[])(void)) {
         const size_t size = (size_t)sysconf(_SC_PAGESIZE);
@@ -44,26 +45,26 @@
         float y[] = { 1,1,1,1,1,1,1,1,1, 1 };
         float z[len(x)] = {0};
 
-        void (*program[])(void) = {
-            ptr1, loadX, inc, update1,
-            ptr2, loadY, inc, update2,
+        void (*program_8[])(void) = {
+            ptrA, loadX_8, incA,
+            ptrB, loadY_8, incB,
             add,
-            ptr3, store, inc, update3,
+            ptrC, store_8, incC,
             done,
         };
 
-        void (*program1[])(void) = {
-            ptr1, loadX1, inc1, update1,
-            ptr2, loadY1, inc1, update2,
+        void (*program_1[])(void) = {
+            ptrA, loadX_1, incA,
+            ptrB, loadY_1, incB,
             add,
-            ptr3, store1, inc1, update3,
+            ptrC, store_1, incC,
             done,
         };
 
-        args(0, x+0,y+0,z+0, 0,0,0,0);
-        interp(program);
-        interp(program1);
-        interp(program1);
+        interp(program_8,8, x+0,y+0,z+0, 0,0,0);
+        interp(program_1,1, x+8,y+8,z+8, 0,0,0);
+        interp(program_1,1, x+9,y+9,z+9, 0,0,0);
+
         for (int i = 0; i < len(x); i++) {
             expect_eq(z[i], x[i]+y[i]);
         }
@@ -72,12 +73,11 @@
             z[i] = 0;
         }
 
-        jit_fn p8 = jit(program),
-               p1 = jit(program1);
-        args(0, x+0,y+0,z+0, 0,0,0,0);
-        p8();
-        p1();
-        p1();
+        jit_fn p8 = jit(program_8),
+               p1 = jit(program_1);
+        p8(0, 8, x+0,y+0,z+0, 0,0,0);
+        p1(0, 1, x+8,y+8,z+8, 0,0,0);
+        p1(0, 1, x+9,y+9,z+9, 0,0,0);
         for (int i = 0; i < len(x); i++) {
             expect_eq(z[i], x[i]+y[i]);
         }
