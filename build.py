@@ -7,7 +7,7 @@ deps = {
     'array':    [],
     'asm':      [],
     'checksum': [],
-    'freeform': [],
+    'freeform': ['asm'],
     'hash':     [],
     'gfx':      [],
     'stack':    [],

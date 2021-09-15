@@ -16,10 +16,15 @@ typedef enum {
 
 typedef enum { _8b,_16b, _4h,_8h, _2s,_4s, /*no _1d*/ _2d=7 } Arr;
 
-uint32_t xret(X n);
+typedef enum { eq,ne, cs,cc, mi,pl, vs,vc, hi,ls, ge,lt, gt,le, al,nv } Cond;
 
-uint32_t xadd(X d, X n, unsigned imm12);
-uint32_t xsub(X d, X n, unsigned imm12);
+uint32_t xret(X n);
+uint32_t xbdot(Cond, int imm19);
+
+uint32_t xadd (X d, X n, unsigned imm12);
+uint32_t xsub (X d, X n, unsigned imm12);
+uint32_t xsubs(X d, X n, unsigned imm12);
+
 
 uint32_t vnot(Arr, V d, V n);
 uint32_t vand(Arr, V d, V n, V m);

@@ -1,3 +1,4 @@
+#include "asm.h"
 #include "freeform.h"
 #include "len.h"
 #include "test.h"
@@ -18,16 +19,19 @@
     static jit_fn jit(void (*program[])(void)) {
         const size_t size = (size_t)sysconf(_SC_PAGESIZE);
 
-        void* entry = mmap(NULL,size, PROT_READ|PROT_WRITE, MAP_ANONYMOUS|MAP_PRIVATE, -1,0);
+        uint32_t* entry = mmap(NULL,size, PROT_READ|PROT_WRITE, MAP_ANONYMOUS|MAP_PRIVATE, -1,0);
         expect_ne((uintptr_t)entry, ~(uintptr_t)0);
 
         uint32_t* buf = entry;
-        const uint32_t ret = 0xd65f03c0;
+        const uint32_t ret = xret(lr);
         while (*program != done) {
             for (const uint32_t* inst = (const uint32_t*)*program++; *inst != ret; ) {
                 *buf++ = *inst++;
             }
         }
+        *buf++ = xsubs(x1,x1,1);
+        uint32_t bne_entry = xbdot(ne, (int)(entry-buf));
+        *buf++ = bne_entry;
         *buf++ = ret;
 
         expect_eq(0, mprotect(entry,size, PROT_READ|PROT_EXEC));
@@ -52,7 +56,8 @@
             ptrC, store_1, incC,
             done,
         };
-        interp(program_1,len(x), x+0,y+0,z+0, 0,0,0);
+
+        interp(program_1,len(x), x,y,z, 0,0,0);
         for (int i = 0; i < len(x); i++) {
             expect_eq(z[i], x[i]+y[i]);
             z[i] = 0;
@@ -73,21 +78,25 @@
             z[i] = 0;
         }
 
-        jit_fn p8 = jit(program_8),
-               p1 = jit(program_1);
-        p8(0, 0, x+ 0,y+ 0,z+ 0, 0,0,0);
-        p8(0, 0, x+ 8,y+ 8,z+ 8, 0,0,0);
-        p1(0, 0, x+16,y+16,z+16, 0,0,0);
-        p1(0, 0, x+17,y+17,z+17, 0,0,0);
-        p1(0, 0, x+18,y+18,z+18, 0,0,0);
-        p1(0, 0, x+19,y+19,z+19, 0,0,0);
+        jit_fn jit_1 = jit(program_1);
+
+        jit_1(0,len(x), x,y,z, 0,0,0);
         for (int i = 0; i < len(x); i++) {
             expect_eq(z[i], x[i]+y[i]);
             z[i] = 0;
         }
 
-        drop_jit(p8);
-        drop_jit(p1);
+        jit_fn jit_8 = jit(program_8);
+
+        jit_8(0, 2, x+ 0,y+ 0,z+ 0, 0,0,0);
+        jit_1(0, 4, x+16,y+16,z+16, 0,0,0);
+        for (int i = 0; i < len(x); i++) {
+            expect_eq(z[i], x[i]+y[i]);
+            z[i] = 0;
+        }
+
+        drop_jit(jit_1);
+        drop_jit(jit_8);
 
         return 0;
     }

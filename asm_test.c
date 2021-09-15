@@ -6,8 +6,6 @@
     #include <unistd.h>
 #endif
 
-// $ echo "fmul v4.8h, v3.8h, v1.8h" | brew/opt/llvm/bin/llvm-mc -show-encoding -mattr=+fullfp16
-
 static void jit(void(*setup)(uint32_t*),
                 void(*test )(void(*)(void))) {
 #if defined(__aarch64__)
@@ -36,11 +34,15 @@ static void test_square(void(*p)(void)) {
     expect_eq(9.0f, fn(3.0f));
 }
 
+// echo "fmul v4.8h, v3.8h, v1.8h" | ~/brew/opt/llvm/bin/llvm-mc -show-encoding -mattr=+fullfp16
+
 int main(void) {
     expect_eq(0xd65f03c0, xret(lr));
+    expect_eq(0x54fffda1, xbdot(ne, -19));   // b.ne -76
 
-    expect_eq(0x91001042, xadd(x2,x2,4));
-    expect_eq(0xd1001042, xsub(x2,x2,4));
+    expect_eq(0x91001042, xadd (x2,x2,4));
+    expect_eq(0xd1001042, xsub (x2,x2,4));
+    expect_eq(0xf1001042, xsubs(x2,x2,4));
 
     expect_eq(0x2e205864, vnot(_8b,  v4,v3));
     expect_eq(0x6e205864, vnot(_16b, v4,v3));
