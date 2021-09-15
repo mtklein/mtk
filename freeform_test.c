@@ -13,8 +13,7 @@
 
 #if defined(__aarch64__)
 
-    typedef void (*jit_fn)(int unused, int n, void* A, void* B, void* C
-                                            , void* D, void* E, void* F);
+    typedef void (*jit_fn)(int n, void* A, void* B, void* C, void* D, void* E, void* F);
 
     static jit_fn jit(void (*program[])(void)) {
         const size_t size = (size_t)sysconf(_SC_PAGESIZE);
@@ -24,12 +23,12 @@
 
         uint32_t* buf = entry;
         const uint32_t ret = xret(lr);
-        while (*program != done) {
-            for (const uint32_t* inst = (const uint32_t*)*program++; *inst != ret; ) {
+        for (; *program != done; program++) {
+            for (const uint32_t* inst = (const uint32_t*)*program; *inst != ret; ) {
                 *buf++ = *inst++;
             }
         }
-        *buf++ = xsubs(x1,x1,1);
+        *buf++ = xsubs(x0,x0,1);
         uint32_t bne_entry = xbdot(ne, (int)(entry-buf));
         *buf++ = bne_entry;
         *buf++ = ret;
@@ -57,7 +56,7 @@
             done,
         };
 
-        interp(program_1,len(x), x,y,z, 0,0,0);
+        interp(len(x), x,y,z, 0,0,0, program_1);
         for (int i = 0; i < len(x); i++) {
             expect_eq(z[i], x[i]+y[i]);
             z[i] = 0;
@@ -71,8 +70,8 @@
             done,
         };
 
-        interp(program_8,2, x+ 0,y+ 0,z+ 0, 0,0,0);
-        interp(program_1,4, x+16,y+16,z+16, 0,0,0);
+        interp(2, x+ 0,y+ 0,z+ 0, 0,0,0, program_8);
+        interp(4, x+16,y+16,z+16, 0,0,0, program_1);
         for (int i = 0; i < len(x); i++) {
             expect_eq(z[i], x[i]+y[i]);
             z[i] = 0;
@@ -80,7 +79,7 @@
 
         jit_fn jit_1 = jit(program_1);
 
-        jit_1(0,len(x), x,y,z, 0,0,0);
+        jit_1(len(x), x,y,z, 0,0,0);
         for (int i = 0; i < len(x); i++) {
             expect_eq(z[i], x[i]+y[i]);
             z[i] = 0;
@@ -88,8 +87,8 @@
 
         jit_fn jit_8 = jit(program_8);
 
-        jit_8(0, 2, x+ 0,y+ 0,z+ 0, 0,0,0);
-        jit_1(0, 4, x+16,y+16,z+16, 0,0,0);
+        jit_8(2, x+ 0,y+ 0,z+ 0, 0,0,0);
+        jit_1(4, x+16,y+16,z+16, 0,0,0);
         for (int i = 0; i < len(x); i++) {
             expect_eq(z[i], x[i]+y[i]);
             z[i] = 0;

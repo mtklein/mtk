@@ -4,15 +4,14 @@
 __asm__(
     ".align 4"                       "\n"
 
-    "program .req x0"                "\n"
-    "n       .req x1"                "\n"
-
-    "A       .req x2"                "\n"
-    "B       .req x3"                "\n"
-    "C       .req x4"                "\n"
-    "D       .req x5"                "\n"
-    "E       .req x6"                "\n"
-    "F       .req x7"                "\n"
+    "n       .req x0"                "\n"
+    "A       .req x1"                "\n"
+    "B       .req x2"                "\n"
+    "C       .req x3"                "\n"
+    "D       .req x4"                "\n"
+    "E       .req x5"                "\n"
+    "F       .req x6"                "\n"
+    "program .req x7"                "\n"
 
     "ptr     .req x9"                "\n"
     "fn      .req x10"               "\n"
