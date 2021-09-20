@@ -54,43 +54,43 @@ __asm__(
 
     "2:"                             "\n"  // top of inner loop over instructions:
         "ldr fn,[inst],8"            "\n"  //   fn = *inst++
-        "br fn"                      "\n"  //   fn(), return to 2:, the top of this inner loop
+        "br  fn"                     "\n"  //   fn(), return to 2:, the top of this inner loop
 
     "_done:"                         "\n"  // always the last instruction,
         "subs n,n,1"                 "\n"  //   n -= 1
         "b.ne 1b"                    "\n"  //   if (!n) goto 1:, the top of the outer loop over n
-        "ret stash"                  "\n"  //   otherwise return to stashed return address
+        "ret  stash"                 "\n"  //   otherwise return to stashed return address
 
-    "_ptrA: mov ptr,A\n ret\n"
-    "_ptrB: mov ptr,B\n ret\n"
-    "_ptrC: mov ptr,C\n ret\n"
-    "_ptrD: mov ptr,D\n ret\n"
-    "_ptrE: mov ptr,E\n ret\n"
-    "_ptrF: mov ptr,F\n ret\n"
+    "_ptrA: mov ptr,A"  "\n"  "ret"  "\n"
+    "_ptrB: mov ptr,B"  "\n"  "ret"  "\n"
+    "_ptrC: mov ptr,C"  "\n"  "ret"  "\n"
+    "_ptrD: mov ptr,D"  "\n"  "ret"  "\n"
+    "_ptrE: mov ptr,E"  "\n"  "ret"  "\n"
+    "_ptrF: mov ptr,F"  "\n"  "ret"  "\n"
 
-    "_incA: mov A,ptr\n ret\n"
-    "_incB: mov B,ptr\n ret\n"
-    "_incC: mov C,ptr\n ret\n"
-    "_incD: mov D,ptr\n ret\n"
-    "_incE: mov E,ptr\n ret\n"
-    "_incF: mov F,ptr\n ret\n"
+    "_incA: mov A,ptr"  "\n"  "ret"  "\n"
+    "_incB: mov B,ptr"  "\n"  "ret"  "\n"
+    "_incC: mov C,ptr"  "\n"  "ret"  "\n"
+    "_incD: mov D,ptr"  "\n"  "ret"  "\n"
+    "_incE: mov E,ptr"  "\n"  "ret"  "\n"
+    "_incF: mov F,ptr"  "\n"  "ret"  "\n"
 
-    "_store_8: stp q0,q4, [ptr],32\n ret\n"
-    "_store_1: str s0,    [ptr],4 \n ret\n"
+    "_store_8: stp q0,q4, [ptr],32"  "\n"  "ret"  "\n"
+    "_store_1: str s0,    [ptr], 4"  "\n"  "ret"  "\n"
 
-    "_loadX_8: ldp q0,q4, [ptr],32\n ret\n"
-    "_loadX_1: ldr s0,    [ptr],4 \n ret\n"
+    "_loadX_8: ldp q0,q4, [ptr],32"  "\n"  "ret"  "\n"
+    "_loadX_1: ldr s0,    [ptr], 4"  "\n"  "ret"  "\n"
 
-    "_loadY_8: ldp q1,q5, [ptr],32\n ret\n"
-    "_loadY_1: ldr s1,    [ptr],4 \n ret\n"
+    "_loadY_8: ldp q1,q5, [ptr],32"  "\n"  "ret"  "\n"
+    "_loadY_1: ldr s1,    [ptr], 4"  "\n"  "ret"  "\n"
 
-    "_add: fadd v0.4s,v0.4s,v1.4s\n"
-    "      fadd v4.4s,v4.4s,v5.4s\n"
-    "      ret                   \n"
+    "_add: fadd v0.4s,v0.4s,v1.4s"  "\n"
+    "      fadd v4.4s,v4.4s,v5.4s"  "\n"
+    "      ret                   "  "\n"
 
-    "_mul: fmul v0.4s,v0.4s,v1.4s\n"
-    "      fmul v4.4s,v4.4s,v5.4s\n"
-    "      ret                   \n"
+    "_mul: fmul v0.4s,v0.4s,v1.4s"  "\n"
+    "      fmul v4.4s,v4.4s,v5.4s"  "\n"
+    "      ret                   "  "\n"
 );
 #else
 
