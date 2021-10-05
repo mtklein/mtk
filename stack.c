@@ -15,7 +15,7 @@ void done(void* op[], void* data[], int n,
     (void)s7;
 }
 
-#define next ((Op*)*op)(op+1,data,n, s0,s1,s2,s3, s4,s5,s6,s7)
+#define next ((Op*)*op)(op+1,data,n, s0,s1,s2,s3, s4,s5,s6,s7); return
 #define push s7=s6; s6=s5; s5=s4; s4=s3; s3=s2; s2=s1; s1=s0; s0 =
 #define pop  s0; s0=s1; s1=s2; s2=s3; s3=s4; s4=s5; s5=s6; s6=s7
 

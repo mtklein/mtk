@@ -44,7 +44,7 @@
 #define op_(name) \
     __attribute__((flatten)) \
     static void op_##name(int n, const Inst* inst, Val* v, const void* uniforms, void* varying[])
-#define next inst[1].op(n,inst+1,v+1,uniforms,varying)
+#define next inst[1].op(n,inst+1,v+1,uniforms,varying); return
 
 typedef int8_t   __attribute__((vector_size(1*N))) s8;
 typedef int16_t  __attribute__((vector_size(2*N))) s16;
