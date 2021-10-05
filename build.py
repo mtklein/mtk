@@ -10,7 +10,7 @@ deps = {
     'freeform': ['asm'],
     'hash':     [],
     'gfx':      [],
-    'sort':     [],
+    'sort':     ['checksum'],
     'stack':    [],
     'vm':       ['array', 'checksum', 'hash'],
 }
