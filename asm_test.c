@@ -26,7 +26,7 @@ static void jit(void(*setup)(uint32_t*),
 }
 
 static void setup_square(uint32_t* p) {
-    *p++ = vfmul(_4s, v0,v0,v0);
+    *p++ = vfmul(Arr_4s, v0,v0,v0);
     *p++ = xret(lr);
 }
 static void test_square(void(*p)(void)) {
@@ -44,20 +44,20 @@ int main(void) {
     expect_eq(0xd1001042, xsub (x2,x2,4));
     expect_eq(0xf1001042, xsubs(x2,x2,4));
 
-    expect_eq(0x2e205864, vnot(_8b,  v4,v3));
-    expect_eq(0x6e205864, vnot(_16b, v4,v3));
+    expect_eq(0x2e205864, vnot(Arr_8b,  v4,v3));
+    expect_eq(0x6e205864, vnot(Arr_16b, v4,v3));
 
-    expect_eq(0x4e61d464, vfadd(_2d, v4,v3,v1));
-    expect_eq(0x4e21d464, vfadd(_4s, v4,v3,v1));
-    expect_eq(0x0e21d464, vfadd(_2s, v4,v3,v1));
-    expect_eq(0x4e411464, vfadd(_8h, v4,v3,v1));
-    expect_eq(0x0e411464, vfadd(_4h, v4,v3,v1));
+    expect_eq(0x4e61d464, vfadd(Arr_2d, v4,v3,v1));
+    expect_eq(0x4e21d464, vfadd(Arr_4s, v4,v3,v1));
+    expect_eq(0x0e21d464, vfadd(Arr_2s, v4,v3,v1));
+    expect_eq(0x4e411464, vfadd(Arr_8h, v4,v3,v1));
+    expect_eq(0x0e411464, vfadd(Arr_4h, v4,v3,v1));
 
-    expect_eq(0x6e61dc64, vfmul(_2d, v4,v3,v1));
-    expect_eq(0x6e21dc64, vfmul(_4s, v4,v3,v1));
-    expect_eq(0x2e21dc64, vfmul(_2s, v4,v3,v1));
-    expect_eq(0x6e411c64, vfmul(_8h, v4,v3,v1));
-    expect_eq(0x2e411c64, vfmul(_4h, v4,v3,v1));
+    expect_eq(0x6e61dc64, vfmul(Arr_2d, v4,v3,v1));
+    expect_eq(0x6e21dc64, vfmul(Arr_4s, v4,v3,v1));
+    expect_eq(0x2e21dc64, vfmul(Arr_2s, v4,v3,v1));
+    expect_eq(0x6e411c64, vfmul(Arr_8h, v4,v3,v1));
+    expect_eq(0x2e411c64, vfmul(Arr_4h, v4,v3,v1));
 
     jit(setup_square, test_square);
 

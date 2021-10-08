@@ -14,7 +14,7 @@ typedef enum {
     v16,v17,v18,v19,v20,v21,v22,v23,v24,v25,v26,v27,v28,v29,v30,v31,
 } V;
 
-typedef enum { _8b,_16b, _4h,_8h, _2s,_4s, /*no _1d*/ _2d=7 } Arr;
+typedef enum { Arr_8b,Arr_16b, Arr_4h,Arr_8h, Arr_2s,Arr_4s, /*no Arr_1d*/ Arr_2d=7 } Arr;
 
 typedef enum { eq,ne, cs,cc, mi,pl, vs,vc, hi,ls, ge,lt, gt,le, al,nv } Cond;
 
