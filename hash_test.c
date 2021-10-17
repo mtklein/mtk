@@ -76,6 +76,23 @@ static void test_growth() {
     free(h.table);
 }
 
+static bool is_42(int val, void* ctx) {
+    (void)ctx;
+    return val == 42;
+}
+
+static void test_duplicates() {
+    Hash h = {0};
+
+    for (int i = 0; i < 7; i++) {
+        expect_eq(h.len, i);
+        insert(&h, 0,42);
+        expect(lookup(&h,0,is_42,NULL));
+    }
+
+    free(h.table);
+}
+
 
 static double bench_insert(int k, double *scale, const char* *unit) {
     *scale = 1.0;
@@ -140,6 +157,7 @@ static double bench_miss(int k, double *scale, const char* *unit) {
 int main(int argc, char** argv) {
     test_basics();
     test_growth();
+    test_duplicates();
 
     bench(bench_insert);
     bench(bench_hit);
