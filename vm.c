@@ -108,7 +108,7 @@ static bool inst_eq(int id, void* vctx) {
 
 static int inst_(int size, Builder* b, Inst inst) {
     int hash = (int)murmur3(0, &inst,sizeof inst);
-    for (inst_eq_ctx ctx={.b=b,.inst=&inst}; lookup(&b->hash,hash, inst_eq,&ctx);) {
+    for (inst_eq_ctx ctx={.b=b,.inst=&inst}; lookup(b->hash,hash, inst_eq,&ctx);) {
         return ctx.id;
     }
 

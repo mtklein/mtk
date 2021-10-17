@@ -2,17 +2,17 @@
 #include "hash.h"
 #include <stdlib.h>
 
-bool lookup(const Hash* h, int hash, bool(*is_this_your_number)(int val, void* ctx), void* ctx) {
+bool lookup(const Hash h, int hash, bool(*is_this_your_number)(int val, void* ctx), void* ctx) {
     if (hash == 0) { hash = 1; }
-    int ix = hash & (h->cap-1);
-    for (int i = 0; i < h->cap; i++) {
-        if (h->table[ix].hash == 0) {
+    int ix = hash & (h.cap-1);
+    for (int i = 0; i < h.cap; i++) {
+        if (h.table[ix].hash == 0) {
             return false;
         }
-        if (h->table[ix].hash == hash && is_this_your_number(h->table[ix].val, ctx)) {
+        if (h.table[ix].hash == hash && is_this_your_number(h.table[ix].val, ctx)) {
             return true;
         }
-        ix = (ix+1) & (h->cap-1);
+        ix = (ix+1) & (h.cap-1);
     }
     return false;
 }

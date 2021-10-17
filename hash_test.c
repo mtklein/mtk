@@ -25,42 +25,42 @@ static void test_basics() {
 
     str_eq_ctx ctx = {.keys=keys};
 
-    ctx.key =  "foo"; expect(!lookup(&h,  42, str_eq, &ctx));
-    ctx.key =  "bar"; expect(!lookup(&h,  23, str_eq, &ctx));
-    ctx.key =  "baz"; expect(!lookup(&h,  47, str_eq, &ctx));
-    ctx.key = "quux"; expect(!lookup(&h, 100, str_eq, &ctx));
+    ctx.key =  "foo"; expect(!lookup(h,  42, str_eq, &ctx));
+    ctx.key =  "bar"; expect(!lookup(h,  23, str_eq, &ctx));
+    ctx.key =  "baz"; expect(!lookup(h,  47, str_eq, &ctx));
+    ctx.key = "quux"; expect(!lookup(h, 100, str_eq, &ctx));
 
     insert(&h, 42, 0);
     expect_eq(h.len, 1);
     expect_eq(h.cap, 1);
-    ctx.key =  "foo"; expect( lookup(&h,  42, str_eq, &ctx) && ctx.val == 0);
-    ctx.key =  "bar"; expect(!lookup(&h,  23, str_eq, &ctx));
-    ctx.key =  "baz"; expect(!lookup(&h,  47, str_eq, &ctx));
-    ctx.key = "quux"; expect(!lookup(&h, 100, str_eq, &ctx));
+    ctx.key =  "foo"; expect( lookup(h,  42, str_eq, &ctx) && ctx.val == 0);
+    ctx.key =  "bar"; expect(!lookup(h,  23, str_eq, &ctx));
+    ctx.key =  "baz"; expect(!lookup(h,  47, str_eq, &ctx));
+    ctx.key = "quux"; expect(!lookup(h, 100, str_eq, &ctx));
 
     insert(&h, 23, 1);
     expect_eq(h.len, 2);
     expect_eq(h.cap, 2);
-    ctx.key =  "foo"; expect( lookup(&h,  42, str_eq, &ctx) && ctx.val == 0);
-    ctx.key =  "bar"; expect( lookup(&h,  23, str_eq, &ctx) && ctx.val == 1);
-    ctx.key =  "baz"; expect(!lookup(&h,  47, str_eq, &ctx));
-    ctx.key = "quux"; expect(!lookup(&h, 100, str_eq, &ctx));
+    ctx.key =  "foo"; expect( lookup(h,  42, str_eq, &ctx) && ctx.val == 0);
+    ctx.key =  "bar"; expect( lookup(h,  23, str_eq, &ctx) && ctx.val == 1);
+    ctx.key =  "baz"; expect(!lookup(h,  47, str_eq, &ctx));
+    ctx.key = "quux"; expect(!lookup(h, 100, str_eq, &ctx));
 
     insert(&h, 47, 2);
     expect_eq(h.len, 3);
     expect_eq(h.cap, 4);
-    ctx.key =  "foo"; expect( lookup(&h,  42, str_eq, &ctx) && ctx.val == 0);
-    ctx.key =  "bar"; expect( lookup(&h,  23, str_eq, &ctx) && ctx.val == 1);
-    ctx.key =  "baz"; expect( lookup(&h,  47, str_eq, &ctx) && ctx.val == 2);
-    ctx.key = "quux"; expect(!lookup(&h, 100, str_eq, &ctx));
+    ctx.key =  "foo"; expect( lookup(h,  42, str_eq, &ctx) && ctx.val == 0);
+    ctx.key =  "bar"; expect( lookup(h,  23, str_eq, &ctx) && ctx.val == 1);
+    ctx.key =  "baz"; expect( lookup(h,  47, str_eq, &ctx) && ctx.val == 2);
+    ctx.key = "quux"; expect(!lookup(h, 100, str_eq, &ctx));
 
     insert(&h, 100, 3);
     expect_eq(h.len, 4);
     expect_eq(h.cap, 8);
-    ctx.key =  "foo"; expect( lookup(&h,  42, str_eq, &ctx) && ctx.val == 0);
-    ctx.key =  "bar"; expect( lookup(&h,  23, str_eq, &ctx) && ctx.val == 1);
-    ctx.key =  "baz"; expect( lookup(&h,  47, str_eq, &ctx) && ctx.val == 2);
-    ctx.key = "quux"; expect( lookup(&h, 100, str_eq, &ctx) && ctx.val == 3);
+    ctx.key =  "foo"; expect( lookup(h,  42, str_eq, &ctx) && ctx.val == 0);
+    ctx.key =  "bar"; expect( lookup(h,  23, str_eq, &ctx) && ctx.val == 1);
+    ctx.key =  "baz"; expect( lookup(h,  47, str_eq, &ctx) && ctx.val == 2);
+    ctx.key = "quux"; expect( lookup(h, 100, str_eq, &ctx) && ctx.val == 3);
 
     free(h.table);
 }
@@ -87,7 +87,7 @@ static void test_duplicates() {
     for (int i = 0; i < 7; i++) {
         expect_eq(h.len, i);
         insert(&h, 0,42);
-        expect(lookup(&h,0,is_42,NULL));
+        expect(lookup(h,0,is_42,NULL));
     }
 
     free(h.table);
@@ -128,7 +128,7 @@ static double bench_hit(int k, double *scale, const char* *unit) {
     double start = now();
     while (k --> 0) {
         int i = 42, val;
-        expect(lookup(&h,i, always_match,&val) && val == 84);
+        expect(lookup(h,i, always_match,&val) && val == 84);
     }
     double elapsed = now() - start;
     free(h.table);
@@ -147,7 +147,7 @@ static double bench_miss(int k, double *scale, const char* *unit) {
     double start = now();
     while (k --> 0) {
         int i = 420;
-        expect(!lookup(&h,i, always_match,NULL));
+        expect(!lookup(h,i, always_match,NULL));
     }
     double elapsed = now() - start;
     free(h.table);
