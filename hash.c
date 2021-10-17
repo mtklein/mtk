@@ -5,12 +5,13 @@
 bool lookup(const Hash h, int hash, bool(*is_this_your_number)(int val, void* ctx), void* ctx) {
     if (hash == 0) { hash = 1; }
     int ix = hash & (h.cap-1);
+
     for (int i = 0; i < h.cap; i++) {
-        if (h.table[ix].hash == 0) {
-            return false;
-        }
         if (h.table[ix].hash == hash && is_this_your_number(h.table[ix].val, ctx)) {
             return true;
+        }
+        if (h.table[ix].hash == 0) {
+            return false;
         }
         ix = (ix+1) & (h.cap-1);
     }
@@ -22,6 +23,7 @@ static void just_insert(Hash* h, int hash, int val) {
 
     if (hash == 0) { hash = 1; }
     int ix = hash & (h->cap-1);
+
     for (int i = 0; i < h->cap; i++) {
         if (h->table[ix].hash == 0) {
             h->table[ix].hash = hash;
@@ -51,6 +53,5 @@ void insert(Hash* h, int hash, int val) {
         free(h->table);
         *h = grown;
     }
-
     just_insert(h, hash,val);
 }
